@@ -1,0 +1,110 @@
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/*Body */
+
+body{
+    background-image: url("../assets/images/background.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+}
+
+/*Header */
+
+header{
+    width: 100%;
+    padding: 20px 8%;
+}
+
+/* Navigation Bar*/
+
+nav{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px 45px;
+
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 15px;
+}
+
+/* Logo*/
+
+.logo h2{
+    font-size: 32px;
+    color: #2d3a8c;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Navigation Links*/
+
+.nav-links{
+    display: flex;
+    list-style: none;
+    gap: 35px;
+}
+
+.nav-links a{
+    text-decoration: none;
+    color: #333;
+    font-size: 17px;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover{
+    color: #4f46e5;
+}
+
+/*Buttons */
+
+.buttons{
+    display: flex;
+    gap: 15px;
+}
+
+/* Login Button */
+
+.login-btn{
+    text-decoration: none;
+    color: #4f46e5;
+    border: 2px solid #4f46e5;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.login-btn:hover{
+    background-color: #4f46e5;
+    color: white;
+}
+
+/* Get Started Button */
+
+.start-btn{
+    text-decoration: none;
+    background-color: #4f46e5;
+    color: white;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.start-btn:hover{
+    background-color: #3730a3;
+}
