@@ -1,5 +1,5 @@
 /* =========================================
-   TRUSTCART LOGIN
+   TRUSTCART SIGNUP
    ========================================= */
 
 * {
@@ -11,11 +11,9 @@
 :root {
     --green: #18583d;
     --light-green: #61b487;
-    --dark-green: #0b3021;
     --text: #17231e;
     --gray: #7d8983;
     --border: #dfe6e2;
-    --white: #ffffff;
 }
 
 
@@ -32,7 +30,7 @@ body {
     justify-content: center;
     align-items: center;
 
-    padding: 25px;
+    padding: 20px;
 
     background:
         linear-gradient(
@@ -77,14 +75,14 @@ body {
 
 
 /* =========================================
-   MAIN CONTAINER
+   MAIN
    ========================================= */
 
-.login-container {
+.signup-container {
     width: 100%;
     max-width: 1100px;
 
-    min-height: 680px;
+    min-height: 720px;
 
     display: flex;
 
@@ -93,11 +91,9 @@ body {
 
     overflow: hidden;
 
-    border: 1px solid rgba(255, 255, 255, 0.2);
-
     border-radius: 20px;
 
-    background: rgba(255, 255, 255, 0.96);
+    background: rgba(255, 255, 255, 0.97);
 
     box-shadow:
         0 30px 80px rgba(0, 0, 0, 0.45);
@@ -120,17 +116,15 @@ body {
 
 
 /* =========================================
-   LEFT LOGIN SECTION
+   LEFT
    ========================================= */
 
-.login-section {
+.signup-section {
     width: 54%;
 
-    padding: 45px 70px;
+    padding: 38px 70px;
 
     background: rgba(250, 252, 251, 0.97);
-
-    position: relative;
 }
 
 
@@ -154,13 +148,13 @@ body {
 
 
 /* =========================================
-   LOGIN CONTENT
+   CONTENT
    ========================================= */
 
-.login-content {
+.signup-content {
     max-width: 410px;
 
-    margin: 55px auto 0;
+    margin: 28px auto 0;
 }
 
 .welcome-badge {
@@ -203,30 +197,28 @@ body {
    HEADING
    ========================================= */
 
-.login-content h1 {
-    margin-top: 20px;
+.signup-content h1 {
+    margin-top: 17px;
 
-    font-size: 48px;
+    font-size: 42px;
 
     line-height: 1;
 
     letter-spacing: -2px;
-
-    color: #17231e;
 }
 
-.login-content h1 strong {
+.signup-content h1 strong {
     color: var(--green);
 }
 
 .subtitle {
-    margin-top: 15px;
+    margin-top: 12px;
 
     color: var(--gray);
 
-    font-size: 13px;
+    font-size: 12px;
 
-    line-height: 1.7;
+    line-height: 1.6;
 }
 
 
@@ -235,37 +227,37 @@ body {
    ========================================= */
 
 form {
-    margin-top: 30px;
+    margin-top: 20px;
 }
 
 .input-group {
-    margin-bottom: 19px;
+    margin-bottom: 12px;
 }
 
 .input-group label {
     display: block;
 
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 
-    color: #4f5d56;
-
-    font-size: 11px;
+    font-size: 10px;
 
     font-weight: 700;
+
+    color: #4f5d56;
 }
 
 .input-wrapper {
-    height: 48px;
+    height: 42px;
 
     display: flex;
 
     align-items: center;
 
+    background: white;
+
     border: 1px solid var(--border);
 
-    border-radius: 10px;
-
-    background: white;
+    border-radius: 9px;
 
     transition: 0.3s ease;
 }
@@ -275,14 +267,12 @@ form {
 
     box-shadow:
         0 0 0 4px rgba(24, 88, 61, 0.08);
-
-    transform: translateY(-1px);
 }
 
 .input-icon {
-    margin-left: 14px;
+    margin-left: 13px;
 
-    font-size: 14px;
+    font-size: 12px;
 
     opacity: 0.55;
 }
@@ -296,13 +286,13 @@ form {
 
     outline: none;
 
-    padding: 0 12px;
+    padding: 0 11px;
 
     background: transparent;
 
-    color: #17231e;
+    font-size: 12px;
 
-    font-size: 13px;
+    color: #17231e;
 }
 
 .input-wrapper input::placeholder {
@@ -321,77 +311,104 @@ form {
 
     cursor: pointer;
 
-    margin-right: 12px;
-
-    font-size: 15px;
+    margin-right: 10px;
 
     opacity: 0.55;
-
-    transition: 0.2s;
 }
 
 .password-toggle:hover {
     opacity: 1;
-
-    transform: scale(1.1);
 }
 
 
 /* =========================================
-   FORM OPTIONS
+   PASSWORD STRENGTH
    ========================================= */
 
-.form-options {
-    display: flex;
+.password-strength {
+    margin-top: -4px;
 
-    justify-content: space-between;
-
-    align-items: center;
-
-    margin: 5px 0 20px;
+    margin-bottom: 11px;
 }
 
-.remember {
+.strength-bar {
+    height: 4px;
+
+    width: 100%;
+
+    border-radius: 10px;
+
+    background: #e7ece9;
+
+    overflow: hidden;
+}
+
+.strength-bar span {
+    display: block;
+
+    width: 0%;
+
+    height: 100%;
+
+    border-radius: 10px;
+
+    background: var(--green);
+
+    transition: 0.3s ease;
+}
+
+.password-strength small {
+    display: block;
+
+    margin-top: 5px;
+
+    color: #9aa39f;
+
+    font-size: 8px;
+}
+
+
+/* =========================================
+   TERMS
+   ========================================= */
+
+.terms {
     display: flex;
 
     align-items: center;
 
     gap: 7px;
 
-    font-size: 11px;
+    margin: 12px 0;
 
     color: #7c8782;
+
+    font-size: 9px;
 
     cursor: pointer;
 }
 
-.remember input {
+.terms input {
     accent-color: var(--green);
 }
 
-.forgot {
+.terms a {
     color: var(--green);
-
-    font-size: 11px;
 
     font-weight: 600;
 
     text-decoration: none;
 }
 
-.forgot:hover {
-    text-decoration: underline;
-}
-
 
 /* =========================================
-   MAIN BUTTON
+   BUTTON
    ========================================= */
 
 .main-btn {
     width: 100%;
 
-    height: 49px;
+    height: 45px;
 
     display: flex;
 
@@ -403,17 +420,18 @@ form {
 
     border: none;
 
-    border-radius: 10px;
+    border-radius: 9px;
 
-    background: linear-gradient(
-        135deg,
-        #18583d,
-        #287451
-    );
+    background:
+        linear-gradient(
+            135deg,
+            #18583d,
+            #287451
+        );
 
     color: white;
 
-    font-size: 12px;
+    font-size: 11px;
 
     font-weight: 700;
 
@@ -427,17 +445,17 @@ form {
         0 10px 20px rgba(24, 88, 61, 0.18);
 }
 
-.main-btn .arrow {
-    font-size: 20px;
-
-    transition: 0.3s;
-}
-
 .main-btn:hover {
     transform: translateY(-2px);
 
     box-shadow:
         0 15px 28px rgba(24, 88, 61, 0.28);
+}
+
+.arrow {
+    font-size: 19px;
+
+    transition: 0.3s;
 }
 
 .main-btn:hover .arrow {
@@ -456,11 +474,11 @@ form {
 
     gap: 12px;
 
-    margin: 25px 0 17px;
+    margin: 17px 0 12px;
 
     color: #a0aaa5;
 
-    font-size: 9px;
+    font-size: 8px;
 
     letter-spacing: 1px;
 }
@@ -469,32 +487,32 @@ form {
 .divider::after {
     content: "";
 
-    flex: 1;
-
     height: 1px;
+
+    flex: 1;
 
     background: #e1e7e4;
 }
 
 
 /* =========================================
-   SOCIAL BUTTONS
+   SOCIAL
    ========================================= */
 
 .social-buttons {
     display: flex;
 
-    gap: 10px;
+    gap: 9px;
 }
 
 .social-btn {
     width: 50%;
 
-    height: 44px;
+    height: 39px;
 
     border: 1px solid var(--border);
 
-    border-radius: 9px;
+    border-radius: 8px;
 
     background: white;
 
@@ -504,11 +522,11 @@ form {
 
     justify-content: center;
 
-    gap: 9px;
+    gap: 8px;
 
     color: #4e5a54;
 
-    font-size: 11px;
+    font-size: 10px;
 
     font-weight: 600;
 
@@ -527,36 +545,34 @@ form {
 }
 
 .google-icon {
-    font-size: 18px;
+    color: #4285f4;
+
+    font-size: 16px;
 
     font-weight: bold;
-
-    color: #4285f4;
 }
 
 .facebook-icon {
-    font-family: Arial;
+    color: #1877f2;
 
-    font-size: 21px;
+    font-size: 19px;
 
     font-weight: bold;
-
-    color: #1877f2;
 }
 
 
 /* =========================================
-   ACCOUNT TEXT
+   LOGIN LINK
    ========================================= */
 
 .account-text {
     text-align: center;
 
-    margin-top: 24px;
+    margin-top: 16px;
 
     color: #89938e;
 
-    font-size: 11px;
+    font-size: 10px;
 }
 
 .account-text a {
@@ -565,10 +581,6 @@ form {
     font-weight: 700;
 
     text-decoration: none;
-}
-
-.account-text a:hover {
-    text-decoration: underline;
 }
 
 
@@ -586,7 +598,7 @@ form {
     background:
         linear-gradient(
             rgba(5, 38, 25, 0.72),
-            rgba(4, 24, 16, 0.9)
+            rgba(4, 24, 16, 0.92)
         ),
         url("../Images/Blue and Black Minimalist Brand Logo.png");
 
@@ -596,11 +608,6 @@ form {
 
     color: white;
 }
-
-
-/* =========================================
-   OVERLAY
-   ========================================= */
 
 .creative-overlay {
     position: absolute;
@@ -625,9 +632,7 @@ form {
 
     z-index: 2;
 
-    padding: 80px 55px;
-
-    max-width: 480px;
+    padding: 70px 55px;
 }
 
 .floating-logo {
@@ -639,21 +644,17 @@ form {
     align-items: center;
     justify-content: center;
 
-    border: 1px solid rgba(255,255,255,0.3);
-
     border-radius: 15px;
 
     background: rgba(255,255,255,0.08);
 
-    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.25);
 
-    font-size: 16px;
+    backdrop-filter: blur(10px);
 
     font-weight: 800;
 
-    letter-spacing: 1px;
-
-    margin-bottom: 45px;
+    margin-bottom: 40px;
 
     animation: floating 3s ease-in-out infinite;
 }
@@ -670,25 +671,25 @@ form {
 }
 
 .small-title {
+    color: #8bd0a8;
+
     font-size: 9px;
 
     letter-spacing: 3px;
 
-    color: #8bd0a8;
-
     font-weight: 700;
 
-    margin-bottom: 18px;
+    margin-bottom: 17px;
 }
 
 .creative-content h2 {
-    font-size: 48px;
+    font-size: 43px;
 
     line-height: 1.03;
 
     letter-spacing: -2px;
 
-    margin-bottom: 22px;
+    margin-bottom: 20px;
 }
 
 .creative-content h2 span {
@@ -696,9 +697,9 @@ form {
 }
 
 .creative-content > p {
-    color: rgba(255,255,255,0.68);
+    color: rgba(255,255,255,0.67);
 
-    font-size: 13px;
+    font-size: 12px;
 
     line-height: 1.8;
 
@@ -707,7 +708,7 @@ form {
 
 
 /* =========================================
-   FEATURE CARDS
+   FEATURE CARD
    ========================================= */
 
 .feature-card {
@@ -715,17 +716,15 @@ form {
 
     align-items: center;
 
-    gap: 14px;
+    gap: 13px;
 
-    width: 100%;
+    padding: 11px;
 
-    padding: 13px;
-
-    margin-top: 25px;
+    margin-top: 19px;
 
     border: 1px solid rgba(255,255,255,0.12);
 
-    border-radius: 12px;
+    border-radius: 11px;
 
     background: rgba(255,255,255,0.07);
 
@@ -741,15 +740,15 @@ form {
 }
 
 .feature-icon {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
 
     display: flex;
 
     justify-content: center;
     align-items: center;
 
-    border-radius: 10px;
+    border-radius: 9px;
 
     background: rgba(99, 194, 137, 0.18);
 
@@ -761,7 +760,7 @@ form {
 .feature-card strong {
     display: block;
 
-    font-size: 11px;
+    font-size: 10px;
 
     margin-bottom: 4px;
 }
@@ -769,12 +768,12 @@ form {
 .feature-card small {
     color: rgba(255,255,255,0.55);
 
-    font-size: 9px;
+    font-size: 8px;
 }
 
 
 /* =========================================
-   DECORATIVE CIRCLES
+   DECORATIONS
    ========================================= */
 
 .decor-circle {
@@ -812,7 +811,7 @@ form {
         padding: 15px;
     }
 
-    .login-container {
+    .signup-container {
         max-width: 500px;
 
         min-height: auto;
@@ -822,30 +821,22 @@ form {
         display: none;
     }
 
-    .login-section {
+    .signup-section {
         width: 100%;
 
-        padding: 35px 40px 40px;
-    }
-
-    .login-content {
-        margin-top: 50px;
+        padding: 30px 40px 40px;
     }
 }
 
 
 @media (max-width: 480px) {
 
-    .login-section {
-        padding: 30px 22px;
+    .signup-section {
+        padding: 25px 22px 30px;
     }
 
-    .login-content {
-        margin-top: 40px;
-    }
-
-    .login-content h1 {
-        font-size: 40px;
+    .signup-content h1 {
+        font-size: 36px;
     }
 
     .social-buttons {
