@@ -53,11 +53,11 @@
             
             <div class="nav-buttons">
 
-                <a href="login.html" class="login-btn">
+                <a href="/Pages/login.html" class="login-btn">
                     Login
                 </a>
 
-                <a href="register.html" class="get-started-btn">
+                <a href="/Pages/signup.html" class="get-started-btn">
                     Get Started
                 </a>
 
@@ -79,19 +79,19 @@
             <div class="hero-content">
 
                
-                <h1 class="hero-title">
+               <h1 class="hero-title animated-title">
 
-                    <span class="title-line">
-                        Shop Smarter.
-                    </span>
+    <span id="changing-word">Shop</span>
 
-                    <br>
+    <span class="static-word">Smarter.</span>
 
-                    <span class="title-line trust-word">
-                        Trust Better.
-                    </span>
+    <br>
 
-                </h1>
+    <span class="trust-word">
+        Trust <span id="changing-trust">Better.</span>
+    </span>
+
+</h1>
 
 
                 
@@ -110,7 +110,7 @@
 
                     <div class="hero-buttons">
 
-                        <a href="register.html" class="hero-start-btn">
+                        <a href="/Pages/signup.html" class="hero-start-btn">
 
                             Get Started
 
@@ -523,40 +523,89 @@
         </section>
 
 
-        <!-- CONTACT  -->
+       <!-- CONTACT -->
 
-        <section class="contact-section" id="contact">
+<section class="contact-section" id="contact">
 
-            <div class="contact-container">
+    <div class="contact-container">
 
-                <span class="section-label">
-                    CONTACT
-                </span>
+        <span class="section-label">
+            CONTACT
+        </span>
 
-                <h2>
-                    Get in touch.
-                </h2>
+        <h2>
+            Get in touch.
+        </h2>
 
-                <!--
-                    CONTACT DETAILS WILL BE ADDED HERE.
-                    You can add:
-                    - Email
-                    - Phone
-                    - Address
-                    - Social media
-                    - Contact form
-                -->
+        <p class="contact-description">
+            Have questions, suggestions, or feedback?
+            We'd love to hear from you.
+        </p>
 
+        <div class="contact-details">
 
-                <div class="contact-placeholder">
-
-                    <!-- YOUR CONTACT DETAILS HERE -->
-
+            <!-- EMAIL -->
+            <div class="contact-item">
+                <div class="contact-icon">
+                    ✉
                 </div>
 
+                <div>
+                    <h3>Email</h3>
+                    <a href="mailto:trustcart@gmail.com">
+                        trustcart@gmail.com
+                    </a>
+                </div>
             </div>
 
-        </section>
+
+            <!-- PHONE -->
+            <div class="contact-item">
+                <div class="contact-icon">
+                    ☎
+                </div>
+
+                <div>
+                    <h3>Phone</h3>
+                    <a href="tel:+918149963196">
+                        +91 81499 63196
+                    </a>
+                </div>
+            </div>
+
+
+            <!-- SOCIAL MEDIA -->
+            <div class="contact-item">
+                <div class="contact-icon">
+                    🌐
+                </div>
+
+                <div>
+                    <h3>Follow Us</h3>
+
+                    <div class="contact-socials">
+
+                        <a href="https://www.instagram.com/" target="_blank">
+                            Instagram
+                        </a>
+
+                        <a href="https://www.linkedin.com/" target="_blank">
+                            LinkedIn
+                        </a>
+
+                        <a href="https://www.facebook.com/" target="_blank">
+                            Facebook
+                        </a>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
 
 
     </main>
@@ -567,10 +616,10 @@
 
         <div class="social-links">
 
-            <a href="https://github.com/devadigamayuresh19-art3112/TrustCart" target="_blank" aria-label="GitHub">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.17c-3.2.69-3.87-1.54-3.87-1.54-.53-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.73-1.53-2.55-.29-5.23-1.28-5.23-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.47.11-3.06 0 0 .96-.31 3.15 1.18A10.9 10.9 0 0 1 12 6.08c.97 0 1.94.13 2.85.38 2.19-1.49 3.15-1.18 3.15-1.18.62 1.59.23 2.77.11 3.06.73.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.41-5.25 5.69.41.35.78 1.04.78 2.1v3.11c0 .31.21.67.8.56A10.99 10.99 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
-                </svg>
+            <a href="https://www.facebook.com/" target="_blank" aria-label="Facebook">
+              <svg viewBox="0 0 24 24">
+             <path d="M14 8h3V4h-3c-2.76 0-5 2.24-5 5v3H6v4h3v8h4v-8h3l1-4h-4V9c0-.55.45-1 1-1z"/>
+             </svg>
             </a>
 
             <a href="https://www.instagram.com/" target="_blank" aria-label="Instagram">
@@ -617,7 +666,107 @@
 
         });
 
+
     </script>
+    <script>
+
+/* =========================================
+   CONTINUOUS HERO WORD ANIMATION
+========================================= */
+
+const firstWords = [
+    "Shop",
+    "Compare",
+    "Choose",
+    "Discover"
+];
+
+const trustWords = [
+    "Better.",
+    "Smarter.",
+    "Confidently.",
+    "Wisely."
+];
+
+const changingWord =
+    document.getElementById("changing-word");
+
+const changingTrust =
+    document.getElementById("changing-trust");
+
+
+let wordIndex = 0;
+
+
+/* Change words every 2.5 seconds */
+
+setInterval(() => {
+
+    /* Animate old words out */
+
+    changingWord.classList.remove("word-in");
+
+    changingWord.classList.add("word-out");
+
+    changingTrust.classList.remove("word-in");
+
+    changingTrust.classList.add("word-out");
+
+
+    /* Wait for exit animation */
+
+    setTimeout(() => {
+
+        wordIndex++;
+
+        if (wordIndex >= firstWords.length) {
+            wordIndex = 0;
+        }
+
+
+        /* Change text */
+
+        changingWord.textContent =
+            firstWords[wordIndex];
+
+        changingTrust.textContent =
+            trustWords[wordIndex];
+
+
+        /* Animate new words in */
+
+        changingWord.classList.remove("word-out");
+
+        changingTrust.classList.remove("word-out");
+
+
+        changingWord.classList.add("word-in");
+
+        changingTrust.classList.add("word-in");
+
+
+        /* Glow effect */
+
+        changingWord.classList.add("word-glow");
+
+        changingTrust.classList.add("word-glow");
+
+
+        setTimeout(() => {
+
+            changingWord.classList.remove("word-glow");
+
+            changingTrust.classList.remove("word-glow");
+
+        }, 500);
+
+
+    }, 400);
+
+
+}, 2500);
+
+</script>
 
 </body>
 

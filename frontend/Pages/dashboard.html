@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TrustCart | Dashboard</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../CSS/dashboard.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+
+<aside class="sidebar">
+
+    <div>
+        <a href="/dashboard" class="brand">
+            <div class="brand-logo">T</div>
+            <span>TrustCart</span>
+        </a>
+
+        <nav class="nav">
+            <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                <span class="icon">⌂</span>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="#compare" class="nav-item" data-section="compare">
+                <span class="icon">⌕</span>
+                <span>Compare Product</span>
+            </a>
+
+            <a href="#history" class="nav-item" data-section="history">
+                <span class="icon">↻</span>
+                <span>Search History</span>
+            </a>
+
+            <a href="#saved" class="nav-item" data-section="saved">
+                <span class="icon">♡</span>
+                <span>Saved Products</span>
+            </a>
+
+            <a href="#profile" class="nav-item" data-section="profile">
+                <span class="icon">♙</span>
+                <span>Profile</span>
+            </a>
+
+            <a href="#settings" class="nav-item" data-section="settings">
+                <span class="icon">⚙</span>
+                <span>Settings</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="user-box">
+        <div class="user-info">
+            <div class="avatar">{{ initial }}</div>
+
+            <div>
+                <strong>{{ name }}</strong>
+                <span>{{ email }}</span>
+            </div>
+        </div>
+
+        <a href="/logout" class="logout" title="Logout">↪</a>
+    </div>
+
+</aside>
+
+
+<main class="main">
+
+<header class="topbar">
+
+    <div class="welcome">
+        <h1>Welcome back, {{ name }}!</h1>
+        <p>Find the best price. Shop with confidence.</p>
+    </div>
+
+    <div class="top-actions">
+
+        <button class="notification" id="notificationBtn" aria-label="Notifications">
+            ♧
+            <span></span>
+        </button>
+
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+            ☾
+        </button>
+
+        <div class="top-avatar">{{ initial }}</div>
+
+    </div>
+
+</header>
+
+
+<div class="content">
+
+<section id="dashboard" class="page-section active-section">
+
+    <section class="search-card">
+
+        <div class="search-icon">⌕</div>
+
+        <h2>Compare Any Product</h2>
+
+        <p>
+            Paste a product link and let TrustCart find the best deal for you.
+        </p>
+
+        <div class="url-box">
+            <span>↗</span>
+            <input
+                id="productUrl"
+                type="url"
+                placeholder="Paste product URL here..."
+                aria-label="Product URL">
+        </div>
+
+        <button class="search-btn" id="compareBtn">
+            Show Results <span>→</span>
+        </button>
+
+        <small>
+            Supported links: Amazon, Flipkart, Myntra and other supported stores.
+        </small>
+
+    </section>
+
+
+    <section class="stats">
+
+        <div class="stat-card">
+            <div class="stat-icon">↻</div>
+            <div>
+                <strong>24</strong>
+                <span>Products Compared</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">◆</div>
+            <div>
+                <strong>18</strong>
+                <span>Best Deals Found</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">₹</div>
+            <div>
+                <strong>₹12,450</strong>
+                <span>Money Saved</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">♡</div>
+            <div>
+                <strong>8</strong>
+                <span>Saved Products</span>
+            </div>
+        </div>
+
+    </section>
+
+
+    <section class="recent">
+
+        <div class="section-title">
+            <div>
+                <h2>Recent Searches</h2>
+                <p>Your recently compared products</p>
+            </div>
+
+            <a href="#history">View All →</a>
+        </div>
+
+        <div class="products">
+
+            <article class="product-card">
+
+                <div class="product-image">🎧</div>
+
+                <div class="product-body">
+                    <h3>boAt Rockerz 450</h3>
+                    <div class="price">Best price: ₹1,299</div>
+                    <p>Compared across 5 stores</p>
+                    <span class="date">2 days ago</span>
+
+                    <button class="view-result">
+                        View Results →
+                    </button>
+                </div>
+
+            </article>
+
+
+            <article class="product-card">
+
+                <div class="product-image">⌚</div>
+
+                <div class="product-body">
+                    <h3>Noise ColorFit Pulse 4</h3>
+                    <div class="price">Best price: ₹2,499</div>
+                    <p>Compared across 4 stores</p>
+                    <span class="date">4 days ago</span>
+
+                    <button class="view-result">
+                        View Results →
+                    </button>
+                </div>
+
+            </article>
+
+
+            <article class="product-card">
+
+                <div class="product-image">📱</div>
+
+                <div class="product-body">
+                    <h3>Samsung Galaxy M35 5G</h3>
+                    <div class="price">Best price: ₹16,999</div>
+                    <p>Compared across 6 stores</p>
+                    <span class="date">1 week ago</span>
+
+                    <button class="view-result">
+                        View Results →
+                    </button>
+                </div>
+
+            </article>
+
+        </div>
+
+    </section>
+
+</section>
+
+
+<section id="compare" class="page-section">
+
+    <div class="section-card">
+        <div class="section-icon">⌕</div>
+
+        <h2>Compare Product</h2>
+
+        <p>
+            Enter a product URL above to compare prices across supported stores.
+        </p>
+
+        <button class="primary-btn" id="startCompareBtn">
+            Start Comparing →
+        </button>
+    </div>
+
+</section>
+
+
+<section id="history" class="page-section">
+
+    <div class="section-card">
+
+        <div class="section-icon">↻</div>
+
+        <h2>Search History</h2>
+
+        <p>Your recently compared products will appear here.</p>
+
+        <div class="empty-state">
+            <span>📋</span>
+            <strong>No additional searches</strong>
+            <small>Start comparing products to build your history.</small>
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="saved" class="page-section">
+
+    <div class="section-card">
+
+        <div class="section-icon">♡</div>
+
+        <h2>Saved Products</h2>
+
+        <p>Products you save for later will appear here.</p>
+
+        <div class="empty-state">
+            <span>♡</span>
+            <strong>No saved products</strong>
+            <small>Save products while comparing them.</small>
+        </div>
+
+    </div>
+
+</section>
+
+
+<section id="profile" class="page-section">
+
+    <div class="section-card profile-section">
+
+        <div class="profile-header">
+
+            <div class="large-avatar">{{ initial }}</div>
+
+            <div>
+                <h2>{{ name }}</h2>
+                <p>{{ email }}</p>
+            </div>
+
+        </div>
+
+        <div class="profile-grid">
+
+            <div class="profile-item">
+                <span>Full Name</span>
+                <strong>{{ name }}</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Email Address</span>
+                <strong>{{ email }}</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Products Compared</span>
+                <strong>24</strong>
+            </div>
+
+            <div class="profile-item">
+                <span>Saved Products</span>
+                <strong>8</strong>
+            </div>
+
+        </div>
+
+        <button class="primary-btn" id="editProfileBtn">
+            Edit Profile
+        </button>
+
+    </div>
+
+</section>
+
+
+<section id="settings" class="page-section">
+
+    <div class="section-card">
+
+        <div class="section-icon">⚙</div>
+
+        <h2>Settings</h2>
+        <p>Customize your TrustCart experience.</p>
+
+        <div class="settings-list">
+
+            <div class="setting-row">
+                <div>
+                    <strong>Dark Mode</strong>
+                    <span>Switch between light and dark appearance.</span>
+                </div>
+
+                <button class="switch" id="darkModeSwitch">
+                    <span></span>
+                </button>
+            </div>
+
+
+            <div class="setting-row">
+
+                <div>
+                    <strong>Notifications</strong>
+                    <span>Receive updates about your saved products.</span>
+                </div>
+
+                <button class="switch active" id="notificationSwitch">
+                    <span></span>
+                </button>
+
+            </div>
+
+
+            <div class="setting-row">
+
+                <div>
+                    <strong>Account</strong>
+                    <span>Manage your TrustCart account.</span>
+                </div>
+
+                <button class="setting-action" id="accountBtn">
+                    Manage →
+                </button>
+
+            </div>
+
+
+            <div class="setting-row danger-row">
+
+                <div>
+                    <strong>Logout</strong>
+                    <span>Sign out of your TrustCart account.</span>
+                </div>
+
+                <a href="index.html" class="logout-btn">Logout</a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+</div>
+
+</main>
+
+
+<nav class="mobile-nav">
+
+    <a href="#dashboard" class="mobile-active" data-section="dashboard">
+        <span>⌂</span>Dashboard
+    </a>
+
+    <a href="#compare" data-section="compare">
+        <span>⌕</span>Compare
+    </a>
+
+    <a href="#history" data-section="history">
+        <span>↻</span>History
+    </a>
+
+    <a href="#saved" data-section="saved">
+        <span>♡</span>Saved
+    </a>
+
+    <a href="#profile" data-section="profile">
+        <span>♙</span>Profile
+    </a>
+
+</nav>
+
+<script src="../JS/dashboard.js"></script>
+
+</body>
+</html>
