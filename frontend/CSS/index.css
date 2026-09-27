@@ -3802,3 +3802,53 @@ body {
 .trust-card {
     backdrop-filter: blur(20px);
 }
+#trustcart-dot-layer {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#trustcart-cursor-dots {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+/* =====================================================
+   TRUSTCART LETTER FALL EFFECT
+   ===================================================== */
+
+#trustcart-letter-fall {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.trustcart-falling-letter {
+    position: absolute;
+
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+
+    color: #18583d;
+
+    opacity: 0;
+
+    transform:
+        translate3d(0, 0, 0)
+        rotate(0deg);
+
+    will-change:
+        transform,
+        opacity;
+
+    text-shadow:
+        0 4px 12px rgba(24, 88, 61, 0.16);
+}

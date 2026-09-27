@@ -1,0 +1,37 @@
+[
+  {
+    "id": "TC001",
+    "title": "post api products compare with valid url",
+    "description": "Test POST /api/products/compare endpoint with a valid Amazon or Flipkart product URL to verify it returns a 200 response containing accurate comparison results including extracted product details and matched marketplace listings."
+  },
+  {
+    "id": "TC002",
+    "title": "post api products compare with no comparable matches",
+    "description": "Test POST /api/products/compare endpoint with a valid product URL that has no comparable matches to verify it returns a 200 response indicating limited or no matches found with an informative message."
+  },
+  {
+    "id": "TC003",
+    "title": "post api products compare with malformed url",
+    "description": "Test POST /api/products/compare endpoint with a malformed or unsupported product URL to verify it returns a 400 validation error with a meaningful error message explaining the URL could not be processed."
+  },
+  {
+    "id": "TC004",
+    "title": "post api products analyze with valid url",
+    "description": "Test POST /api/products/analyze endpoint with a valid marketplace product URL to verify it returns a 200 response containing extracted product metadata including name, brand, model, price, category, source, and URL."
+  },
+  {
+    "id": "TC005",
+    "title": "post api products analyze with unsupported or invalid url",
+    "description": "Test POST /api/products/analyze endpoint with a URL from an unsupported website or invalid format to verify it returns a 400 validation error with an error message indicating the URL is unsupported or malformed."
+  },
+  {
+    "id": "TC006",
+    "title": "get api products discover with valid keyword",
+    "description": "Test GET /api/products/discover endpoint with a valid keyword query parameter to verify it returns a 200 response containing a list of candidate Amazon and Flipkart products for matching and comparison."
+  },
+  {
+    "id": "TC007",
+    "title": "get api products discover with invalid or missing keyword",
+    "description": "Test GET /api/products/discover endpoint with an empty, missing, or invalid keyword parameter to verify it returns an error response indicating invalid input or discovery failure with a meaningful error message."
+  }
+]

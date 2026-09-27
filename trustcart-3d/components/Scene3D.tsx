@@ -1,0 +1,867 @@
+"use client";
+
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import {
+  ContactShadows,
+  Float,
+  RoundedBox,
+  Sparkles,
+  Torus,
+} from "@react-three/drei";
+import { useRef } from "react";
+import * as THREE from "three";
+
+const COLORS = {
+  green: "#20d6a3",
+  greenBright: "#49f5c1",
+  cyan: "#46e7ff",
+  dark: "#071311",
+  cart: "#101c1a",
+  metal: "#24332f",
+  white: "#f5fffb",
+};
+
+function CameraController({
+  scanning,
+  reduceMotion,
+}: {
+  scanning: boolean;
+  reduceMotion: boolean;
+}) {
+  const { camera, pointer } = useThree();
+
+  useFrame(() => {
+    if (reduceMotion) {
+      camera.position.set(
+        0,
+        0,
+        scanning ? 5.6 : 8
+      );
+
+      camera.lookAt(0, 0, 0);
+      return;
+    }
+
+    const targetX = pointer.x * 0.3;
+    const targetY = pointer.y * 0.16;
+    const targetZ = scanning ? 5.5 : 8;
+
+    camera.position.x = THREE.MathUtils.lerp(
+      camera.position.x,
+      targetX,
+      0.035
+    );
+
+    camera.position.y = THREE.MathUtils.lerp(
+      camera.position.y,
+      targetY,
+      0.035
+    );
+
+    camera.position.z = THREE.MathUtils.lerp(
+      camera.position.z,
+      targetZ,
+      scanning ? 0.045 : 0.025
+    );
+
+    camera.lookAt(0, 0, 0);
+  });
+
+  return null;
+}
+
+/* =========================================================
+   CART
+   ========================================================= */
+
+function ShoppingCart({
+  scanning,
+  reduceMotion,
+}: {
+  scanning: boolean;
+  reduceMotion: boolean;
+}) {
+  const group = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!group.current || reduceMotion) return;
+
+    const t = state.clock.elapsedTime;
+
+    group.current.rotation.y =
+      Math.sin(t * 0.35) * 0.1;
+
+    group.current.rotation.x =
+      Math.sin(t * 0.25) * 0.025;
+
+    group.current.position.y =
+      Math.sin(t * 0.8) * 0.07;
+  });
+
+  return (
+    <group
+      ref={group}
+      scale={scanning ? 1.08 : 1}
+    >
+      {/* Main basket */}
+      <RoundedBox
+        args={[3.4, 1.5, 1.65]}
+        radius={0.16}
+        smoothness={4}
+        position={[0, 0.45, 0]}
+      >
+        <meshPhysicalMaterial
+          color={COLORS.cart}
+          metalness={0.72}
+          roughness={0.2}
+          clearcoat={1}
+          clearcoatRoughness={0.08}
+        />
+      </RoundedBox>
+
+      {/* Basket vertical bars */}
+      {[-1.15, -0.58, 0, 0.58, 1.15].map(
+        (x) => (
+          <mesh
+            key={`v-${x}`}
+            position={[x, 0.45, 0.84]}
+          >
+            <boxGeometry
+              args={[0.035, 1.05, 0.045]}
+            />
+
+            <meshStandardMaterial
+              color={COLORS.greenBright}
+              emissive={COLORS.green}
+              emissiveIntensity={1.4}
+              metalness={0.8}
+              roughness={0.2}
+            />
+          </mesh>
+        )
+      )}
+
+      {/* Basket horizontal bars */}
+      {[-0.05, 0.3, 0.65, 1].map((y) => (
+        <mesh
+          key={`h-${y}`}
+          position={[0, y, 0.85]}
+        >
+          <boxGeometry
+            args={[2.8, 0.035, 0.045]}
+          />
+
+          <meshStandardMaterial
+            color={COLORS.greenBright}
+            emissive={COLORS.green}
+            emissiveIntensity={1.1}
+            metalness={0.8}
+          />
+        </mesh>
+      ))}
+
+      {/* Handle support */}
+      <mesh
+        position={[-1.9, 1.12, 0]}
+        rotation={[0, 0, Math.PI / 2]}
+      >
+        <cylinderGeometry
+          args={[0.11, 0.11, 1.2, 16]}
+        />
+
+        <meshStandardMaterial
+          color={COLORS.greenBright}
+          emissive={COLORS.green}
+          emissiveIntensity={1.8}
+          metalness={0.85}
+          roughness={0.18}
+        />
+      </mesh>
+
+      {/* Handle */}
+      <mesh
+        position={[-1.65, 1.35, 0]}
+        rotation={[0, 0, Math.PI / 2]}
+      >
+        <cylinderGeometry
+          args={[0.09, 0.09, 1.1, 16]}
+        />
+
+        <meshPhysicalMaterial
+          color={COLORS.metal}
+          metalness={0.9}
+          roughness={0.16}
+        />
+      </mesh>
+
+      {/* Wheels */}
+      {[-1.1, 1.1].map((x) => (
+        <Torus
+          key={x}
+          args={[0.31, 0.11, 12, 32]}
+          position={[x, -0.55, 0.72]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <meshPhysicalMaterial
+            color={COLORS.metal}
+            metalness={0.92}
+            roughness={0.15}
+          />
+        </Torus>
+      ))}
+
+      {/* Green scanner strip */}
+      <mesh position={[0, -0.29, 0.86]}>
+        <boxGeometry
+          args={[2.7, 0.035, 0.04]}
+        />
+
+        <meshStandardMaterial
+          color={COLORS.greenBright}
+          emissive={COLORS.green}
+          emissiveIntensity={4}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/* =========================================================
+   PRICE TAG
+   ========================================================= */
+
+function PriceTag({
+  price,
+  position,
+  rotation,
+  scanning,
+  hovered,
+}: {
+  price: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scanning: boolean;
+  hovered: boolean;
+}) {
+  const group = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!group.current) return;
+
+    const t = state.clock.elapsedTime;
+
+    group.current.position.y =
+      position[1] +
+      Math.sin(t * 0.8 + position[0]) *
+        0.11;
+
+    group.current.rotation.z =
+      rotation[2] +
+      Math.sin(t * 0.6 + position[1]) *
+        0.06;
+
+    const targetScale = scanning
+      ? 1.25
+      : hovered
+      ? 1.12
+      : 1;
+
+    group.current.scale.lerp(
+      new THREE.Vector3(
+        targetScale,
+        targetScale,
+        targetScale
+      ),
+      0.08
+    );
+  });
+
+  return (
+    <group
+      ref={group}
+      position={position}
+      rotation={rotation}
+    >
+      {/* Tag */}
+      <RoundedBox
+        args={[1.4, 0.72, 0.09]}
+        radius={0.12}
+        smoothness={4}
+      >
+        <meshPhysicalMaterial
+          color={
+            hovered
+              ? "#153d32"
+              : "#0e211c"
+          }
+          metalness={0.5}
+          roughness={0.18}
+          clearcoat={1}
+          emissive={hovered ? COLORS.green : "#03100c"}
+          emissiveIntensity={
+            hovered ? 0.8 : 0.12
+          }
+        />
+      </RoundedBox>
+
+      {/* Price display */}
+      <mesh position={[0, 0, 0.055]}>
+        <planeGeometry args={[1.05, 0.42]} />
+
+        <meshBasicMaterial
+          color={COLORS.greenBright}
+          transparent
+          opacity={0.08}
+        />
+      </mesh>
+
+      {/* Tag hole */}
+      <mesh position={[-0.48, 0, 0.07]}>
+        <sphereGeometry
+          args={[0.055, 10, 10]}
+        />
+
+        <meshStandardMaterial
+          color={COLORS.greenBright}
+          emissive={COLORS.green}
+          emissiveIntensity={3}
+        />
+      </mesh>
+
+      {/* Price made from simple geometry */}
+      <PriceDisplay price={price} />
+    </group>
+  );
+}
+
+/*
+ * Lightweight price display.
+ * Uses HTML-like 3D text through canvas-independent
+ * geometry-free placeholder blocks to keep the scene
+ * performant on lower-power hardware.
+ */
+function PriceDisplay({
+  price,
+}: {
+  price: string;
+}) {
+  return (
+    <group position={[0.08, 0, 0.075]}>
+      {price.split("").map((char, index) => {
+        const isSymbol = char === "₹";
+
+        return (
+          <mesh
+            key={`${char}-${index}`}
+            position={[
+              (index -
+                (price.length - 1) / 2) *
+                0.16,
+              0,
+              0,
+            ]}
+          >
+            <boxGeometry
+              args={[
+                isSymbol ? 0.1 : 0.075,
+                0.2,
+                0.018,
+              ]}
+            />
+
+            <meshBasicMaterial
+              color={COLORS.white}
+            />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/* =========================================================
+   PRODUCTS
+   ========================================================= */
+
+function Phone({
+  position,
+}: {
+  position: [number, number, number];
+}) {
+  const ref = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+
+    const t = state.clock.elapsedTime;
+
+    ref.current.rotation.y = t * 0.35;
+    ref.current.rotation.x =
+      Math.sin(t * 0.5) * 0.08;
+  });
+
+  return (
+    <group ref={ref} position={position}>
+      <RoundedBox
+        args={[0.65, 1.25, 0.12]}
+        radius={0.08}
+        smoothness={4}
+      >
+        <meshPhysicalMaterial
+          color="#111b18"
+          metalness={0.75}
+          roughness={0.18}
+          clearcoat={1}
+        />
+      </RoundedBox>
+
+      <mesh position={[0, 0, 0.075]}>
+        <boxGeometry
+          args={[0.47, 0.92, 0.018]}
+        />
+
+        <meshStandardMaterial
+          color="#092b22"
+          emissive={COLORS.green}
+          emissiveIntensity={0.55}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function Headphones({
+  position,
+}: {
+  position: [number, number, number];
+}) {
+  const ref = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+
+    ref.current.rotation.y =
+      Math.sin(state.clock.elapsedTime * 0.5) *
+      0.35;
+  });
+
+  return (
+    <group ref={ref} position={position}>
+      <Torus
+        args={[
+          0.48,
+          0.07,
+          10,
+          32,
+          Math.PI,
+        ]}
+        rotation={[0, 0, Math.PI]}
+      >
+        <meshStandardMaterial
+          color={COLORS.greenBright}
+          emissive={COLORS.green}
+          emissiveIntensity={0.6}
+          metalness={0.7}
+          roughness={0.2}
+        />
+      </Torus>
+
+      {[-0.48, 0.48].map((x) => (
+        <mesh
+          key={x}
+          position={[x, -0.05, 0]}
+        >
+          <sphereGeometry
+            args={[0.17, 12, 12]}
+          />
+
+          <meshPhysicalMaterial
+            color="#16241f"
+            metalness={0.7}
+            roughness={0.18}
+            clearcoat={1}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Laptop({
+  position,
+}: {
+  position: [number, number, number];
+}) {
+  const ref = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+
+    const t = state.clock.elapsedTime;
+
+    ref.current.rotation.y = -t * 0.25;
+
+    ref.current.position.y =
+      position[1] +
+      Math.sin(t * 0.7) * 0.08;
+  });
+
+  return (
+    <group ref={ref} position={position}>
+      <RoundedBox
+        args={[1.2, 0.7, 0.08]}
+        radius={0.05}
+        smoothness={3}
+        rotation={[-0.25, 0, 0]}
+      >
+        <meshPhysicalMaterial
+          color="#17211e"
+          metalness={0.82}
+          roughness={0.18}
+          clearcoat={1}
+        />
+      </RoundedBox>
+
+      <mesh
+        position={[0, 0, 0.05]}
+        rotation={[-0.25, 0, 0]}
+      >
+        <planeGeometry args={[0.9, 0.48]} />
+
+        <meshStandardMaterial
+          color="#092d24"
+          emissive={COLORS.green}
+          emissiveIntensity={0.6}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function Shoe({
+  position,
+}: {
+  position: [number, number, number];
+}) {
+  const ref = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!ref.current) return;
+
+    const t = state.clock.elapsedTime;
+
+    ref.current.rotation.y =
+      Math.sin(t * 0.4) * 0.45;
+
+    ref.current.rotation.z =
+      Math.sin(t * 0.55) * 0.06;
+  });
+
+  return (
+    <group ref={ref} position={position}>
+      <RoundedBox
+        args={[1.2, 0.45, 0.5]}
+        radius={0.12}
+        smoothness={4}
+      >
+        <meshPhysicalMaterial
+          color="#202925"
+          metalness={0.3}
+          roughness={0.3}
+          clearcoat={0.8}
+        />
+      </RoundedBox>
+
+      <mesh position={[0.28, 0.05, 0.26]}>
+        <boxGeometry
+          args={[0.45, 0.18, 0.03]}
+        />
+
+        <meshStandardMaterial
+          color={COLORS.green}
+          emissive={COLORS.green}
+          emissiveIntensity={0.9}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/* =========================================================
+   PRODUCT ORBIT
+   ========================================================= */
+
+function ProductOrbit({
+  reduceMotion,
+}: {
+  reduceMotion: boolean;
+}) {
+  const group = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!group.current || reduceMotion) return;
+
+    group.current.rotation.y =
+      state.clock.elapsedTime * 0.06;
+  });
+
+  return (
+    <group ref={group}>
+      <Float
+        speed={0.8}
+        rotationIntensity={0.2}
+        floatIntensity={0.3}
+      >
+        <Phone position={[-4, 1.7, -1]} />
+      </Float>
+
+      <Float
+        speed={1}
+        rotationIntensity={0.25}
+        floatIntensity={0.35}
+      >
+        <Headphones
+          position={[3.8, 1.5, -0.5]}
+        />
+      </Float>
+
+      <Float
+        speed={0.8}
+        rotationIntensity={0.2}
+        floatIntensity={0.3}
+      >
+        <Laptop
+          position={[3.7, -1.7, -1]}
+        />
+      </Float>
+
+      <Float
+        speed={0.9}
+        rotationIntensity={0.3}
+        floatIntensity={0.4}
+      >
+        <Shoe
+          position={[-3.7, -1.6, -0.5]}
+        />
+      </Float>
+    </group>
+  );
+}
+
+/* =========================================================
+   SCANNER RINGS
+   ========================================================= */
+
+function ScannerRings({
+  reduceMotion,
+  scanning,
+}: {
+  reduceMotion: boolean;
+  scanning: boolean;
+}) {
+  const group = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (!group.current || reduceMotion) return;
+
+    const t = state.clock.elapsedTime;
+
+    group.current.rotation.z = t * 0.08;
+    group.current.rotation.x =
+      Math.sin(t * 0.25) * 0.08;
+  });
+
+  return (
+    <group
+      ref={group}
+      position={[0, -0.5, 0]}
+      scale={scanning ? 1.18 : 1}
+    >
+      <Torus
+        args={[2.5, 0.018, 8, 128]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <meshBasicMaterial
+          color={COLORS.greenBright}
+          transparent
+          opacity={0.35}
+        />
+      </Torus>
+
+      <Torus
+        args={[3.15, 0.012, 8, 128]}
+        rotation={[Math.PI / 2.2, 0.2, 0]}
+      >
+        <meshBasicMaterial
+          color={COLORS.cyan}
+          transparent
+          opacity={0.18}
+        />
+      </Torus>
+
+      <Torus
+        args={[3.8, 0.008, 8, 128]}
+        rotation={[Math.PI / 1.9, -0.1, 0]}
+      >
+        <meshBasicMaterial
+          color={COLORS.green}
+          transparent
+          opacity={0.12}
+        />
+      </Torus>
+    </group>
+  );
+}
+
+/* =========================================================
+   MAIN SCENE
+   ========================================================= */
+
+export default function Scene3D({
+  scanning,
+  buttonHovered,
+  reduceMotion,
+}: {
+  scanning: boolean;
+  buttonHovered: boolean;
+  reduceMotion: boolean;
+}) {
+  return (
+    <Canvas
+      dpr={[1, 1.35]}
+      camera={{
+        position: [0, 0, 8],
+        fov: 48,
+        near: 0.1,
+        far: 100,
+      }}
+      gl={{
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance",
+      }}
+    >
+      <color
+        attach="background"
+        args={["#040c0a"]}
+      />
+
+      <fog
+        attach="fog"
+        args={["#040c0a", 7, 19]}
+      />
+
+      <CameraController
+        scanning={scanning}
+        reduceMotion={reduceMotion}
+      />
+
+      {/* Lighting */}
+      <ambientLight intensity={0.5} />
+
+      <directionalLight
+        position={[4, 6, 7]}
+        intensity={2}
+      />
+
+      <pointLight
+        position={[3, 2, 4]}
+        color={COLORS.green}
+        intensity={18}
+        distance={11}
+      />
+
+      <pointLight
+        position={[-4, -2, 3]}
+        color={COLORS.cyan}
+        intensity={9}
+        distance={10}
+      />
+
+      <pointLight
+        position={[0, 4, -2]}
+        color={COLORS.greenBright}
+        intensity={7}
+        distance={8}
+      />
+
+      {/* Main hero */}
+      <ShoppingCart
+        scanning={scanning}
+        reduceMotion={reduceMotion}
+      />
+
+      {/* Price comparison */}
+      <PriceTag
+        price="₹699"
+        position={[-3.2, 2.1, -0.5]}
+        rotation={[0.05, 0.2, -0.15]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
+
+      <PriceTag
+        price="₹749"
+        position={[3.2, 1.9, -0.3]}
+        rotation={[-0.05, -0.15, 0.18]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
+
+      <PriceTag
+        price="₹679"
+        position={[3.4, -1.3, 0]}
+        rotation={[0.1, 0.15, -0.2]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
+
+      <PriceTag
+        price="₹799"
+        position={[-3.3, -1.1, -0.2]}
+        rotation={[-0.1, -0.15, 0.2]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
+
+      <ProductOrbit
+        reduceMotion={reduceMotion}
+      />
+
+      <ScannerRings
+        reduceMotion={reduceMotion}
+        scanning={scanning}
+      />
+
+      {/* Ground shadow */}
+      <ContactShadows
+        position={[0, -1.15, 0]}
+        opacity={0.45}
+        scale={10}
+        blur={2.5}
+        far={4}
+      />
+
+      {/* Particles */}
+      <Sparkles
+        count={reduceMotion ? 45 : 110}
+        scale={[12, 8, 10]}
+        size={1.8}
+        speed={reduceMotion ? 0 : 0.2}
+        opacity={
+          buttonHovered ? 0.85 : 0.42
+        }
+        color={COLORS.greenBright}
+      />
+
+      <Sparkles
+        count={reduceMotion ? 20 : 55}
+        scale={[10, 6, 8]}
+        size={1.2}
+        speed={reduceMotion ? 0 : 0.12}
+        opacity={0.28}
+        color={COLORS.cyan}
+      />
+    </Canvas>
+  );
+}

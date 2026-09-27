@@ -1,0 +1,672 @@
+# TrustCart — Product Requirements Document
+
+**Version:** 1.0
+**Product:** TrustCart
+**Tagline:** *Shop Smarter. Trust Better.*
+**Document Type:** Product Requirements Document
+
+---
+
+## 1. Product Overview
+
+TrustCart is a smart product comparison platform designed to help online shoppers make better purchasing decisions by comparing products across major e-commerce platforms.
+
+Users provide a product URL, and TrustCart extracts relevant product information such as:
+
+* Product name
+* Brand
+* Model
+* Price
+* Category
+* Seller/source
+* Product URL
+
+The system then identifies comparable products from supported marketplaces and presents the available prices and product information in a single comparison interface.
+
+The primary goal is to reduce the effort required to manually compare products across multiple shopping websites.
+
+---
+
+## 2. Problem Statement
+
+Online shoppers frequently encounter the same or similar products listed across multiple e-commerce platforms.
+
+Manually comparing them requires:
+
+* Opening multiple websites
+* Searching for the same product repeatedly
+* Comparing prices
+* Checking product identity
+* Identifying whether two listings actually represent the same model
+* Switching between browser tabs
+* Rechecking prices before purchasing
+
+Existing comparison methods may also incorrectly compare different variants or display inconsistent product information.
+
+TrustCart addresses this problem by automatically extracting product information and identifying comparable listings.
+
+---
+
+## 3. Product Goal
+
+TrustCart should provide a simple workflow:
+
+```text
+Paste Product URL
+       ↓
+Identify Product
+       ↓
+Extract Product Details
+       ↓
+Find Comparable Products
+       ↓
+Compare Prices
+       ↓
+Make Better Purchase Decision
+```
+
+The system should prioritize **accuracy, reliability, and transparency** over simply producing a comparison result.
+
+---
+
+## 4. Target Users
+
+### Primary Users
+
+Online shoppers who:
+
+* Frequently purchase products online
+* Compare prices before buying
+* Shop across multiple e-commerce platforms
+* Want to save money
+* Want to avoid comparing incorrect products
+
+### Secondary Users
+
+* Students
+* Budget-conscious consumers
+* Technology shoppers
+* Frequent online shoppers
+* Users purchasing electronics and accessories
+
+---
+
+# 5. Core Features
+
+## 5.1 Product URL Input
+
+Users can enter a supported e-commerce product URL.
+
+Example:
+
+```text
+https://www.flipkart.com/...
+```
+
+or:
+
+```text
+https://www.amazon.in/...
+```
+
+The system validates the URL and identifies the supported marketplace.
+
+### Requirements
+
+* Accept valid supported product URLs.
+* Reject malformed URLs.
+* Identify unsupported websites.
+* Handle common URL parameters and tracking parameters where possible.
+* Provide meaningful errors when a URL cannot be processed.
+
+---
+
+## 5.2 Product Information Extraction
+
+TrustCart extracts information from the supplied product page.
+
+Required information:
+
+| Field        | Description                      |
+| ------------ | -------------------------------- |
+| Product Name | Name/title of the product        |
+| Brand        | Product manufacturer/brand       |
+| Model        | Model number/name when available |
+| Price        | Current selling/listed price     |
+| Category     | Product category                 |
+| Source       | Marketplace                      |
+| URL          | Original product URL             |
+
+The extraction system should support multiple page structures and fallback extraction methods where appropriate.
+
+---
+
+## 5.3 Product Discovery
+
+TrustCart searches supported marketplaces for comparable products.
+
+Current supported marketplace focus:
+
+* Flipkart
+* Amazon
+
+The system should avoid depending on a single fixed URL structure or a single HTML layout.
+
+Product discovery should handle variations in:
+
+* Product titles
+* URL formats
+* Model numbers
+* Brand names
+* Product metadata
+
+---
+
+## 5.4 Product Matching
+
+TrustCart determines whether discovered listings represent the same or sufficiently comparable product.
+
+Matching should consider:
+
+* Brand
+* Model
+* Product name
+* Category
+
+The system should normalize product information before comparison.
+
+Examples of normalization:
+
+* Case differences
+* Extra whitespace
+* Punctuation
+* Common naming variations
+* Model-number formatting
+
+The system must avoid matching unrelated products simply because they have similar names.
+
+---
+
+## 5.5 Price Extraction
+
+TrustCart should extract the **current relevant selling price** rather than incorrectly selecting:
+
+* MRP
+* Discount amount
+* Previous price
+* Crossed-out price
+* Related-product price
+* Unrelated seller/product price
+
+When multiple prices exist on a page, the extraction logic should identify the price corresponding to the requested product.
+
+Prices should be normalized into a consistent numeric representation for comparison.
+
+---
+
+## 5.6 Price Comparison
+
+TrustCart presents comparable products and their prices in a single interface.
+
+Example:
+
+```text
+Product: Wireless Headphones
+
+Flipkart      ₹869
+Amazon        ₹899
+```
+
+The interface should make the price difference easy to understand.
+
+---
+
+## 5.7 Comparison API
+
+The backend provides a product comparison API.
+
+### Endpoint
+
+```text
+POST /api/products/compare
+```
+
+### Input
+
+```json
+{
+  "url": "PRODUCT_URL"
+}
+```
+
+### Responsibilities
+
+The API should:
+
+1. Validate the URL.
+2. Identify the marketplace.
+3. Fetch product information.
+4. Extract product details.
+5. Discover comparable listings.
+6. Match products.
+7. Return comparison information.
+
+The API should maintain a stable response structure for frontend consumers.
+
+---
+
+# 6. User Flow
+
+## Main Flow
+
+```text
+User opens TrustCart
+        ↓
+Enters product URL
+        ↓
+Clicks Compare
+        ↓
+URL validation
+        ↓
+Product fetching
+        ↓
+Product extraction
+        ↓
+Marketplace discovery
+        ↓
+Product matching
+        ↓
+Price comparison
+        ↓
+Results displayed
+```
+
+## Failure Flow
+
+If the product cannot be processed:
+
+```text
+URL
+ ↓
+Processing failure
+ ↓
+Meaningful error message
+```
+
+The system should avoid showing a generic error when a more useful internal reason can be determined.
+
+---
+
+# 7. Functional Requirements
+
+### FR-01 — URL Validation
+
+The system shall validate user-provided URLs before processing.
+
+### FR-02 — Marketplace Detection
+
+The system shall identify whether the URL belongs to a supported marketplace.
+
+### FR-03 — Product Extraction
+
+The system shall extract product metadata from supported product pages.
+
+### FR-04 — Price Extraction
+
+The system shall extract the relevant current selling price.
+
+### FR-05 — Product Discovery
+
+The system shall search supported marketplaces for comparable listings.
+
+### FR-06 — Product Matching
+
+The system shall determine whether discovered listings correspond to the requested product.
+
+### FR-07 — Comparison
+
+The system shall present comparable products and prices.
+
+### FR-08 — Error Handling
+
+The system shall gracefully handle:
+
+* Invalid URLs
+* Network failures
+* Product-not-found situations
+* Unsupported websites
+* Missing product information
+* Marketplace blocking/anti-bot behavior
+* Extraction failures
+
+### FR-09 — API Stability
+
+Existing API consumers shall continue to receive the expected response structure.
+
+---
+
+# 8. Non-Functional Requirements
+
+## Performance
+
+* Avoid unnecessary network requests.
+* Use reasonable request timeouts.
+* Avoid infinite retries.
+* Parallelize independent discovery operations where appropriate.
+
+## Reliability
+
+The system should use fallback extraction methods when the primary extraction method fails.
+
+## Maintainability
+
+The implementation should use modular components for:
+
+* Fetching
+* Extraction
+* Product discovery
+* Matching
+* Comparison
+
+## Security
+
+* Validate user-provided URLs.
+* Avoid executing arbitrary user input.
+* Do not expose sensitive backend information.
+* Do not expose API credentials.
+* Protect database credentials.
+
+---
+
+# 9. Current Technical Architecture
+
+High-level architecture:
+
+```text
+                ┌─────────────────┐
+                │   TrustCart UI  │
+                └────────┬────────┘
+                         │
+                         ▼
+                ┌─────────────────┐
+                │ Flask Backend   │
+                └────────┬────────┘
+                         │
+                ┌────────▼────────┐
+                │ Compare API     │
+                └────────┬────────┘
+                         │
+             ┌───────────┴───────────┐
+             ▼                       ▼
+      ┌─────────────┐        ┌─────────────┐
+      │  Fetchers   │        │  Discovery  │
+      └──────┬──────┘        └──────┬──────┘
+             │                       │
+             ▼                       ▼
+      Product Extraction      Marketplace Search
+             │                       │
+             └───────────┬───────────┘
+                         ▼
+                ┌─────────────────┐
+                │ Product Matcher │
+                └────────┬────────┘
+                         │
+                         ▼
+                ┌─────────────────┐
+                │ Comparison Data │
+                └────────┬────────┘
+                         │
+                         ▼
+                ┌─────────────────┐
+                │   TrustCart UI  │
+                └─────────────────┘
+```
+
+---
+
+# 10. Database
+
+TrustCart uses a relational database for application/product data.
+
+Core entities include:
+
+* Users
+* Products
+* Sellers
+* Product Prices
+* Categories
+
+Relationships should maintain product, seller, and price information without duplicating unnecessary data.
+
+---
+
+# 11. Current Known Issues
+
+The following issues are high-priority:
+
+### Issue 1 — Flipkart URL Compatibility
+
+Some valid Flipkart product URLs work while other valid Flipkart URLs result in an inability to compare.
+
+Possible causes include:
+
+* Different URL formats
+* Redirects
+* URL parameter handling
+* Different page structures
+* Dynamic content
+* Fetcher assumptions
+* Product-ID extraction
+* HTML/embedded-data differences
+
+---
+
+### Issue 2 — Incorrect Price Extraction
+
+Some product pages return a price different from the currently relevant selling price.
+
+Example observed behavior:
+
+```text
+Actual/current page price: ₹869
+TrustCart extracted:       ₹699
+```
+
+Potential causes include:
+
+* MRP extraction
+* Discount extraction
+* Multiple price elements
+* Related-product price
+* Seller-specific price
+* Stale embedded data
+* Incorrect DOM selector
+* Incorrect fallback extractor
+
+---
+
+### Issue 3 — Unable to Compare
+
+Some valid product URLs fail during comparison.
+
+The system should distinguish between:
+
+```text
+Invalid URL
+Product not found
+Fetcher failure
+Extraction failure
+Matching failure
+External marketplace failure
+```
+
+instead of treating all cases as one generic error.
+
+---
+
+# 12. Testing Strategy
+
+TrustCart should use automated testing at multiple levels.
+
+## Unit Testing
+
+Test:
+
+* URL parsing
+* Product normalization
+* Price parsing
+* Brand extraction
+* Model extraction
+* Matching logic
+
+## API Testing
+
+Test:
+
+```text
+POST /api/products/compare
+```
+
+with:
+
+* Valid Flipkart URLs
+* Valid Amazon URLs
+* Invalid URLs
+* Different product types
+* URLs containing parameters
+
+## Integration Testing
+
+Verify:
+
+```text
+URL
+ ↓
+Fetcher
+ ↓
+Extractor
+ ↓
+Discovery
+ ↓
+Matcher
+ ↓
+Comparison API
+```
+
+## End-to-End Testing
+
+Verify:
+
+```text
+User
+ ↓
+Frontend
+ ↓
+API
+ ↓
+Marketplace processing
+ ↓
+Comparison result
+ ↓
+Frontend
+```
+
+TestSprite MCP can be used for automated API/UI/E2E regression testing.
+
+---
+
+# 13. Success Metrics
+
+TrustCart should aim for:
+
+### Product Processing
+
+* High success rate for valid supported URLs.
+* Low false-positive product matches.
+* Correct extraction of current product prices.
+
+### Reliability
+
+* Graceful handling of marketplace failures.
+* No regression to previously working product URLs.
+
+### User Experience
+
+* Simple URL → comparison workflow.
+* Clear comparison results.
+* Useful error messages.
+* Fast response under normal marketplace conditions.
+
+---
+
+# 14. Scope
+
+## In Scope
+
+* Product URL processing
+* Flipkart comparison
+* Amazon comparison
+* Product extraction
+* Price extraction
+* Product matching
+* Price comparison
+* Backend API
+* Frontend comparison UI
+* Automated testing
+* Error handling
+
+## Out of Scope
+
+* Payment processing
+* Direct purchasing
+* Order management
+* Inventory management
+* User banking/payment information
+* Automatic checkout
+* Unapproved marketplace integrations
+
+---
+
+# 15. Future Enhancements
+
+Potential future features:
+
+* More marketplaces
+* Price history
+* Price-drop alerts
+* Wishlist
+* User accounts
+* Product recommendations
+* Price graphs
+* Better variant detection
+* Seller ratings
+* Delivery-cost comparison
+* Coupon/discount comparison
+* Browser extension
+* Mobile application
+
+---
+
+# 16. Definition of Done
+
+TrustCart will be considered ready when:
+
+* Valid supported product URLs can be processed reliably.
+* Multiple Flipkart URL formats are supported.
+* Amazon comparison continues to work.
+* Current selling prices are extracted correctly where available.
+* Products are matched accurately.
+* `/api/products/compare` works reliably.
+* Frontend displays comparison results correctly.
+* Invalid inputs produce appropriate errors.
+* Automated tests pass.
+* Previously working functionality has no regression.
+* Changes are limited to justified, targeted modifications.
+* Known external marketplace limitations are documented.
+
+---
+
+## Final Product Principle
+
+> **TrustCart should help users make a better buying decision by providing accurate, comparable, and understandable product information—not merely by producing a comparison result.**
+

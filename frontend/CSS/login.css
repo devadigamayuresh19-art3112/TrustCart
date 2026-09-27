@@ -1,6 +1,11 @@
+
 /* =========================================
-   TRUSTCART — ENHANCED LOGIN
-   Matches Enhanced Signup Theme
+   TRUSTCART — LOGIN PAGE
+   ========================================= */
+
+
+/* =========================================
+   RESET
    ========================================= */
 
 * {
@@ -9,28 +14,31 @@
     box-sizing: border-box;
 }
 
+
 :root {
     --green-dark: #0d3b29;
     --green: #18583d;
     --green-mid: #287451;
     --green-light: #61b487;
-    --green-soft: #e9f4ee;
 
     --text: #17231e;
-    --text-soft: #526158;
     --gray: #7d8983;
 
     --border: #dfe7e2;
+
     --white: #ffffff;
-
-    --shadow-soft:
-        0 15px 40px rgba(16, 55, 39, 0.10);
-
-    --shadow-medium:
-        0 25px 70px rgba(16, 55, 39, 0.18);
 
     --shadow-heavy:
         0 35px 100px rgba(0, 0, 0, 0.35);
+}
+
+
+/* =========================================
+   HTML
+   ========================================= */
+
+html {
+    min-height: 100%;
 }
 
 
@@ -39,42 +47,108 @@
    ========================================= */
 
 body {
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 30px;
+
     font-family:
         Inter,
         Arial,
         Helvetica,
         sans-serif;
 
-    min-height: 100vh;
-
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-
-    padding: 30px;
-
-    background:
-        radial-gradient(
-            circle at 10% 20%,
-            rgba(97, 180, 135, 0.22),
-            transparent 30%
-        ),
-        radial-gradient(
-            circle at 90% 80%,
-            rgba(24, 88, 61, 0.18),
-            transparent 35%
-        ),
-        linear-gradient(
-            135deg,
-            #edf5f0,
-            #ffffff 50%,
-            #e7f0eb
-        );
-
     color: var(--text);
 
     overflow-x: hidden;
+
+    position: relative;
+
+    /* IMPORTANT:
+       Do not use a solid background here.
+       The video must remain visible. */
+    background: transparent;
+}
+
+
+/* =========================================
+   BACKGROUND VIDEO
+   ========================================= */
+
+.video-background {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+
+    width: 100vw;
+    height: 100vh;
+
+    overflow: hidden;
+
+    z-index: 0;
+
+    background: #07120e;
+
+    pointer-events: none;
+}
+
+
+.video-background video {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    width: 100%;
+    height: 100%;
+
+    min-width: 100%;
+    min-height: 100%;
+
+    transform:
+        translate(-50%, -50%);
+
+    object-fit: cover;
+
+    object-position: center;
+
+    display: block;
+
+    opacity: 1;
+
+    visibility: visible;
+
+    pointer-events: none;
+}
+
+
+/* =========================================
+   VIDEO OVERLAY
+   ========================================= */
+
+.video-overlay {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+
+    width: 100vw;
+    height: 100vh;
+
+    z-index: 1;
+
+    pointer-events: none;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(3, 25, 17, 0.48),
+            rgba(5, 40, 27, 0.30)
+        );
 }
 
 
@@ -92,8 +166,9 @@ body::after {
 
     pointer-events: none;
 
-    z-index: 0;
+    z-index: 2;
 }
+
 
 body::before {
     width: 420px;
@@ -105,12 +180,13 @@ body::before {
     background:
         radial-gradient(
             circle,
-            rgba(97, 180, 135, 0.20),
+            rgba(97, 180, 135, 0.16),
             transparent 70%
         );
 
     filter: blur(20px);
 }
+
 
 body::after {
     width: 500px;
@@ -122,7 +198,7 @@ body::after {
     background:
         radial-gradient(
             circle,
-            rgba(24, 88, 61, 0.14),
+            rgba(24, 88, 61, 0.15),
             transparent 70%
         );
 
@@ -145,7 +221,7 @@ body::after {
     background:
         radial-gradient(
             circle,
-            rgba(97, 180, 135, 0.18),
+            rgba(97, 180, 135, 0.15),
             transparent 70%
         );
 
@@ -153,9 +229,10 @@ body::after {
 
     pointer-events: none;
 
-    transform: translate(-50%, -50%);
+    transform:
+        translate(-50%, -50%);
 
-    z-index: 0;
+    z-index: 3;
 }
 
 
@@ -165,6 +242,7 @@ body::after {
 
 .login-container {
     width: 100%;
+
     max-width: 1050px;
 
     min-height: 650px;
@@ -173,30 +251,38 @@ body::after {
 
     position: relative;
 
-    z-index: 1;
+    z-index: 5;
 
     overflow: hidden;
 
     border-radius: 26px;
 
+    /*
+       Slight transparency allows the background
+       video to feel integrated with the card.
+    */
     background:
         rgba(255, 255, 255, 0.94);
 
     border:
-        1px solid rgba(255, 255, 255, 0.8);
+        1px solid rgba(255, 255, 255, 0.80);
 
     box-shadow:
         var(--shadow-heavy);
 
-    backdrop-filter: blur(25px);
+    backdrop-filter:
+        blur(25px);
+
+    -webkit-backdrop-filter:
+        blur(25px);
 
     animation:
         containerAppear 0.8s
         cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes containerAppear {
 
+@keyframes containerAppear {
     from {
         opacity: 0;
 
@@ -228,11 +314,14 @@ body::after {
 
     flex-direction: column;
 
+    /*
+       Keep the login side clean and readable.
+    */
     background:
         linear-gradient(
             145deg,
-            rgba(255, 255, 255, 0.97),
-            rgba(247, 251, 248, 0.93)
+            rgba(255, 255, 255, 0.98),
+            rgba(247, 251, 248, 0.94)
         );
 }
 
@@ -255,11 +344,14 @@ body::after {
         color 0.3s ease;
 }
 
+
 .brand:hover {
     color: var(--green-mid);
 
-    transform: translateX(3px);
+    transform:
+        translateX(3px);
 }
+
 
 .brand span {
     color: #7c8983;
@@ -275,8 +367,7 @@ body::after {
 
     max-width: 420px;
 
-    margin:
-        auto;
+    margin: auto;
 }
 
 
@@ -319,6 +410,7 @@ body::after {
         0 6px 18px rgba(24, 88, 61, 0.07);
 }
 
+
 .welcome-badge span {
     width: 7px;
     height: 7px;
@@ -335,8 +427,8 @@ body::after {
         pulseDot 2s infinite;
 }
 
-@keyframes pulseDot {
 
+@keyframes pulseDot {
     0%,
     100% {
         transform: scale(1);
@@ -357,7 +449,8 @@ body::after {
 .login-content h1 {
     margin-top: 20px;
 
-    font-size: clamp(40px, 4vw, 48px);
+    font-size:
+        clamp(40px, 4vw, 48px);
 
     line-height: 0.98;
 
@@ -368,11 +461,13 @@ body::after {
     color: var(--text);
 }
 
+
 .login-content h1 strong {
     color: var(--green);
 
     position: relative;
 }
+
 
 .login-content h1 strong::after {
     content: "";
@@ -424,9 +519,11 @@ form {
     margin-top: 27px;
 }
 
+
 .input-group {
     margin-bottom: 17px;
 }
+
 
 .input-group label {
     display: block;
@@ -438,13 +535,11 @@ form {
     font-weight: 800;
 
     color: #4f5d56;
-
-    letter-spacing: 0.2px;
 }
 
 
 /* =========================================
-   INPUT WRAPPER
+   INPUT
    ========================================= */
 
 .input-wrapper {
@@ -455,7 +550,7 @@ form {
     align-items: center;
 
     background:
-        rgba(255, 255, 255, 0.9);
+        rgba(255, 255, 255, 0.92);
 
     border:
         1px solid var(--border);
@@ -463,21 +558,17 @@ form {
     border-radius: 11px;
 
     transition:
-        border 0.3s ease,
-        box-shadow 0.3s ease,
-        transform 0.3s ease;
-
-    box-shadow:
-        0 5px 15px rgba(24, 88, 61, 0.03);
+        border-color 0.25s ease,
+        box-shadow 0.25s ease,
+        transform 0.25s ease;
 }
+
 
 .input-wrapper:hover {
     border-color:
         rgba(24, 88, 61, 0.25);
-
-    box-shadow:
-        0 8px 22px rgba(24, 88, 61, 0.06);
 }
+
 
 .input-wrapper:focus-within {
     border-color:
@@ -492,10 +583,6 @@ form {
 }
 
 
-/* =========================================
-   INPUT ICON
-   ========================================= */
-
 .input-icon {
     margin-left: 14px;
 
@@ -507,21 +594,17 @@ form {
 }
 
 
-/* =========================================
-   INPUT
-   ========================================= */
-
 .input-wrapper input {
     flex: 1;
 
+    width: 100%;
     height: 100%;
 
     border: none;
 
     outline: none;
 
-    padding:
-        0 12px;
+    padding: 0 12px;
 
     background: transparent;
 
@@ -530,15 +613,9 @@ form {
     color: var(--text);
 }
 
+
 .input-wrapper input::placeholder {
     color: #a3ada8;
-
-    transition:
-        opacity 0.2s ease;
-}
-
-.input-wrapper input:focus::placeholder {
-    opacity: 0.5;
 }
 
 
@@ -547,35 +624,43 @@ form {
    ========================================= */
 
 .password-toggle {
+    width: 34px;
+    height: 34px;
+
+    margin-right: 7px;
+
     border: none;
+
+    border-radius: 8px;
 
     background: transparent;
 
     cursor: pointer;
 
-    margin-right: 12px;
-
     color: #65736c;
 
-    opacity: 0.6;
+    opacity: 0.65;
 
     transition:
         opacity 0.2s ease,
-        color 0.2s ease,
+        background 0.2s ease,
         transform 0.2s ease;
 }
+
 
 .password-toggle:hover {
     opacity: 1;
 
-    color: var(--green);
+    background:
+        rgba(24, 88, 61, 0.07);
 
-    transform: scale(1.08);
+    transform:
+        scale(1.05);
 }
 
 
 /* =========================================
-   FORGOT PASSWORD
+   FORM OPTIONS
    ========================================= */
 
 .form-options {
@@ -592,7 +677,8 @@ form {
     font-size: 9px;
 }
 
-.remember-me {
+
+.remember {
     display: flex;
 
     align-items: center;
@@ -604,13 +690,19 @@ form {
     cursor: pointer;
 }
 
-.remember-me input {
-    accent-color: var(--green);
+
+.remember input {
+    width: 14px;
+    height: 14px;
+
+    accent-color:
+        var(--green);
 
     cursor: pointer;
 }
 
-.forgot-password {
+
+.forgot {
     color: var(--green);
 
     font-weight: 700;
@@ -621,15 +713,17 @@ form {
         color 0.2s ease;
 }
 
-.forgot-password:hover {
+
+.forgot:hover {
     color: var(--green-mid);
 
-    text-decoration: underline;
+    text-decoration:
+        underline;
 }
 
 
 /* =========================================
-   LOGIN BUTTON
+   MAIN BUTTON
    ========================================= */
 
 .main-btn {
@@ -643,8 +737,7 @@ form {
 
     justify-content: space-between;
 
-    padding:
-        0 19px;
+    padding: 0 19px;
 
     border: none;
 
@@ -672,12 +765,14 @@ form {
     overflow: hidden;
 
     transition:
-        transform 0.3s ease,
-        box-shadow 0.3s ease;
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        opacity 0.25s ease;
 
     box-shadow:
         0 12px 25px rgba(24, 88, 61, 0.22);
 }
+
 
 .main-btn::before {
     content: "";
@@ -694,7 +789,7 @@ form {
         linear-gradient(
             90deg,
             transparent,
-            rgba(255,255,255,0.18),
+            rgba(255, 255, 255, 0.18),
             transparent
         );
 
@@ -705,9 +800,11 @@ form {
         left 0.6s ease;
 }
 
+
 .main-btn:hover::before {
     left: 130%;
 }
+
 
 .main-btn:hover {
     transform:
@@ -717,10 +814,21 @@ form {
         0 18px 35px rgba(24, 88, 61, 0.30);
 }
 
+
 .main-btn:active {
     transform:
         translateY(0);
 }
+
+
+.main-btn:disabled {
+    cursor: not-allowed;
+
+    opacity: 0.65;
+
+    transform: none;
+}
+
 
 .arrow {
     font-size: 19px;
@@ -728,6 +836,7 @@ form {
     transition:
         transform 0.3s ease;
 }
+
 
 .main-btn:hover .arrow {
     transform:
@@ -746,8 +855,7 @@ form {
 
     gap: 12px;
 
-    margin:
-        21px 0 13px;
+    margin: 21px 0 13px;
 
     color: #a0aaa5;
 
@@ -755,6 +863,7 @@ form {
 
     letter-spacing: 1.2px;
 }
+
 
 .divider::before,
 .divider::after {
@@ -772,6 +881,7 @@ form {
         );
 }
 
+
 .divider::after {
     background:
         linear-gradient(
@@ -783,7 +893,7 @@ form {
 
 
 /* =========================================
-   SOCIAL LOGIN
+   SOCIAL BUTTONS
    ========================================= */
 
 .social-buttons {
@@ -791,6 +901,7 @@ form {
 
     gap: 10px;
 }
+
 
 .social-btn {
     width: 50%;
@@ -803,7 +914,7 @@ form {
     border-radius: 10px;
 
     background:
-        rgba(255, 255, 255, 0.85);
+        rgba(255, 255, 255, 0.88);
 
     display: flex;
 
@@ -822,11 +933,12 @@ form {
     cursor: pointer;
 
     transition:
-        transform 0.3s ease,
-        box-shadow 0.3s ease,
-        background 0.3s ease,
-        border 0.3s ease;
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease,
+        border-color 0.25s ease;
 }
+
 
 .social-btn:hover {
     transform:
@@ -842,6 +954,7 @@ form {
         0 10px 22px rgba(24, 88, 61, 0.08);
 }
 
+
 .google-icon {
     color: #4285f4;
 
@@ -849,6 +962,7 @@ form {
 
     font-weight: bold;
 }
+
 
 .facebook-icon {
     color: #1877f2;
@@ -860,7 +974,7 @@ form {
 
 
 /* =========================================
-   SIGNUP LINK
+   ACCOUNT LINK
    ========================================= */
 
 .account-text {
@@ -873,21 +987,22 @@ form {
     font-size: 10px;
 }
 
+
 .account-text a {
     color: var(--green);
 
     font-weight: 800;
 
     text-decoration: none;
-
-    transition:
-        color 0.2s ease;
 }
 
-.account-text a:hover {
-    color: var(--green-mid);
 
-    text-decoration: underline;
+.account-text a:hover {
+    color:
+        var(--green-mid);
+
+    text-decoration:
+        underline;
 }
 
 
@@ -906,12 +1021,7 @@ form {
         linear-gradient(
             rgba(5, 38, 25, 0.64),
             rgba(4, 24, 16, 0.94)
-        ),
-        url("../Images/Blue and Black Minimalist Brand Logo.png");
-
-    background-size: cover;
-
-    background-position: center;
+        );
 
     color: white;
 }
@@ -949,8 +1059,7 @@ form {
 
     z-index: 2;
 
-    padding:
-        65px 55px;
+    padding: 65px 55px;
 }
 
 
@@ -970,10 +1079,10 @@ form {
     border-radius: 17px;
 
     background:
-        rgba(255,255,255,0.08);
+        rgba(255, 255, 255, 0.08);
 
     border:
-        1px solid rgba(255,255,255,0.20);
+        1px solid rgba(255, 255, 255, 0.20);
 
     backdrop-filter:
         blur(12px);
@@ -983,14 +1092,14 @@ form {
     margin-bottom: 42px;
 
     box-shadow:
-        0 15px 35px rgba(0,0,0,0.15);
+        0 15px 35px rgba(0, 0, 0, 0.15);
 
     animation:
         floating 3s ease-in-out infinite;
 }
 
-@keyframes floating {
 
+@keyframes floating {
     0%,
     100% {
         transform:
@@ -1038,18 +1147,19 @@ form {
     font-weight: 800;
 }
 
+
 .creative-content h2 span {
     color: #72c897;
 }
 
 
 /* =========================================
-   DESCRIPTION
+   CREATIVE DESCRIPTION
    ========================================= */
 
 .creative-content > p {
     color:
-        rgba(255,255,255,0.68);
+        rgba(255, 255, 255, 0.68);
 
     font-size: 12px;
 
@@ -1060,7 +1170,7 @@ form {
 
 
 /* =========================================
-   FEATURE CARD
+   FEATURE CARDS
    ========================================= */
 
 .feature-card {
@@ -1075,12 +1185,12 @@ form {
     margin-top: 20px;
 
     border:
-        1px solid rgba(255,255,255,0.12);
+        1px solid rgba(255, 255, 255, 0.12);
 
     border-radius: 12px;
 
     background:
-        rgba(255,255,255,0.07);
+        rgba(255, 255, 255, 0.07);
 
     backdrop-filter:
         blur(14px);
@@ -1088,19 +1198,21 @@ form {
     transition:
         transform 0.3s ease,
         background 0.3s ease,
-        border 0.3s ease;
+        border-color 0.3s ease;
 }
+
 
 .feature-card:hover {
     transform:
         translateX(7px);
 
     background:
-        rgba(255,255,255,0.11);
+        rgba(255, 255, 255, 0.11);
 
     border-color:
         rgba(114, 200, 151, 0.25);
 }
+
 
 .feature-icon {
     width: 38px;
@@ -1110,6 +1222,8 @@ form {
 
     justify-content: center;
     align-items: center;
+
+    flex-shrink: 0;
 
     border-radius: 10px;
 
@@ -1121,6 +1235,7 @@ form {
     font-weight: 900;
 }
 
+
 .feature-card strong {
     display: block;
 
@@ -1129,9 +1244,10 @@ form {
     margin-bottom: 4px;
 }
 
+
 .feature-card small {
     color:
-        rgba(255,255,255,0.55);
+        rgba(255, 255, 255, 0.55);
 
     font-size: 8px;
 }
@@ -1152,6 +1268,7 @@ form {
     pointer-events: none;
 }
 
+
 .circle-one {
     width: 300px;
     height: 300px;
@@ -1159,6 +1276,7 @@ form {
     right: -145px;
     top: -110px;
 }
+
 
 .circle-two {
     width: 430px;
@@ -1170,111 +1288,13 @@ form {
 
 
 /* =========================================
-   RESPONSIVE
-   ========================================= */
-
-@media (max-width: 900px) {
-
-    body {
-        padding: 20px;
-    }
-
-    .login-container {
-        max-width: 520px;
-
-        min-height: auto;
-    }
-
-    .creative-section {
-        display: none;
-    }
-
-    .login-section {
-        width: 100%;
-
-        padding:
-            40px 50px 45px;
-    }
-
-    .login-content {
-        max-width: 430px;
-    }
-}
-
-
-@media (max-width: 600px) {
-
-    body {
-        padding: 12px;
-    }
-
-    .login-container {
-        border-radius: 20px;
-    }
-
-    .login-section {
-        padding:
-            30px 25px 35px;
-    }
-
-    .login-content {
-        margin:
-            25px auto;
-    }
-
-    .login-content h1 {
-        font-size: 37px;
-
-        letter-spacing: -2px;
-    }
-
-    .subtitle {
-        font-size: 11px;
-    }
-}
-
-
-@media (max-width: 430px) {
-
-    .login-section {
-        padding:
-            25px 20px 30px;
-    }
-
-    .brand {
-        font-size: 20px;
-    }
-
-    .login-content h1 {
-        font-size: 34px;
-    }
-
-    .social-buttons {
-        flex-direction: column;
-    }
-
-    .social-btn {
-        width: 100%;
-    }
-
-    .main-btn {
-        height: 46px;
-    }
-
-    .form-options {
-        font-size: 8px;
-    }
-}
-
-
-/* =========================================
    ACCESSIBILITY
    ========================================= */
 
 .main-btn:focus-visible,
 .social-btn:focus-visible,
 .password-toggle:focus-visible,
-.forgot-password:focus-visible,
+.forgot:focus-visible,
 .account-text a:focus-visible {
     outline:
         3px solid rgba(97, 180, 135, 0.45);
@@ -1284,18 +1304,150 @@ form {
 
 
 /* =========================================
+   TABLET
+   ========================================= */
+
+@media (max-width: 900px) {
+
+    body {
+        padding: 20px;
+    }
+
+
+    .login-container {
+        max-width: 520px;
+
+        min-height: auto;
+    }
+
+
+    .creative-section {
+        display: none;
+    }
+
+
+    .login-section {
+        width: 100%;
+
+        padding:
+            42px 50px 48px;
+    }
+
+
+    .login-content {
+        max-width: 430px;
+    }
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+@media (max-width: 600px) {
+
+    body {
+        padding: 12px;
+    }
+
+
+    .login-container {
+        border-radius: 20px;
+    }
+
+
+    .login-section {
+        padding:
+            30px 25px 35px;
+    }
+
+
+    .login-content {
+        margin:
+            25px auto;
+    }
+
+
+    .login-content h1 {
+        font-size: 37px;
+
+        letter-spacing: -2px;
+    }
+
+
+    .subtitle {
+        font-size: 11px;
+    }
+}
+
+
+/* =========================================
+   SMALL MOBILE
+   ========================================= */
+
+@media (max-width: 430px) {
+
+    .login-section {
+        padding:
+            25px 20px 30px;
+    }
+
+
+    .brand {
+        font-size: 20px;
+    }
+
+
+    .login-content h1 {
+        font-size: 34px;
+    }
+
+
+    .social-buttons {
+        flex-direction: column;
+    }
+
+
+    .social-btn {
+        width: 100%;
+    }
+
+
+    .main-btn {
+        height: 46px;
+    }
+}
+
+
+/* =========================================
    REDUCED MOTION
    ========================================= */
 
 @media (prefers-reduced-motion: reduce) {
 
+    .mouse-glow {
+        display: none;
+    }
+
+
+    .floating-logo,
+    .welcome-badge span {
+        animation: none;
+    }
+
+
     *,
     *::before,
     *::after {
-        animation-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
 
-        animation-iteration-count: 1 !important;
+        transition-duration:
+            0.01ms !important;
 
-        transition-duration: 0.01ms !important;
+        animation-duration:
+            0.01ms !important;
+
+        animation-iteration-count:
+            1 !important;
     }
 }

@@ -1,0 +1,676 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --tc-bg: #020907;
+    --tc-bg-soft: #061713;
+
+    --tc-green: #20d6a3;
+    --tc-green-bright: #49f5c1;
+    --tc-cyan: #46e7ff;
+
+    --tc-white: #f5fffb;
+    --tc-muted: #a9c9c0;
+
+    --tc-glass: rgba(255, 255, 255, 0.055);
+    --tc-glass-hover: rgba(255, 255, 255, 0.085);
+
+    --tc-border: rgba(73, 245, 193, 0.18);
+    --tc-border-strong: rgba(73, 245, 193, 0.38);
+
+    --tc-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.42);
+
+    --tc-glow:
+        0 0 35px rgba(32, 214, 163, 0.20);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    overflow: hidden;
+
+    font-family:
+        Inter,
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    background: var(--tc-bg);
+    color: var(--tc-white);
+
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+button {
+    font: inherit;
+}
+
+.trustcart-intro {
+    position: relative;
+
+    width: 100vw;
+    height: 100svh;
+
+    min-height: 560px;
+
+    overflow: hidden;
+
+    isolation: isolate;
+
+    background:
+        radial-gradient(
+            circle at 50% 46%,
+            rgba(32, 214, 163, 0.075),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 12% 15%,
+            rgba(70, 231, 255, 0.045),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 88% 82%,
+            rgba(32, 214, 163, 0.055),
+            transparent 30%
+        ),
+        #020907;
+}
+
+
+/* =========================================================
+   3D CANVAS
+========================================================= */
+
+.trustcart-canvas {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 1;
+
+    width: 100%;
+    height: 100%;
+}
+
+.trustcart-canvas canvas {
+    width: 100% !important;
+    height: 100% !important;
+
+    display: block;
+}
+
+
+/* =========================================================
+   CONTENT
+========================================================= */
+
+.trustcart-content {
+    position: absolute;
+
+    z-index: 5;
+
+    left: 50%;
+    top: 50%;
+
+    width: min(90vw, 760px);
+
+    transform: translate(-50%, -50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    text-align: center;
+
+    pointer-events: none;
+
+    transition:
+        opacity 0.55s ease,
+        transform 0.8s cubic-bezier(
+            0.22,
+            1,
+            0.36,
+            1
+        );
+}
+
+.trustcart-content > * {
+    pointer-events: auto;
+}
+
+.trustcart-content-scanning {
+    opacity: 0.82;
+
+    transform:
+        translate(-50%, -50%)
+        scale(1.06);
+}
+
+
+/* =========================================================
+   BRAND
+========================================================= */
+
+.trustcart-brand {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.trustcart-title {
+    margin: 0;
+
+    font-size: clamp(
+        64px,
+        10vw,
+        124px
+    );
+
+    line-height: 0.9;
+
+    font-weight: 800;
+
+    letter-spacing: 0.015em;
+
+    white-space: nowrap;
+
+    color: var(--tc-white);
+
+    text-shadow:
+        0 0 18px rgba(73, 245, 193, 0.08),
+        0 0 55px rgba(32, 214, 163, 0.05);
+
+    user-select: none;
+}
+
+.trust-word {
+    color: var(--tc-white);
+}
+
+.cart-word {
+    color: var(--tc-green-bright);
+
+    text-shadow:
+        0 0 16px rgba(73, 245, 193, 0.20),
+        0 0 42px rgba(32, 214, 163, 0.12);
+}
+
+.brand-glow {
+    width: 55%;
+
+    height: 3px;
+
+    margin-top: 20px;
+
+    border-radius: 999px;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            var(--tc-green-bright),
+            var(--tc-cyan),
+            var(--tc-green-bright),
+            transparent
+        );
+
+    box-shadow:
+        0 0 18px rgba(73, 245, 193, 0.55),
+        0 0 45px rgba(32, 214, 163, 0.20);
+
+    filter: blur(0.15px);
+}
+
+
+/* =========================================================
+   TAGLINE
+========================================================= */
+
+.trustcart-tagline-wrap {
+    margin-top: 30px;
+}
+
+.trustcart-tagline {
+    font-size: clamp(
+        17px,
+        2vw,
+        23px
+    );
+
+    line-height: 1.5;
+
+    font-weight: 500;
+
+    letter-spacing: 0.025em;
+
+    color: var(--tc-muted);
+
+    text-shadow:
+        0 2px 15px rgba(0, 0, 0, 0.5);
+}
+
+
+/* =========================================================
+   LET'S GO BUTTON
+========================================================= */
+
+.trustcart-button-wrap {
+    margin-top: 38px;
+}
+
+.lets-go-button {
+    position: relative;
+
+    min-width: 190px;
+    height: 58px;
+
+    padding: 0 28px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 14px;
+
+    overflow: hidden;
+
+    border: 1px solid var(--tc-border-strong);
+
+    border-radius: 17px;
+
+    color: var(--tc-white);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(73, 245, 193, 0.15),
+            rgba(32, 214, 163, 0.055)
+        );
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow:
+        0 10px 35px rgba(0, 0, 0, 0.30),
+        0 0 28px rgba(32, 214, 163, 0.08);
+
+    cursor: pointer;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    letter-spacing: 0.01em;
+
+    transition:
+        transform 0.28s ease,
+        border-color 0.28s ease,
+        background 0.28s ease,
+        box-shadow 0.28s ease;
+}
+
+.lets-go-button:hover,
+.lets-go-hovered {
+    transform: translateY(-3px);
+
+    border-color:
+        rgba(73, 245, 193, 0.65);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(73, 245, 193, 0.22),
+            rgba(32, 214, 163, 0.09)
+        );
+
+    box-shadow:
+        0 16px 42px rgba(0, 0, 0, 0.38),
+        0 0 38px rgba(32, 214, 163, 0.20);
+}
+
+.lets-go-button:active {
+    transform: translateY(-1px) scale(0.98);
+}
+
+.lets-go-button:focus-visible {
+    outline: 2px solid var(--tc-green-bright);
+
+    outline-offset: 5px;
+}
+
+.button-text {
+    position: relative;
+
+    z-index: 2;
+}
+
+.button-arrow {
+    position: relative;
+
+    z-index: 2;
+
+    font-size: 21px;
+
+    color: var(--tc-green-bright);
+
+    transition:
+        transform 0.25s ease;
+}
+
+.lets-go-button:hover .button-arrow {
+    transform: translateX(4px);
+}
+
+.button-shine {
+    position: absolute;
+
+    top: -100%;
+    left: -30%;
+
+    width: 35%;
+    height: 300%;
+
+    transform: rotate(25deg);
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.16),
+            transparent
+        );
+
+    transition:
+        left 0.7s ease;
+}
+
+.lets-go-button:hover .button-shine {
+    left: 110%;
+}
+
+.lets-go-scanning {
+    pointer-events: none;
+
+    border-color:
+        rgba(73, 245, 193, 0.75);
+
+    box-shadow:
+        0 0 50px rgba(32, 214, 163, 0.30);
+}
+
+
+/* =========================================================
+   LOADER
+========================================================= */
+
+.trustcart-loader {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 20;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 16px;
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(32, 214, 163, 0.06),
+            rgba(2, 9, 7, 0.98) 52%
+        );
+
+    pointer-events: none;
+}
+
+.loader-mark {
+    display: flex;
+
+    align-items: center;
+
+    gap: 5px;
+}
+
+.loader-mark span {
+    width: 5px;
+    height: 5px;
+
+    border-radius: 50%;
+
+    background: var(--tc-green-bright);
+
+    box-shadow:
+        0 0 12px rgba(73, 245, 193, 0.7);
+
+    animation:
+        loaderPulse 0.9s infinite
+        ease-in-out;
+}
+
+.loader-mark span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.loader-mark span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.loader-text {
+    font-size: 12px;
+
+    font-weight: 600;
+
+    letter-spacing: 0.14em;
+
+    text-transform: uppercase;
+
+    color: rgba(169, 201, 192, 0.72);
+}
+
+@keyframes loaderPulse {
+    0%,
+    100% {
+        opacity: 0.25;
+        transform: translateY(0);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateY(-4px);
+    }
+}
+
+
+/* =========================================================
+   VIGNETTE
+========================================================= */
+
+.trustcart-vignette {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 3;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            ellipse at center,
+            transparent 38%,
+            rgba(0, 0, 0, 0.08) 62%,
+            rgba(0, 0, 0, 0.52) 100%
+        );
+}
+
+
+/* =========================================================
+   SCAN TRANSITION
+========================================================= */
+
+.scan-flash {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 10;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(73, 245, 193, 0.28),
+            rgba(32, 214, 163, 0.08) 35%,
+            transparent 68%
+        );
+}
+
+.scan-line {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: 50%;
+
+    height: 2px;
+
+    z-index: 11;
+
+    transform-origin: center;
+
+    pointer-events: none;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            var(--tc-green),
+            var(--tc-cyan),
+            var(--tc-green),
+            transparent
+        );
+
+    box-shadow:
+        0 0 15px rgba(73, 245, 193, 0.9),
+        0 0 50px rgba(32, 214, 163, 0.45);
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+
+    .trustcart-title {
+        font-size: clamp(
+            52px,
+            17vw,
+            82px
+        );
+
+        letter-spacing: 0;
+    }
+
+    .brand-glow {
+        margin-top: 15px;
+
+        width: 48%;
+
+        height: 2px;
+    }
+
+    .trustcart-tagline-wrap {
+        margin-top: 24px;
+    }
+
+    .trustcart-tagline {
+        max-width: 330px;
+
+        font-size: 16px;
+
+        line-height: 1.45;
+    }
+
+    .trustcart-button-wrap {
+        margin-top: 30px;
+    }
+
+    .lets-go-button {
+        min-width: 175px;
+
+        height: 54px;
+
+        border-radius: 15px;
+    }
+}
+
+
+/* =========================================================
+   SMALL HEIGHT SCREENS
+========================================================= */
+
+@media (max-height: 650px) {
+
+    .trustcart-title {
+        font-size: clamp(
+            52px,
+            11vh,
+            82px
+        );
+    }
+
+    .trustcart-tagline-wrap {
+        margin-top: 18px;
+    }
+
+    .trustcart-button-wrap {
+        margin-top: 22px;
+    }
+
+    .lets-go-button {
+        height: 52px;
+    }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .lets-go-button:hover {
+        transform: none;
+    }
+}

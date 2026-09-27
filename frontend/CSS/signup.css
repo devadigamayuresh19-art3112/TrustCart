@@ -37,6 +37,12 @@
    BODY
    ========================================= */
 
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+}
+
 body {
     font-family:
         Inter,
@@ -52,27 +58,85 @@ body {
 
     padding: 30px;
 
-    background:
-        radial-gradient(
-            circle at 10% 20%,
-            rgba(97, 180, 135, 0.22),
-            transparent 30%
-        ),
-        radial-gradient(
-            circle at 90% 80%,
-            rgba(24, 88, 61, 0.18),
-            transparent 35%
-        ),
-        linear-gradient(
-            135deg,
-            #edf5f0,
-            #ffffff 50%,
-            #e7f0eb
-        );
+    background: transparent;
 
     color: var(--text);
 
     overflow-x: hidden;
+}
+
+
+/* =========================================
+   FULL SCREEN BACKGROUND VIDEO
+   ========================================= */
+
+.video-background {
+    position: fixed;
+
+    inset: 0;
+
+    width: 100vw;
+    height: 100vh;
+
+    overflow: hidden;
+
+    z-index: -2;
+
+    background: #07120e;
+
+    pointer-events: none;
+}
+
+.video-background video {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    width: 100vw;
+    height: 100vh;
+
+    min-width: 100%;
+    min-height: 100%;
+
+    transform:
+        translate(-50%, -50%);
+
+    object-fit: cover;
+
+    object-position: center center;
+
+    display: block;
+
+    border: none;
+    outline: none;
+
+    pointer-events: none;
+}
+
+
+/* =========================================
+   VIDEO OVERLAY
+   ========================================= */
+
+.video-overlay {
+    position: fixed;
+
+    inset: 0;
+
+    width: 100vw;
+    height: 100vh;
+
+    z-index: -1;
+
+    pointer-events: none;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(3, 25, 17, 0.68),
+            rgba(5, 40, 27, 0.48)
+        );
 }
 
 
@@ -151,9 +215,10 @@ body::after {
 
     pointer-events: none;
 
-    transform: translate(-50%, -50%);
+    transform:
+        translate(-50%, -50%);
 
-    z-index: 0;
+    z-index: 2;
 
     transition:
         width 0.3s ease,
@@ -174,7 +239,8 @@ body::after {
     display: flex;
 
     position: relative;
-    z-index: 1;
+
+    z-index: 5;
 
     overflow: hidden;
 
@@ -200,6 +266,7 @@ body::after {
 
     from {
         opacity: 0;
+
         transform:
             translateY(30px)
             scale(0.97);
@@ -207,6 +274,7 @@ body::after {
 
     to {
         opacity: 1;
+
         transform:
             translateY(0)
             scale(1);
@@ -255,7 +323,8 @@ body::after {
 .brand:hover {
     color: var(--green-mid);
 
-    transform: translateX(3px);
+    transform:
+        translateX(3px);
 }
 
 .brand span {
@@ -476,7 +545,8 @@ form {
 .input-wrapper:focus-within {
     border-color: var(--green);
 
-    transform: translateY(-1px);
+    transform:
+        translateY(-1px);
 
     box-shadow:
         0 0 0 4px rgba(24, 88, 61, 0.08),
@@ -551,7 +621,8 @@ form {
 
     color: var(--green);
 
-    transform: scale(1.08);
+    transform:
+        scale(1.08);
 }
 
 
@@ -643,7 +714,8 @@ form {
 
     text-decoration: none;
 
-    transition: color 0.2s ease;
+    transition:
+        color 0.2s ease;
 }
 
 .terms a:hover {
@@ -718,11 +790,12 @@ form {
         linear-gradient(
             90deg,
             transparent,
-            rgba(255,255,255,0.18),
+            rgba(255, 255, 255, 0.18),
             transparent
         );
 
-    transform: skewX(-20deg);
+    transform:
+        skewX(-20deg);
 
     transition:
         left 0.6s ease;
@@ -733,14 +806,16 @@ form {
 }
 
 .main-btn:hover {
-    transform: translateY(-2px);
+    transform:
+        translateY(-2px);
 
     box-shadow:
         0 18px 35px rgba(24, 88, 61, 0.30);
 }
 
 .main-btn:active {
-    transform: translateY(0);
+    transform:
+        translateY(0);
 }
 
 .arrow {
@@ -751,7 +826,8 @@ form {
 }
 
 .main-btn:hover .arrow {
-    transform: translateX(5px);
+    transform:
+        translateX(5px);
 }
 
 
@@ -848,7 +924,8 @@ form {
 }
 
 .social-btn:hover {
-    transform: translateY(-2px);
+    transform:
+        translateY(-2px);
 
     background: #ffffff;
 
@@ -897,7 +974,8 @@ form {
 
     text-decoration: none;
 
-    transition: color 0.2s ease;
+    transition:
+        color 0.2s ease;
 }
 
 .account-text a:hover {
@@ -922,12 +1000,7 @@ form {
         linear-gradient(
             rgba(5, 38, 25, 0.65),
             rgba(4, 24, 16, 0.94)
-        ),
-        url("../Images/Blue and Black Minimalist Brand Logo.png");
-
-    background-size: cover;
-
-    background-position: center;
+        );
 
     color: white;
 }
@@ -985,10 +1058,10 @@ form {
     border-radius: 17px;
 
     background:
-        rgba(255,255,255,0.08);
+        rgba(255, 255, 255, 0.08);
 
     border:
-        1px solid rgba(255,255,255,0.20);
+        1px solid rgba(255, 255, 255, 0.20);
 
     backdrop-filter: blur(12px);
 
@@ -997,7 +1070,7 @@ form {
     margin-bottom: 42px;
 
     box-shadow:
-        0 15px 35px rgba(0,0,0,0.15);
+        0 15px 35px rgba(0, 0, 0, 0.15);
 
     animation:
         floating 3s ease-in-out infinite;
@@ -1007,11 +1080,13 @@ form {
 
     0%,
     100% {
-        transform: translateY(0);
+        transform:
+            translateY(0);
     }
 
     50% {
-        transform: translateY(-8px);
+        transform:
+            translateY(-8px);
     }
 }
 
@@ -1060,7 +1135,7 @@ form {
 
 .creative-content > p {
     color:
-        rgba(255,255,255,0.68);
+        rgba(255, 255, 255, 0.68);
 
     font-size: 12px;
 
@@ -1086,12 +1161,12 @@ form {
     margin-top: 20px;
 
     border:
-        1px solid rgba(255,255,255,0.12);
+        1px solid rgba(255, 255, 255, 0.12);
 
     border-radius: 12px;
 
     background:
-        rgba(255,255,255,0.07);
+        rgba(255, 255, 255, 0.07);
 
     backdrop-filter: blur(14px);
 
@@ -1102,10 +1177,11 @@ form {
 }
 
 .feature-card:hover {
-    transform: translateX(7px);
+    transform:
+        translateX(7px);
 
     background:
-        rgba(255,255,255,0.11);
+        rgba(255, 255, 255, 0.11);
 
     border-color:
         rgba(114, 200, 151, 0.25);
@@ -1130,7 +1206,7 @@ form {
     font-weight: 900;
 
     box-shadow:
-        inset 0 0 15px rgba(99,194,137,0.06);
+        inset 0 0 15px rgba(99, 194, 137, 0.06);
 }
 
 .feature-card strong {
@@ -1143,7 +1219,7 @@ form {
 
 .feature-card small {
     color:
-        rgba(255,255,255,0.55);
+        rgba(255, 255, 255, 0.55);
 
     font-size: 8px;
 }
@@ -1204,7 +1280,8 @@ form {
     .signup-section {
         width: 100%;
 
-        padding: 38px 50px 45px;
+        padding:
+            38px 50px 45px;
     }
 
     .signup-content {
@@ -1283,7 +1360,9 @@ form {
     *::before,
     *::after {
         animation-duration: 0.01ms !important;
+
         animation-iteration-count: 1 !important;
+
         transition-duration: 0.01ms !important;
     }
 }

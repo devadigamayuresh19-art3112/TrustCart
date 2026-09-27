@@ -1,1 +1,14 @@
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+
+# macOS
+.DS_Store
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json

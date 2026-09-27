@@ -14,7 +14,10 @@
 <body>
 
     <!--  NAVBAR  -->
-
+    
+    <div id="trustcart-dot-layer">
+        <canvas id="trustcart-cursor-dots"></canvas>
+    </div>
     <header class="header">
 
         <nav class="navbar">
@@ -122,7 +125,7 @@
 
                             Explore Features
 
-                            <span>⌄</span>
+                            <span></span>
 
                         </a>
 
@@ -668,105 +671,2086 @@
 
 
     </script>
-    <script>
+    
+<script>
+(function () {
 
-/* =========================================
-   CONTINUOUS HERO WORD ANIMATION
-========================================= */
+    const changingWord =
+        document.getElementById("changing-word");
 
-const firstWords = [
-    "Shop",
-    "Compare",
-    "Choose",
-    "Discover"
-];
+    const changingTrust =
+        document.getElementById("changing-trust");
 
-const trustWords = [
-    "Better.",
-    "Smarter.",
-    "Confidently.",
-    "Wisely."
-];
-
-const changingWord =
-    document.getElementById("changing-word");
-
-const changingTrust =
-    document.getElementById("changing-trust");
+    if (!changingWord || !changingTrust) return;
 
 
-let wordIndex = 0;
+    /*
+     * ==========================================
+     * TRUSTCART HERO WORDS
+     * ==========================================
+     */
+
+    const shoppingWords = [
+        "Shop",
+        "Compare",
+        "Discover",
+        "Choose"
+    ];
+
+    const trustWords = [
+        "Better.",
+        "Smarter.",
+        "Safely.",
+        "Confidently."
+    ];
 
 
-/* Change words every 2.5 seconds */
-
-setInterval(() => {
-
-    /* Animate old words out */
-
-    changingWord.classList.remove("word-in");
-
-    changingWord.classList.add("word-out");
-
-    changingTrust.classList.remove("word-in");
-
-    changingTrust.classList.add("word-out");
+    let shopIndex = 0;
+    let trustIndex = 0;
 
 
-    /* Wait for exit animation */
+    /*
+     * ==========================================
+     * WORD CHANGE ANIMATION
+     * ==========================================
+     */
 
-    setTimeout(() => {
+    function changeWord(element, words, index) {
 
-        wordIndex++;
+        /*
+         * Fade/slide out
+         */
 
-        if (wordIndex >= firstWords.length) {
-            wordIndex = 0;
+        element.style.opacity = "0";
+        element.style.transform =
+            "translateY(12px)";
+
+
+        setTimeout(function () {
+
+            /*
+             * Change the word
+             */
+
+            element.textContent =
+                words[index];
+
+
+            /*
+             * Bring the new word in
+             */
+
+            element.style.opacity = "1";
+            element.style.transform =
+                "translateY(0)";
+
+        }, 300);
+
+    }
+
+
+    /*
+     * ==========================================
+     * SMOOTH TRANSITION STYLES
+     * ==========================================
+     */
+
+    changingWord.style.transition =
+        "opacity 0.3s ease, transform 0.3s ease";
+
+    changingTrust.style.transition =
+        "opacity 0.3s ease, transform 0.3s ease";
+
+
+    /*
+     * ==========================================
+     * SHOP WORD
+     * ==========================================
+     */
+
+    setInterval(function () {
+
+        shopIndex =
+            (shopIndex + 1) %
+            shoppingWords.length;
+
+        changeWord(
+            changingWord,
+            shoppingWords,
+            shopIndex
+        );
+
+    }, 2200);
+
+
+    /*
+     * ==========================================
+     * TRUST WORD
+     * ==========================================
+     */
+
+    setInterval(function () {
+
+        trustIndex =
+            (trustIndex + 1) %
+            trustWords.length;
+
+        changeWord(
+            changingTrust,
+            trustWords,
+            trustIndex
+        );
+
+    }, 2800);
+
+})();
+</script>
+```html
+<script>
+(function () {
+
+    const canvas =
+        document.getElementById("trustcart-cursor-dots");
+
+    if (!canvas) return;
+
+    const ctx =
+        canvas.getContext("2d");
+
+    if (!ctx) return;
+
+
+    /* =====================================================
+       CANVAS
+       ===================================================== */
+
+    let width =
+        window.innerWidth;
+
+    let height =
+        window.innerHeight;
+
+
+    /* =====================================================
+       ARRAYS
+       ===================================================== */
+
+    let dots = [];
+
+    let particles = [];
+
+    let waves = [];
+
+    let trustScans = [];
+
+    let scanSymbols = [];
+
+    let shockwaves = [];
+
+
+    /* =====================================================
+       SETTINGS
+       ===================================================== */
+
+    const spacing = 42;
+
+    const interactionRadius = 155;
+
+    const clickRadius = 20;
+
+
+    /* =====================================================
+       GRID
+       ===================================================== */
+
+    let columns = 0;
+
+    let rows = 0;
+
+
+    /* =====================================================
+       MOUSE
+       ===================================================== */
+
+    const mouse = {
+
+        x: -1000,
+        y: -1000,
+
+        lastX: -1000,
+        lastY: -1000,
+
+        vx: 0,
+        vy: 0,
+
+        speed: 0,
+
+        active: false
+
+    };
+
+
+    /* =====================================================
+       TRUSTCART DATA STREAM
+       ===================================================== */
+
+    const dataStreamWord =
+        "TrustCart";
+
+    let dataStream =
+        null;
+
+    let dataStreamTimer = null;
+
+
+    /* =====================================================
+       RESIZE
+       ===================================================== */
+
+    function resize() {
+
+        width =
+            window.innerWidth;
+
+        height =
+            window.innerHeight;
+
+
+        const dpr =
+            Math.min(
+                window.devicePixelRatio || 1,
+                2
+            );
+
+
+        canvas.width =
+            width * dpr;
+
+        canvas.height =
+            height * dpr;
+
+
+        canvas.style.width =
+            width + "px";
+
+        canvas.style.height =
+            height + "px";
+
+
+        ctx.setTransform(
+            dpr,
+            0,
+            0,
+            dpr,
+            0,
+            0
+        );
+
+
+        createDots();
+
+    }
+
+
+    /* =====================================================
+       CREATE DOT GRID
+       ===================================================== */
+
+    function createDots() {
+
+        dots = [];
+
+
+        columns =
+            Math.ceil(
+                width / spacing
+            );
+
+
+        rows =
+            Math.ceil(
+                height / spacing
+            );
+
+
+        for (
+            let row = 0;
+            row < rows;
+            row++
+        ) {
+
+            const y =
+                spacing / 2 +
+                row * spacing;
+
+
+            for (
+                let column = 0;
+                column < columns;
+                column++
+            ) {
+
+                const x =
+                    spacing / 2 +
+                    column * spacing;
+
+
+                dots.push({
+
+                    x: x,
+                    y: y,
+
+                    originalX: x,
+                    originalY: y,
+
+                    vx: 0,
+                    vy: 0,
+
+                    pulse:
+                        Math.random() *
+                        Math.PI *
+                        2
+
+                });
+
+            }
+
+        }
+
+    }
+
+
+    /* =====================================================
+       PRICE / TRUST PARTICLE
+       ===================================================== */
+
+    function createPriceParticle(
+        x,
+        y
+    ) {
+
+        const symbols = [
+            "₹",
+            "✓",
+            "↕"
+        ];
+
+
+        particles.push({
+
+            x: x,
+            y: y,
+
+            vx:
+                (Math.random() - 0.5) *
+                1.4,
+
+            vy:
+                -(
+                    Math.random() *
+                    1.4 +
+                    0.5
+                ),
+
+            life: 1,
+
+            size:
+                Math.random() *
+                4 +
+                9,
+
+            text:
+                symbols[
+                    Math.floor(
+                        Math.random() *
+                        symbols.length
+                    )
+                ]
+
+        });
+
+
+        if (
+            particles.length > 45
+        ) {
+
+            particles.shift();
+
+        }
+
+    }
+
+
+    /* =====================================================
+       SMALL SHOPPING PARTICLE
+       ===================================================== */
+
+    function createShoppingParticle() {
+
+        if (!mouse.active) return;
+
+
+        particles.push({
+
+            x: mouse.x,
+            y: mouse.y,
+
+            vx:
+                mouse.vx *
+                0.12 +
+                (
+                    Math.random() -
+                    0.5
+                ),
+
+            vy:
+                mouse.vy *
+                0.12 +
+                (
+                    Math.random() -
+                    0.5
+                ),
+
+            life: 0.65,
+
+            size:
+                Math.random() *
+                2 +
+                1.5,
+
+            text: ""
+
+        });
+
+
+        if (
+            particles.length > 45
+        ) {
+
+            particles.shift();
+
+        }
+
+    }
+
+
+    /* =====================================================
+       CURSOR WAVE
+       ===================================================== */
+
+    function createWave(
+        x,
+        y,
+        strength
+    ) {
+
+        waves.push({
+
+            x: x,
+            y: y,
+
+            radius: 5,
+
+            opacity:
+                strength
+
+        });
+
+
+        if (
+            waves.length > 7
+        ) {
+
+            waves.shift();
+
+        }
+
+    }
+
+
+    /* =====================================================
+       TRUST SCAN
+       ===================================================== */
+
+    function createTrustScan(
+        x,
+        y
+    ) {
+
+        trustScans.push({
+
+            x: x,
+            y: y,
+
+            radius: 5,
+
+            opacity: 0.9
+
+        });
+
+
+        if (
+            trustScans.length > 3
+        ) {
+
+            trustScans.shift();
+
         }
 
 
-        /* Change text */
-
-        changingWord.textContent =
-            firstWords[wordIndex];
-
-        changingTrust.textContent =
-            trustWords[wordIndex];
+        const symbols = [
+            "₹",
+            "✓",
+            "↕"
+        ];
 
 
-        /* Animate new words in */
+        symbols.forEach(
+            function (
+                symbol,
+                index
+            ) {
 
-        changingWord.classList.remove("word-out");
-
-        changingTrust.classList.remove("word-out");
-
-
-        changingWord.classList.add("word-in");
-
-        changingTrust.classList.add("word-in");
-
-
-        /* Glow effect */
-
-        changingWord.classList.add("word-glow");
-
-        changingTrust.classList.add("word-glow");
+                const angle =
+                    (
+                        Math.PI *
+                        2 /
+                        3
+                    ) *
+                    index -
+                    Math.PI / 2;
 
 
-        setTimeout(() => {
+                scanSymbols.push({
 
-            changingWord.classList.remove("word-glow");
+                    x: x,
+                    y: y,
 
-            changingTrust.classList.remove("word-glow");
+                    targetX:
+                        x +
+                        Math.cos(angle) *
+                        48,
 
-        }, 500);
+                    targetY:
+                        y +
+                        Math.sin(angle) *
+                        48,
+
+                    symbol:
+                        symbol,
+
+                    life: 1,
+
+                    size: 12
+
+                });
+
+            }
+        );
 
 
-    }, 400);
+        createWave(
+            x,
+            y,
+            0.75
+        );
 
 
-}, 2500);
+        setTimeout(
+            function () {
 
+                createWave(
+                    x,
+                    y,
+                    0.45
+                );
+
+            },
+            100
+        );
+
+
+        for (
+            let i = 0;
+            i < 6;
+            i++
+        ) {
+
+            createPriceParticle(
+                x,
+                y
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       CLICK SHOCKWAVE
+       ===================================================== */
+
+    function createShockwave(
+        x,
+        y
+    ) {
+
+        shockwaves.push({
+
+            x: x,
+            y: y,
+
+            radius: 3,
+
+            opacity: 0.8
+
+        });
+
+
+        if (
+            shockwaves.length > 4
+        ) {
+
+            shockwaves.shift();
+
+        }
+
+    }
+
+
+    /* =====================================================
+       MOUSE MOVE
+       ===================================================== */
+
+    window.addEventListener(
+        "mousemove",
+        function (e) {
+
+            if (!mouse.active) {
+
+                mouse.lastX =
+                    e.clientX;
+
+                mouse.lastY =
+                    e.clientY;
+
+                mouse.active = true;
+
+            }
+
+
+            mouse.x =
+                e.clientX;
+
+            mouse.y =
+                e.clientY;
+
+
+            mouse.vx =
+                mouse.x -
+                mouse.lastX;
+
+            mouse.vy =
+                mouse.y -
+                mouse.lastY;
+
+
+            mouse.speed =
+                Math.sqrt(
+                    mouse.vx *
+                    mouse.vx +
+                    mouse.vy *
+                    mouse.vy
+                );
+
+
+            mouse.lastX =
+                mouse.x;
+
+            mouse.lastY =
+                mouse.y;
+
+
+            if (
+                mouse.speed > 7
+            ) {
+
+                if (
+                    Math.random() <
+                    0.20
+                ) {
+
+                    createWave(
+                        mouse.x,
+                        mouse.y,
+                        Math.min(
+                            mouse.speed *
+                            0.02,
+                            0.4
+                        )
+                    );
+
+                }
+
+
+                if (
+                    Math.random() <
+                    0.08
+                ) {
+
+                    createPriceParticle(
+                        mouse.x,
+                        mouse.y
+                    );
+
+                }
+
+
+                if (
+                    Math.random() <
+                    0.22
+                ) {
+
+                    createShoppingParticle();
+
+                }
+
+            }
+
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    /* =====================================================
+       CLICK / TRUST SCAN
+       ===================================================== */
+
+    window.addEventListener(
+        "click",
+        function (e) {
+
+            const clickX =
+                e.clientX;
+
+            const clickY =
+                e.clientY;
+
+
+            const column =
+                Math.round(
+                    (
+                        clickX -
+                        spacing / 2
+                    ) /
+                    spacing
+                );
+
+
+            const row =
+                Math.round(
+                    (
+                        clickY -
+                        spacing / 2
+                    ) /
+                    spacing
+                );
+
+
+            let closestDot =
+                null;
+
+            let closestDistance =
+                Infinity;
+
+
+            for (
+                let r = row - 1;
+                r <= row + 1;
+                r++
+            ) {
+
+                for (
+                    let c = column - 1;
+                    c <= column + 1;
+                    c++
+                ) {
+
+                    if (
+                        r < 0 ||
+                        c < 0 ||
+                        r >= rows ||
+                        c >= columns
+                    ) {
+
+                        continue;
+
+                    }
+
+
+                    const index =
+                        r * columns +
+                        c;
+
+
+                    const dot =
+                        dots[index];
+
+
+                    if (!dot) continue;
+
+
+                    const dx =
+                        dot.x -
+                        clickX;
+
+                    const dy =
+                        dot.y -
+                        clickY;
+
+
+                    const distance =
+                        Math.sqrt(
+                            dx * dx +
+                            dy * dy
+                        );
+
+
+                    if (
+                        distance <
+                        closestDistance
+                    ) {
+
+                        closestDistance =
+                            distance;
+
+                        closestDot =
+                            dot;
+
+                    }
+
+                }
+
+            }
+
+
+            if (
+                closestDot &&
+                closestDistance <
+                    clickRadius
+            ) {
+
+                createTrustScan(
+                    closestDot.x,
+                    closestDot.y
+                );
+
+
+                createShockwave(
+                    closestDot.x,
+                    closestDot.y
+                );
+
+
+                const explosionRadius =
+                    115;
+
+
+                dots.forEach(
+                    function (dot) {
+
+                        const dx =
+                            dot.x -
+                            closestDot.x;
+
+                        const dy =
+                            dot.y -
+                            closestDot.y;
+
+
+                        const distance =
+                            Math.sqrt(
+                                dx * dx +
+                                dy * dy
+                            );
+
+
+                        if (
+                            distance <
+                            explosionRadius &&
+                            distance > 0
+                        ) {
+
+                            const force =
+                                1 -
+                                distance /
+                                explosionRadius;
+
+
+                            dot.vx +=
+                                (
+                                    dx /
+                                    distance
+                                ) *
+                                force *
+                                2.4;
+
+
+                            dot.vy +=
+                                (
+                                    dy /
+                                    distance
+                                ) *
+                                force *
+                                2.4;
+
+                        }
+
+                    }
+                );
+
+            }
+
+        },
+        {
+            passive: true
+        }
+    );
+
+
+    /* =====================================================
+       MOUSE LEAVE
+       ===================================================== */
+
+    window.addEventListener(
+        "mouseout",
+        function (e) {
+
+            if (
+                e.relatedTarget === null
+            ) {
+
+                mouse.active =
+                    false;
+
+                mouse.x =
+                    -1000;
+
+                mouse.y =
+                    -1000;
+
+                mouse.vx = 0;
+                mouse.vy = 0;
+                mouse.speed = 0;
+
+            }
+
+        }
+    );
+
+
+    /* =====================================================
+       DRAW DOTS
+       ===================================================== */
+
+    function drawDots() {
+
+        dots.forEach(
+            function (dot) {
+
+                const dx =
+                    mouse.x -
+                    dot.x;
+
+                const dy =
+                    mouse.y -
+                    dot.y;
+
+
+                const distance =
+                    Math.sqrt(
+                        dx * dx +
+                        dy * dy
+                    );
+
+
+                /* -----------------------------------------
+                   CURSOR INFLUENCE
+                   ----------------------------------------- */
+
+                if (
+                    mouse.active &&
+                    distance <
+                    interactionRadius
+                ) {
+
+                    const strength =
+                        1 -
+                        distance /
+                        interactionRadius;
+
+
+                    /*
+                     * Follow cursor movement.
+                     */
+
+                    dot.vx +=
+                        mouse.vx *
+                        strength *
+                        0.20;
+
+                    dot.vy +=
+                        mouse.vy *
+                        strength *
+                        0.20;
+
+
+                    /*
+                     * Gentle attraction.
+                     */
+
+                    dot.vx +=
+                        dx *
+                        strength *
+                        0.0015;
+
+                    dot.vy +=
+                        dy *
+                        strength *
+                        0.0015;
+
+                }
+
+
+                /* -----------------------------------------
+                   RETURN TO ORIGINAL POSITION
+                   ----------------------------------------- */
+
+                dot.vx +=
+                    (
+                        dot.originalX -
+                        dot.x
+                    ) *
+                    0.045;
+
+                dot.vy +=
+                    (
+                        dot.originalY -
+                        dot.y
+                    ) *
+                    0.045;
+
+
+                /* -----------------------------------------
+                   FRICTION
+                   ----------------------------------------- */
+
+                dot.vx *= 0.84;
+
+                dot.vy *= 0.84;
+
+
+                dot.x +=
+                    dot.vx;
+
+                dot.y +=
+                    dot.vy;
+
+
+                /* -----------------------------------------
+                   IDLE BREATHING
+                   ----------------------------------------- */
+
+                dot.pulse +=
+                    0.012;
+
+
+                const breathing =
+                    Math.sin(
+                        dot.pulse
+                    ) *
+                    0.08;
+
+
+                let size =
+                    1.05;
+
+                let opacity =
+                    0.19 +
+                    breathing;
+
+
+                /* -----------------------------------------
+                   CURSOR GLOW
+                   ----------------------------------------- */
+
+                if (
+                    mouse.active &&
+                    distance <
+                    interactionRadius
+                ) {
+
+                    const strength =
+                        1 -
+                        distance /
+                        interactionRadius;
+
+
+                    size =
+                        1.05 +
+                        strength *
+                        2.3;
+
+
+                    opacity =
+                        0.19 +
+                        strength *
+                        0.58;
+
+                }
+
+
+                /* -----------------------------------------
+                   CLOSEST DOT
+                   ----------------------------------------- */
+
+                if (
+                    mouse.active &&
+                    distance < 30
+                ) {
+
+                    const strength =
+                        1 -
+                        distance /
+                        30;
+
+
+                    size =
+                        1.8 +
+                        strength *
+                        2.4;
+
+
+                    opacity =
+                        0.65 +
+                        strength *
+                        0.3;
+
+                }
+
+
+                /* -----------------------------------------
+                   DRAW DOT
+                   ----------------------------------------- */
+
+                ctx.beginPath();
+
+
+                ctx.arc(
+                    dot.x,
+                    dot.y,
+                    size,
+                    0,
+                    Math.PI * 2
+                );
+
+
+                ctx.fillStyle =
+                    `rgba(
+                        24,
+                        88,
+                        61,
+                        ${opacity}
+                    )`;
+
+
+                ctx.fill();
+
+            }
+        );
+
+    }
+
+
+    /* =====================================================
+       CREATE TRUSTCART STREAM
+       ===================================================== */
+
+    function createDataStream() {
+
+        /*
+         * Do not create another stream
+         * while one is already travelling.
+         *
+         * This keeps the word readable.
+         */
+
+        if (dataStream) return;
+
+
+        /*
+         * Start slightly outside the
+         * left side of the screen.
+         */
+
+        dataStream = {
+
+            x:
+                -80,
+
+            y:
+                height *
+                (
+                    0.25 +
+                    Math.random() *
+                    0.50
+                ),
+
+            speed:
+                1.25,
+
+            spacing:
+                17,
+
+            life:
+                1,
+
+            trail: []
+
+        };
+
+    }
+
+
+    /* =====================================================
+       DRAW TRUSTCART STREAM
+       ===================================================== */
+
+    function drawDataStream() {
+
+        if (!dataStream) return;
+
+
+        const stream =
+            dataStream;
+
+
+        /*
+         * Move the complete word.
+         */
+
+        stream.x +=
+            stream.speed;
+
+
+        /*
+         * Smooth vertical movement.
+         *
+         * This gives the word a subtle
+         * data-flow feeling without
+         * destroying readability.
+         */
+
+        stream.y +=
+            Math.sin(
+                stream.x *
+                0.012
+            ) *
+            0.10;
+
+
+        /*
+         * Add trail positions.
+         */
+
+        stream.trail.push({
+
+            x: stream.x,
+            y: stream.y
+
+        });
+
+
+        if (
+            stream.trail.length >
+            10
+        ) {
+
+            stream.trail.shift();
+
+        }
+
+
+        /* -----------------------------------------
+           DRAW TRAIL
+           ----------------------------------------- */
+
+        for (
+            let i = 0;
+            i < stream.trail.length;
+            i++
+        ) {
+
+            const point =
+                stream.trail[i];
+
+
+            const trailOpacity =
+                (
+                    i /
+                    stream.trail.length
+                ) *
+                0.22;
+
+
+            ctx.beginPath();
+
+
+            ctx.arc(
+                point.x,
+                point.y,
+                1.1,
+                0,
+                Math.PI * 2
+            );
+
+
+            ctx.fillStyle =
+                `rgba(
+                    97,
+                    180,
+                    135,
+                    ${trailOpacity}
+                )`;
+
+
+            ctx.fill();
+
+        }
+
+
+        /* -----------------------------------------
+           DRAW EACH CHARACTER
+           ----------------------------------------- */
+
+        ctx.save();
+
+
+        ctx.font =
+            "600 14px Arial";
+
+
+        ctx.textAlign =
+            "center";
+
+
+        ctx.textBaseline =
+            "middle";
+
+
+        ctx.shadowBlur =
+            10;
+
+
+        ctx.shadowColor =
+            "rgba(97, 180, 135, 0.55)";
+
+
+        for (
+            let i = 0;
+            i < dataStreamWord.length;
+            i++
+        ) {
+
+            /*
+             * Characters are placed
+             * next to each other.
+             */
+
+            const character =
+                dataStreamWord[i];
+
+
+            const characterX =
+                stream.x +
+                i *
+                stream.spacing;
+
+
+            /*
+             * Fade the first character
+             * in/out at the edges.
+             */
+
+            let opacity = 0.82;
+
+
+            if (
+                characterX < 40
+            ) {
+
+                opacity =
+                    Math.max(
+                        0,
+                        (
+                            characterX +
+                            80
+                        ) /
+                        120
+                    ) *
+                    0.82;
+
+            }
+
+
+            if (
+                characterX >
+                width - 40
+            ) {
+
+                opacity =
+                    Math.max(
+                        0,
+                        (
+                            width -
+                            characterX +
+                            80
+                        ) /
+                        120
+                    ) *
+                    0.82;
+
+            }
+
+
+            ctx.fillStyle =
+                `rgba(
+                    24,
+                    88,
+                    61,
+                    ${opacity}
+                )`;
+
+
+            ctx.fillText(
+                character,
+                characterX,
+                stream.y
+            );
+
+        }
+
+
+        ctx.restore();
+
+
+        /*
+         * Remove the stream after
+         * the complete word leaves
+         * the screen.
+         */
+
+        if (
+            stream.x >
+            width + 40
+        ) {
+
+            dataStream =
+                null;
+
+        }
+
+    }
+
+
+    /* =====================================================
+       CURSOR WAVES
+       ===================================================== */
+
+    function drawWaves() {
+
+        for (
+            let i =
+                waves.length - 1;
+
+            i >= 0;
+
+            i--
+        ) {
+
+            const wave =
+                waves[i];
+
+
+            wave.radius +=
+                4;
+
+
+            wave.opacity *=
+                0.94;
+
+
+            ctx.beginPath();
+
+
+            ctx.arc(
+                wave.x,
+                wave.y,
+                wave.radius,
+                0,
+                Math.PI * 2
+            );
+
+
+            ctx.strokeStyle =
+                `rgba(
+                    97,
+                    180,
+                    135,
+                    ${wave.opacity}
+                )`;
+
+
+            ctx.lineWidth =
+                1;
+
+
+            ctx.stroke();
+
+
+            if (
+                wave.opacity <
+                0.02
+            ) {
+
+                waves.splice(
+                    i,
+                    1
+                );
+
+            }
+
+        }
+
+    }
+
+
+    /* =====================================================
+       TRUST SCANS
+       ===================================================== */
+
+    function drawTrustScans() {
+
+        /* -----------------------------------------
+           SCAN RINGS
+           ----------------------------------------- */
+
+        for (
+            let i =
+                trustScans.length - 1;
+
+            i >= 0;
+
+            i--
+        ) {
+
+            const scan =
+                trustScans[i];
+
+
+            scan.radius +=
+                3.5;
+
+
+            scan.opacity *=
+                0.94;
+
+
+            ctx.beginPath();
+
+
+            ctx.arc(
+                scan.x,
+                scan.y,
+                scan.radius,
+                0,
+                Math.PI * 2
+            );
+
+
+            ctx.strokeStyle =
+                `rgba(
+                    97,
+                    180,
+                    135,
+                    ${scan.opacity}
+                )`;
+
+
+            ctx.lineWidth =
+                1.2;
+
+
+            ctx.stroke();
+
+
+            /* Inner ring */
+
+            ctx.beginPath();
+
+
+            ctx.arc(
+                scan.x,
+                scan.y,
+                scan.radius *
+                0.45,
+                0,
+                Math.PI * 2
+            );
+
+
+            ctx.strokeStyle =
+                `rgba(
+                    24,
+                    88,
+                    61,
+                    ${scan.opacity *
+                    0.5}
+                )`;
+
+
+            ctx.lineWidth =
+                0.7;
+
+
+            ctx.stroke();
+
+
+            if (
+                scan.opacity <
+                0.02
+            ) {
+
+                trustScans.splice(
+                    i,
+                    1
+                );
+
+            }
+
+        }
+
+
+        /* -----------------------------------------
+           SCAN SYMBOLS
+           ----------------------------------------- */
+
+        for (
+            let i =
+                scanSymbols.length - 1;
+
+            i >= 0;
+
+            i--
+        ) {
+
+            const item =
+                scanSymbols[i];
+
+
+            item.life -=
+                0.012;
+
+
+            item.x +=
+                (
+                    item.targetX -
+                    item.x
+                ) *
+                0.08;
+
+
+            item.y +=
+                (
+                    item.targetY -
+                    item.y
+                ) *
+                0.08;
+
+
+            ctx.save();
+
+
+            ctx.font =
+                `600 ${item.size}px Arial`;
+
+
+            ctx.textAlign =
+                "center";
+
+
+            ctx.textBaseline =
+                "middle";
+
+
+            ctx.shadowBlur =
+                10;
+
+
+            ctx.shadowColor =
+                "rgba(97, 180, 135, 0.4)";
+
+
+            ctx.fillStyle =
+                `rgba(
+                    24,
+                    88,
+                    61,
+                    ${Math.max(
+                        item.life,
+                        0
+                    ) *
+                    0.85}
+                )`;
+
+
+            ctx.fillText(
+                item.symbol,
+                item.x,
+                item.y
+            );
+
+
+            ctx.restore();
+
+
+            if (
+                item.life <= 0
+            ) {
+
+                scanSymbols.splice(
+                    i,
+                    1
+                );
+
+            }
+
+        }
+
+    }
+
+
+    /* =====================================================
+       CLICK SHOCKWAVES
+       ===================================================== */
+
+    function drawShockwaves() {
+
+        for (
+            let i =
+                shockwaves.length - 1;
+
+            i >= 0;
+
+            i--
+        ) {
+
+            const wave =
+                shockwaves[i];
+
+
+            wave.radius +=
+                6;
+
+
+            wave.opacity *=
+                0.93;
+
+
+            ctx.beginPath();
+
+
+            ctx.arc(
+                wave.x,
+                wave.y,
+                wave.radius,
+                0,
+                Math.PI * 2
+            );
+
+
+            ctx.strokeStyle =
+                `rgba(
+                    24,
+                    88,
+                    61,
+                    ${wave.opacity}
+                )`;
+
+
+            ctx.lineWidth =
+                1.5;
+
+
+            ctx.stroke();
+
+
+            if (
+                wave.opacity <
+                0.02
+            ) {
+
+                shockwaves.splice(
+                    i,
+                    1
+                );
+
+            }
+
+        }
+
+    }
+
+
+    /* =====================================================
+       PARTICLES
+       ===================================================== */
+
+    function drawParticles() {
+
+        for (
+            let i =
+                particles.length - 1;
+
+            i >= 0;
+
+            i--
+        ) {
+
+            const particle =
+                particles[i];
+
+
+            particle.x +=
+                particle.vx;
+
+            particle.y +=
+                particle.vy;
+
+
+            particle.life -=
+                0.018;
+
+
+            particle.vy *=
+                0.98;
+
+
+            /* Tiny particles */
+
+            if (
+                particle.text === ""
+            ) {
+
+                ctx.beginPath();
+
+
+                ctx.arc(
+                    particle.x,
+                    particle.y,
+                    particle.size,
+                    0,
+                    Math.PI * 2
+                );
+
+
+                ctx.fillStyle =
+                    `rgba(
+                        97,
+                        180,
+                        135,
+                        ${particle.life *
+                        0.35}
+                    )`;
+
+
+                ctx.fill();
+
+            }
+
+
+            /* ₹ / ✓ / ↕ */
+
+            else {
+
+                ctx.save();
+
+
+                ctx.font =
+                    `600 ${particle.size}px Arial`;
+
+
+                ctx.textAlign =
+                    "center";
+
+
+                ctx.textBaseline =
+                    "middle";
+
+
+                ctx.shadowBlur =
+                    8;
+
+
+                ctx.shadowColor =
+                    "rgba(97, 180, 135, 0.3)";
+
+
+                ctx.fillStyle =
+                    `rgba(
+                        24,
+                        88,
+                        61,
+                        ${particle.life *
+                        0.7}
+                    )`;
+
+
+                ctx.fillText(
+                    particle.text,
+                    particle.x,
+                    particle.y
+                );
+
+
+                ctx.restore();
+
+            }
+
+
+            if (
+                particle.life <= 0
+            ) {
+
+                particles.splice(
+                    i,
+                    1
+                );
+
+            }
+
+        }
+
+    }
+
+
+    /* =====================================================
+       MAIN ANIMATION
+       ===================================================== */
+
+    function animate() {
+
+        ctx.clearRect(
+            0,
+            0,
+            width,
+            height
+        );
+
+
+        /*
+         * Smooth cursor velocity decay.
+         */
+
+        mouse.vx *=
+            0.72;
+
+        mouse.vy *=
+            0.72;
+
+        mouse.speed *=
+            0.90;
+
+
+        /*
+         * Rendering order.
+         *
+         * NO NETWORK LINES.
+         * ONLY DOTS + EFFECTS.
+         */
+
+        drawDots();
+
+        drawDataStream();
+
+        drawWaves();
+
+        drawTrustScans();
+
+        drawShockwaves();
+
+        drawParticles();
+
+
+        requestAnimationFrame(
+            animate
+        );
+
+    }
+
+
+    /* =====================================================
+       START
+       ===================================================== */
+
+    window.addEventListener(
+        "resize",
+        resize
+    );
+
+
+    resize();
+
+
+    /*
+     * Start one complete
+     * "TrustCart" word every
+     * few seconds.
+     */
+
+    dataStreamTimer =
+        setInterval(
+            function () {
+
+                createDataStream();
+
+            },
+            5000
+        );
+
+
+    /*
+     * Start immediately.
+     */
+
+    setTimeout(
+        function () {
+
+            createDataStream();
+
+        },
+        1200
+    );
+
+
+    animate();
+
+})();
 </script>
+
+
 
 </body>
 

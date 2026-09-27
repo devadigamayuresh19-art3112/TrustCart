@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,65 +12,145 @@
 
 <body>
 
+    <!-- =========================================
+         FULL SCREEN BACKGROUND VIDEO
+         ========================================= -->
+
+    <div class="video-background">
+    <video
+        id="loginBackgroundVideo"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+    >
+        <source
+            src="/assets/videos/login-background.mp4"
+            type="video/mp4"
+        >
+        Your browser does not support HTML5 video.
+    </video>
+</div>
+
+<div class="video-overlay"></div>
+
+
+    <!-- =========================================
+         VIDEO OVERLAY
+         ========================================= -->
+
+    <div class="video-overlay" aria-hidden="true"></div>
+
+
+    <!-- =========================================
+         MOUSE GLOW
+         ========================================= -->
+
     <div class="mouse-glow"></div>
 
-    <div class="login-container">
 
-        <!-- LEFT SIDE -->
-        <div class="login-section">
+    <!-- =========================================
+         LOGIN CONTAINER
+         ========================================= -->
+
+    <main class="login-container">
+
+
+        <!-- =====================================
+             LEFT LOGIN SECTION
+             ===================================== -->
+
+        <section class="login-section">
 
             <div class="brand">
                 TRUST<span>CART</span>
             </div>
 
+
             <div class="login-content">
+
+                <!-- Welcome Badge -->
 
                 <div class="welcome-badge">
                     <span></span>
                     Welcome back
                 </div>
 
+
+                <!-- Heading -->
+
                 <h1>
                     Welcome<br>
                     <strong>Back.</strong>
                 </h1>
 
+
+                <!-- Subtitle -->
+
                 <p class="subtitle">
                     Login to continue your smarter shopping journey.
                 </p>
 
+
+                <!-- =================================
+                     LOGIN FORM
+                     ================================= -->
+
                 <form id="loginForm">
+
+                    <!-- Email -->
 
                     <div class="input-group">
 
-                        <label for="email">Email Address</label>
+                        <label for="email">
+                            Email Address
+                        </label>
 
                         <div class="input-wrapper">
-                            <span class="input-icon">✉</span>
+
+                            <span
+                                class="input-icon"
+                                aria-hidden="true"
+                            >
+                                ✉
+                            </span>
 
                             <input
                                 type="email"
                                 id="email"
                                 placeholder="xyz@gmail.com"
+                                autocomplete="email"
                                 required
                             >
+
                         </div>
 
                     </div>
 
 
+                    <!-- Password -->
+
                     <div class="input-group">
 
-                        <label for="password">Password</label>
+                        <label for="password">
+                            Password
+                        </label>
 
                         <div class="input-wrapper">
 
-                            <span class="input-icon">🔒</span>
+                            <span
+                                class="input-icon"
+                                aria-hidden="true"
+                            >
+                                🔒
+                            </span>
 
                             <input
                                 type="password"
                                 id="password"
                                 placeholder="Enter your password"
+                                autocomplete="current-password"
                                 required
                             >
 
@@ -77,6 +158,7 @@
                                 type="button"
                                 class="password-toggle"
                                 id="passwordToggle"
+                                aria-label="Show password"
                             >
                                 👁
                             </button>
@@ -86,32 +168,69 @@
                     </div>
 
 
+                    <!-- Remember / Forgot -->
+
                     <div class="form-options">
 
                         <label class="remember">
-                            <input type="checkbox">
-                            <span>Remember me</span>
+
+                            <input
+                                type="checkbox"
+                                id="rememberMe"
+                            >
+
+                            <span>
+                                Remember me
+                            </span>
+
                         </label>
 
-                        <a href="#" class="forgot">
+
+                        <a
+                            href="#"
+                            class="forgot"
+                        >
                             Forgot Password?
                         </a>
 
                     </div>
 
 
-                    <button type="submit" class="main-btn">
-                        <span>LOGIN</span>
-                        <span class="arrow">→</span>
+                    <!-- Login Button -->
+
+                    <button
+                        type="submit"
+                        class="main-btn"
+                        id="loginButton"
+                    >
+
+                        <span>
+                            LOGIN
+                        </span>
+
+                        <span class="arrow">
+                            →
+                        </span>
+
                     </button>
 
                 </form>
 
 
+                <!-- =================================
+                     DIVIDER
+                     ================================= -->
+
                 <div class="divider">
-                    <span>OR CONTINUE WITH</span>
+                    <span>
+                        OR CONTINUE WITH
+                    </span>
                 </div>
 
+
+                <!-- =================================
+                     SOCIAL BUTTONS
+                     ================================= -->
 
                 <div class="social-buttons">
 
@@ -119,35 +238,59 @@
                         type="button"
                         class="social-btn google-btn"
                     >
-                        <span class="google-icon">G</span>
+
+                        <span class="google-icon">
+                            G
+                        </span>
+
                         Google
+
                     </button>
+
 
                     <button
                         type="button"
                         class="social-btn facebook-btn"
                     >
-                        <span class="facebook-icon">f</span>
+
+                        <span class="facebook-icon">
+                            f
+                        </span>
+
                         Facebook
+
                     </button>
 
                 </div>
 
 
+                <!-- =================================
+                     SIGNUP
+                     ================================= -->
+
                 <p class="account-text">
+
                     Don't have an account?
-                    <a href="signup.html">Create Account</a>
+
+                    <a href="signup.html">
+                        Create Account
+                    </a>
+
                 </p>
 
             </div>
 
-        </div>
+        </section>
 
 
-        <!-- RIGHT SIDE -->
-        <div class="creative-section">
+        <!-- =====================================
+             RIGHT CREATIVE SECTION
+             ===================================== -->
+
+        <section class="creative-section">
 
             <div class="creative-overlay"></div>
+
 
             <div class="creative-content">
 
@@ -155,15 +298,18 @@
                     TC
                 </div>
 
+
                 <p class="small-title">
                     TRUSTCART EXPERIENCE
                 </p>
+
 
                 <h2>
                     Compare.<br>
                     Choose.<br>
                     <span>Trust.</span>
                 </h2>
+
 
                 <p>
                     Make smarter buying decisions with
@@ -172,6 +318,8 @@
                 </p>
 
 
+                <!-- Feature 1 -->
+
                 <div class="feature-card">
 
                     <div class="feature-icon">
@@ -179,14 +327,21 @@
                     </div>
 
                     <div>
-                        <strong>Shop with confidence</strong>
+
+                        <strong>
+                            Shop with confidence
+                        </strong>
+
                         <small>
                             Trusted products & reviews
                         </small>
+
                     </div>
 
                 </div>
 
+
+                <!-- Feature 2 -->
 
                 <div class="feature-card">
 
@@ -195,10 +350,15 @@
                     </div>
 
                     <div>
-                        <strong>Find better prices</strong>
+
+                        <strong>
+                            Find better prices
+                        </strong>
+
                         <small>
                             Compare before you buy
                         </small>
+
                     </div>
 
                 </div>
@@ -206,15 +366,22 @@
             </div>
 
 
+            <!-- Decorative Circles -->
+
             <div class="decor-circle circle-one"></div>
             <div class="decor-circle circle-two"></div>
 
-        </div>
+        </section>
 
-    </div>
+    </main>
 
+
+    <!-- =========================================
+         JAVASCRIPT
+         ========================================= -->
 
     <script src="../JS/login.js"></script>
 
 </body>
 </html>
+

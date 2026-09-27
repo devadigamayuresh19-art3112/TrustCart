@@ -1,0 +1,3462 @@
+from urllib.parse import quote_plus, urlparse, parse_qs, unquote
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import re
+import time
+
+import requests
+from bs4 import BeautifulSoup
+
+try:
+    from ..fetchers.generic import GenericProductFetcher
+except ImportError:  # supports running from the backend directory
+    from fetchers.generic import GenericProductFetcher
+
+
+class ProductDiscovery:
+
+    def __init__(self):
+
+        # ====================================================
+        # HTTP HEADERS
+        # ====================================================
+
+        self.headers = {
+            "User-Agent": (
+                "Mozilla/5.0 "
+                "(X11; Linux x86_64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/131.0 Safari/537.36"
+            ),
+            "Accept-Language": "en-IN,en;q=0.9",
+            "Accept": (
+                "text/html,application/xhtml+xml,"
+                "application/xml;q=0.9,image/avif,"
+                "image/webp,*/*;q=0.8"
+            ),
+            "Referer": "https://www.google.com/"
+        }
+
+        # ====================================================
+        # MARKETPLACES
+        # ====================================================
+
+        # Croma and Reliance Digital are temporarily disabled.
+
+        self.marketplaces = {
+            "Flipkart": self._flipkart_search,
+            "Amazon": self._amazon_search
+        }
+
+        # ====================================================
+        # PERFORMANCE SETTINGS
+        # ====================================================
+
+        # Temporarily use only 2 candidates per marketplace.
+        self.max_candidates_per_marketplace = 3
+        self.search_result_limit = 8
+
+        # Faster network timeouts.
+        self.http_timeout = 6
+
+        # Browser is fallback only.
+        self.browser_timeout = 8000
+        self.detail_browser_timeout = 8000
+
+        # Short browser waits.
+        self.browser_initial_wait = 600
+        self.browser_scroll_wait = 300
+        self.amazon_detail_wait = 600
+
+        # Maximum number of full product pages fetched
+        # simultaneously.
+        self.detail_workers = 2
+
+    # ========================================================
+    # MAIN DISCOVERY
+    # ========================================================
+
+    def discover(self, canonical_product):
+
+        total_start = time.perf_counter()
+
+        search_query = canonical_product.get(
+            "search_query"
+        )
+
+        if not search_query:
+
+            return {
+                "success": False,
+                "error": "No search query available",
+                "search_query": None,
+                "candidate_count": 0,
+                "candidates": []
+            }
+
+        candidates = []
+
+        source_marketplace = self._marketplace_from_url(
+            canonical_product.get("source_url")
+        )
+        marketplaces = {
+            marketplace: search_function
+            for marketplace, search_function in self.marketplaces.items()
+            if marketplace != source_marketplace
+        }
+        category = str(canonical_product.get("category") or "").lower()
+        category_terms = {
+            "headphone": "Bluetooth Headphones",
+            "powerbank": "Power Bank",
+            "power_bank": "Power Bank",
+            "laptop": "Laptop",
+            "mobile": "Smartphone",
+            "smartwatch": "Smartwatch",
+        }
+                # ====================================================
+        # QUERY VARIANTS
+        # ====================================================
+
+        query_variants = [search_query]
+
+        source_marketplace = self._marketplace_from_url(
+            canonical_product.get("source_url")
+        )
+
+        category = str(
+            canonical_product.get("category") or ""
+        ).lower()
+
+        category_terms = {
+            "headphone": "Bluetooth Headphones",
+            "powerbank": "Power Bank",
+            "power_bank": "Power Bank",
+            "laptop": "Laptop",
+            "mobile": "Smartphone",
+            "smartwatch": "Smartwatch",
+        }
+
+        category_term = category_terms.get(category)
+
+        # ----------------------------------------------------
+        # AMAZON SOURCE ONLY
+        # ----------------------------------------------------
+        # These extra queries are intentionally enabled only
+        # when Amazon is the source. This protects the existing
+        # Flipkart -> Amazon discovery behavior.
+        # ----------------------------------------------------
+
+        if source_marketplace == "Amazon":
+
+            if category_term and not self._query_contains_terms(
+                search_query,
+                category_term
+            ):
+                query_variants.append(
+                    f"{search_query} {category_term}".strip()
+                )
+
+            if category == "headphone":
+                bluetooth_query = (
+                    f"{search_query} Bluetooth"
+                )
+
+                if bluetooth_query not in query_variants:
+                    query_variants.append(
+                        bluetooth_query
+                    )
+
+            brand = str(
+                canonical_product.get("brand") or ""
+            ).strip()
+
+            model = str(
+                canonical_product.get("model") or ""
+            ).strip()
+
+            if brand and model:
+
+                brand_model_query = (
+                    f"{brand} {model}"
+                ).strip()
+
+                if brand_model_query not in query_variants:
+                    query_variants.append(
+                        brand_model_query
+                    )
+
+                if category_term:
+
+                    brand_model_category_query = (
+                        f"{brand} {model} {category_term}"
+                    ).strip()
+
+                    if (
+                        brand_model_category_query
+                        not in query_variants
+                    ):
+                        query_variants.append(
+                            brand_model_category_query
+                        )
+
+        print(
+            "[DISCOVERY] Source marketplace:",
+            source_marketplace
+        )
+
+        print(
+            "[DISCOVERY] Query variants:"
+        )
+
+        for i, query in enumerate(
+            query_variants,
+            start=1
+        ):
+            print(
+                f"  {i}. {query}"
+            )
+
+        # ====================================================
+        # PARALLEL MARKETPLACE SEARCH
+        # ====================================================
+
+        with ThreadPoolExecutor(
+            max_workers=max(1, len(marketplaces))
+        ) as executor:
+
+            futures = {}
+
+            for marketplace, search_function in (
+                marketplaces.items()
+            ):
+
+                future = executor.submit(
+                    self._discover_marketplace,
+                    marketplace,
+                    search_function,
+                    search_query,
+                    query_variants,
+                    canonical_product
+                )
+
+                futures[future] = marketplace
+
+            for future in as_completed(futures):
+
+                marketplace = futures[future]
+
+                try:
+
+                    marketplace_candidates = (
+                        future.result()
+                    )
+
+                    candidates.extend(
+                        marketplace_candidates
+                    )
+
+                    print(
+                        f"\n{marketplace}: "
+                        f"{len(marketplace_candidates)} "
+                        "candidates returned."
+                    )
+
+                except Exception as e:
+
+                    print(
+                        f"\n{marketplace} discovery failed:",
+                        e
+                    )
+
+        # ====================================================
+        # REMOVE DUPLICATES
+        # ====================================================
+
+        candidates = self._remove_duplicate_candidates(
+            candidates
+        )
+
+        total_time = (
+            time.perf_counter()
+            - total_start
+        )
+
+        print("\n========================================")
+        print("DISCOVERY COMPLETE")
+        print(
+            "Total candidates:",
+            len(candidates)
+        )
+        print(
+            f"Discovery time: {total_time:.2f} seconds"
+        )
+        print("========================================\n")
+
+        return {
+            "success": True,
+            "search_query": search_query,
+            "candidate_count": len(candidates),
+            "candidates": candidates
+        }
+
+    def _marketplace_from_url(self, url):
+        host = str(url or "").lower()
+        if "amazon." in host:
+            return "Amazon"
+        if "flipkart.com" in host or "fkrt.it" in host:
+            return "Flipkart"
+        return None
+
+    def _query_contains_terms(self, query, terms):
+        query_tokens = set(re.findall(r"[a-z0-9]+", str(query).lower()))
+        term_tokens = set(re.findall(r"[a-z0-9]+", str(terms).lower()))
+        return term_tokens.issubset(query_tokens)
+
+    # ========================================================
+    # SINGLE MARKETPLACE DISCOVERY
+    # ========================================================
+
+    def _discover_marketplace(
+        self,
+        marketplace,
+        search_function,
+        search_query,
+        query_variants=None,
+        canonical_product=None
+    ):
+
+        started = time.perf_counter()
+
+        print(
+            f"\n[{marketplace}] Starting discovery..."
+        )
+
+        try:
+
+            variants = query_variants or [search_query]
+
+            source_marketplace = self._marketplace_from_url(
+                (canonical_product or {}).get("source_url")
+            )
+
+            amazon_source = (
+                source_marketplace == "Amazon"
+            )
+
+            results = []
+
+            # ------------------------------------------------
+            # IMPORTANT:
+            # Amazon -> Flipkart gets the improved discovery.
+            #
+            # Flipkart -> Amazon keeps the old behavior.
+            # ------------------------------------------------
+
+            if amazon_source and marketplace == "Flipkart":
+
+                variants_to_use = variants[:5]
+
+            else:
+
+                variants_to_use = variants[:4]
+
+            for index, query in enumerate(
+                variants_to_use
+            ):
+
+                search_url = search_function(
+                    query
+                )
+
+                print(
+                    f"\n[{marketplace}] "
+                    f"Search query {index + 1}: "
+                    f"{query}"
+                )
+
+                print(
+                    f"[{marketplace}] "
+                    f"Search URL: "
+                    f"{search_url}"
+                )
+
+                page_results = (
+                    self._fetch_search_results(
+                        marketplace,
+                        search_url
+                    )
+                )
+
+                print(
+                    f"[{marketplace}] "
+                    f"Raw candidates for "
+                    f"'{query}': "
+                    f"{len(page_results)}"
+                )
+
+                for raw_candidate in page_results:
+
+                    print(
+                        f"[{marketplace}] RAW | "
+                        f"{raw_candidate.get('name')} | "
+                        f"{raw_candidate.get('product_url')}"
+                    )
+
+                results.extend(
+                    page_results
+                )
+
+                prepared = (
+                    self._prepare_search_candidates(
+                        results
+                    )
+                )
+
+                # ------------------------------------------------
+                # AMAZON -> FLIPKART:
+                # DO NOT aggressively reject search-card models.
+                # ------------------------------------------------
+
+                if amazon_source and marketplace == "Flipkart":
+
+                    prioritized = (
+                        self._prioritize_amazon_to_flipkart_candidates(
+                            prepared,
+                            canonical_product
+                        )
+                    )
+
+                    print(
+                        f"[Flipkart] "
+                        f"Amazon-source candidates "
+                        f"kept after relaxed filtering: "
+                        f"{len(prioritized)}"
+                    )
+
+                    # Once we have enough candidates, stop searching.
+                    if len(prioritized) >= (
+                        self.max_candidates_per_marketplace
+                    ):
+                        results = prioritized
+                        break
+
+                else:
+
+                    # ------------------------------------------------
+                    # EXISTING BEHAVIOR
+                    # ------------------------------------------------
+
+                    prioritized, discarded = (
+                        self._prioritize_candidates(
+                            prepared,
+                            canonical_product
+                        )
+                    )
+
+                    if discarded:
+
+                        for candidate in discarded:
+
+                            print(
+                                f"[{marketplace}] "
+                                "DISCARDED before detail fetch | "
+                                f"{candidate.get('name')} | "
+                                f"model={candidate.get('model')}"
+                            )
+
+                    if self._has_exact_model(
+                        prioritized,
+                        canonical_product
+                    ):
+
+                        results = prioritized
+                        break
+
+            # ------------------------------------------------
+            # FINAL CANDIDATE SELECTION
+            # ------------------------------------------------
+
+            prepared = (
+                self._prepare_search_candidates(
+                    results
+                )
+            )
+
+            if amazon_source and marketplace == "Flipkart":
+
+                results = (
+                    self._prioritize_amazon_to_flipkart_candidates(
+                        prepared,
+                        canonical_product
+                    )
+                )
+
+            else:
+
+                results = (
+                    self._prioritize_candidates(
+                        prepared,
+                        canonical_product
+                    )[0]
+                )
+
+            print(
+                f"[{marketplace}] "
+                f"{len(results)} "
+                "search candidates found."
+            )
+
+            if not results:
+
+                print(
+                    f"[{marketplace}] "
+                    "No search candidates."
+                )
+
+                return []
+
+            # =================================================
+            # CURRENT WORKING DETAIL FETCHING
+            # =================================================
+
+            results = (
+                self._prepare_search_candidates(
+                    results
+                )
+            )
+
+            detailed_results = (
+                self._fetch_candidate_details(
+                    results
+                )
+            )
+
+            elapsed = (
+                time.perf_counter()
+                - started
+            )
+
+            print(
+                f"[{marketplace}] "
+                f"Finished in "
+                f"{elapsed:.2f} seconds."
+            )
+
+            return detailed_results
+
+        except Exception as e:
+
+            print(
+                f"[{marketplace}] "
+                "Discovery error:",
+                e
+            )
+
+            return []
+    # ========================================================
+    # PREPARE SEARCH CANDIDATES
+    # ========================================================
+
+    def _prepare_search_candidates(
+        self,
+        candidates
+    ):
+
+        for candidate in candidates:
+
+            name = candidate.get(
+                "name"
+            )
+
+            # ------------------------------------------------
+            # MODEL
+            # ------------------------------------------------
+
+            if not candidate.get("model"):
+
+                model = (
+                    self._extract_model_from_name(
+                        name
+                    )
+                )
+
+                if model:
+
+                    candidate["model"] = model
+
+            # ------------------------------------------------
+            # CATEGORY
+            # ------------------------------------------------
+
+            if not candidate.get("category"):
+
+                candidate["category"] = (
+                    self._infer_category(
+                        name
+                    )
+                )
+
+            # ------------------------------------------------
+            # BRAND
+            # ------------------------------------------------
+
+            if not candidate.get("brand"):
+
+                brand = (
+                    self._extract_brand_from_name(
+                        name
+                    )
+                )
+
+                if brand:
+
+                    candidate["brand"] = brand
+
+        return candidates
+
+    def _candidate_model_key(self, candidate):
+        model = candidate.get("model")
+        if model:
+            return self._normalize_identity(model)
+        return self._normalize_identity(
+            self._extract_model_from_name(candidate.get("name"))
+        )
+
+    def _normalize_identity(self, value):
+        return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+    def _model_matches_target(self, candidate_model, target_model):
+        """Return True when a candidate model contains the target model core.
+
+        Marketplace search cards often append specifications to the model,
+        for example:
+            target:    "Studio Evo"
+            candidate: "Studio Evo 70hrs"
+
+        We accept exact matches and candidates whose normalized model starts
+        with the complete target model tokens. This keeps clearly different
+        models such as "Studio Pro" or "Studio Classic" excluded.
+        """
+        candidate_model = self._normalize_identity(candidate_model)
+        target_model = self._normalize_identity(target_model)
+
+        if not candidate_model or not target_model:
+            return False
+
+        if candidate_model == target_model:
+            return True
+
+        candidate_tokens = candidate_model.split()
+        target_tokens = target_model.split()
+
+        return (
+            len(candidate_tokens) > len(target_tokens)
+            and candidate_tokens[:len(target_tokens)] == target_tokens
+        )
+
+    def _prioritize_amazon_to_flipkart_candidates(
+        self,
+        candidates,
+        canonical_product
+    ):
+        """
+        Relaxed candidate selection used ONLY for:
+
+            Amazon source -> Flipkart discovery
+
+        Search-result titles are noisy on Flipkart, so the model
+        extracted from the search card must NOT be treated as the
+        final product identity.
+
+        The actual Flipkart product page is fetched afterwards and
+        the existing product matcher performs the strict identity
+        check.
+        """
+
+        if not candidates:
+            return []
+
+        target_brand = self._normalize_identity(
+            (canonical_product or {}).get("brand")
+        )
+
+        target_model = self._normalize_identity(
+            (canonical_product or {}).get("model")
+        )
+
+        target_category = self._normalize_identity(
+            (canonical_product or {}).get("category")
+        )
+
+        kept = []
+
+        accessory_words = {
+            "case",
+            "cover",
+            "cushion",
+            "cushions",
+            "replacement",
+            "earpad",
+            "earpads",
+            "stand",
+            "holder",
+            "cable",
+            "adapter",
+            "protective",
+            "storage"
+        }
+
+        for candidate in candidates:
+
+            name = self._normalize_identity(
+                candidate.get("name")
+            )
+
+            if not name:
+                continue
+
+            name_tokens = set(
+                name.split()
+            )
+
+            # ------------------------------------------------
+            # Reject obvious accessories.
+            # ------------------------------------------------
+
+            if name_tokens.intersection(
+                accessory_words
+            ):
+                print(
+                    "[Flipkart] "
+                    "Accessory candidate rejected | "
+                    f"{candidate.get('name')}"
+                )
+                continue
+
+            candidate_brand = self._normalize_identity(
+                candidate.get("brand")
+            )
+
+            # ------------------------------------------------
+            # Brand mismatch is still useful protection.
+            # ------------------------------------------------
+
+            if (
+                target_brand
+                and candidate_brand
+                and candidate_brand != target_brand
+            ):
+                print(
+                    "[Flipkart] "
+                    "Brand mismatch rejected | "
+                    f"target={target_brand} | "
+                    f"candidate={candidate_brand}"
+                )
+                continue
+
+            # ------------------------------------------------
+            # Identity priority
+            # ------------------------------------------------
+
+            priority = 0
+
+            candidate_model = (
+                self._candidate_model_key(
+                    candidate
+                )
+            )
+
+            if candidate_model:
+
+                if self._model_matches_target(
+                    candidate_model,
+                    target_model
+                ):
+                    priority = 4
+
+                else:
+                    # IMPORTANT:
+                    #
+                    # Do NOT discard it.
+                    #
+                    # Flipkart search cards frequently produce
+                    # incomplete/wrong model extraction.
+                    #
+                    # The actual product page will be checked later.
+                    priority = 1
+
+            # Exact brand + model appearing in title gets
+            # additional priority.
+            if (
+                target_brand
+                and target_brand in name
+            ):
+                priority += 1
+
+            if (
+                target_model
+                and target_model in name
+            ):
+                priority += 3
+
+            # Category match is only a ranking signal.
+            if (
+                target_category
+                and target_category in name
+            ):
+                priority += 1
+
+            candidate["_identity_priority"] = priority
+
+            kept.append(
+                candidate
+            )
+
+        # ------------------------------------------------
+        # Best candidates first.
+        # ------------------------------------------------
+
+        kept.sort(
+            key=lambda candidate: (
+                candidate.get(
+                    "_identity_priority",
+                    0
+                ),
+                bool(candidate.get("price")),
+            ),
+            reverse=True
+        )
+
+        # Keep only a small number so performance remains fast.
+        return kept[
+            :self.max_candidates_per_marketplace
+        ]
+
+
+    def _prioritize_candidates(self, candidates, canonical_product):
+        """Drop obvious model mismatches before expensive detail requests.
+
+        Candidates without a model remain eligible because Amazon often
+        renders only the brand in its search card; their detail page can still
+        provide the complete title. Explicit mismatches are safe to discard.
+        """
+        if not canonical_product:
+            return candidates[:self.max_candidates_per_marketplace], []
+
+        target_model = self._normalize_identity(
+            canonical_product.get("model")
+        )
+        if not target_model:
+            return candidates[:self.max_candidates_per_marketplace], []
+
+        kept = []
+        discarded = []
+        accessory_words = {
+            "case", "cover", "cushion", "cushions", "replacement",
+            "earpad", "earpads", "stand", "holder", "cable", "adapter",
+            "protective", "storage"
+        }
+        target_brand = self._normalize_identity(
+            canonical_product.get("brand")
+        )
+        for candidate in candidates:
+            candidate_name = self._normalize_identity(candidate.get("name"))
+            if any(word in candidate_name.split() for word in accessory_words):
+                discarded.append(candidate)
+                continue
+
+            candidate_brand = self._normalize_identity(candidate.get("brand"))
+            if target_brand and candidate_brand and candidate_brand != target_brand:
+                discarded.append(candidate)
+                continue
+
+            candidate_model = self._candidate_model_key(candidate)
+
+            if candidate_model and not self._model_matches_target(
+                candidate_model,
+                target_model
+            ):
+                discarded.append(candidate)
+                continue
+
+            candidate["_identity_priority"] = 2 if candidate_model else 0
+            kept.append(candidate)
+
+        kept.sort(
+            key=lambda candidate: (
+                candidate.get("_identity_priority", 0),
+                bool(candidate.get("price")),
+            ),
+            reverse=True,
+        )
+        return kept[:self.max_candidates_per_marketplace], discarded
+
+    def _has_exact_model(self, candidates, canonical_product):
+        target_model = self._normalize_identity(
+            (canonical_product or {}).get("model")
+        )
+        return bool(target_model and any(
+            self._model_matches_target(
+                self._candidate_model_key(candidate),
+                target_model
+            )
+            for candidate in candidates
+        ))
+
+    # ========================================================
+    # FETCH SEARCH RESULTS
+    # ========================================================
+
+    def _fetch_search_results(
+        self,
+        marketplace,
+        search_url
+    ):
+
+        try:
+
+            response = requests.get(
+                search_url,
+                headers=self.headers,
+                timeout=self.http_timeout
+            )
+
+            print(
+                f"{marketplace} requests status:",
+                response.status_code
+            )
+
+            # ------------------------------------------------
+            # REQUEST SUCCESS
+            # ------------------------------------------------
+
+            if response.status_code == 200:
+
+                soup = BeautifulSoup(
+                    response.text,
+                    "html.parser"
+                )
+
+                results = self._parse_marketplace(
+                    marketplace,
+                    soup
+                )
+
+                if results:
+
+                    print(
+                        f"{marketplace}: "
+                        "Search page parsed using requests."
+                    )
+
+                    return results[:self.search_result_limit]
+
+                print(
+                    f"{marketplace}: "
+                    "Parser found no product candidates."
+                )
+
+            else:
+
+                print(
+                    f"{marketplace}: "
+                    f"Requests returned HTTP "
+                    f"{response.status_code}."
+                )
+
+        except requests.exceptions.RequestException as e:
+
+            print(
+                f"{marketplace} requests failed:",
+                e
+            )
+
+        except Exception as e:
+
+            print(
+                f"{marketplace} requests parsing failed:",
+                e
+            )
+
+        # ====================================================
+        # PLAYWRIGHT FALLBACK
+        # ====================================================
+
+        print(
+            f"{marketplace}: "
+            "Trying Playwright browser..."
+        )
+
+        return self._fetch_search_with_browser(
+            marketplace,
+            search_url
+        )
+
+    # ========================================================
+    # PLAYWRIGHT SEARCH
+    # ========================================================
+
+    def _fetch_search_with_browser(
+        self,
+        marketplace,
+        search_url
+    ):
+
+        started = time.perf_counter()
+
+        try:
+
+            from playwright.sync_api import sync_playwright
+
+        except ImportError:
+
+            print(
+                "Playwright is not installed."
+            )
+
+            return []
+
+        browser = None
+
+        try:
+
+            with sync_playwright() as p:
+
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox"
+                    ]
+                )
+
+                context = browser.new_context(
+
+                    user_agent=(
+                        "Mozilla/5.0 "
+                        "(X11; Linux x86_64) "
+                        "AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) "
+                        "Chrome/131.0 Safari/537.36"
+                    ),
+
+                    locale="en-IN",
+
+                    viewport={
+                        "width": 1366,
+                        "height": 768
+                    },
+
+                    extra_http_headers={
+                        "Accept-Language":
+                            "en-IN,en;q=0.9"
+                    }
+                )
+
+                page = context.new_page()
+
+                print(
+                    f"{marketplace}: "
+                    "Opening search page in browser..."
+                )
+
+                try:
+
+                    response = page.goto(
+                        search_url,
+                        wait_until="commit",
+                        timeout=self.browser_timeout
+                    )
+
+                    if response:
+
+                        print(
+                            f"{marketplace} browser status:",
+                            response.status
+                        )
+
+                    try:
+                        page.wait_for_selector(
+                            "[data-component-type='s-search-result'], div[data-asin], a[href*='/p/'], .s-result-item",
+                            timeout=min(self.browser_initial_wait, 2500)
+                        )
+                    except Exception:
+                        page.wait_for_timeout(
+                            self.browser_initial_wait
+                        )
+
+                except Exception as e:
+
+                    print(
+                        f"{marketplace}: "
+                        "Browser navigation warning:",
+                        e
+                    )
+                    page.wait_for_timeout(
+                        self.browser_initial_wait
+                    )
+
+                html = page.content()
+
+                soup = BeautifulSoup(
+                    html,
+                    "html.parser"
+                )
+
+                results = self._parse_marketplace(
+                    marketplace,
+                    soup
+                )
+
+                # ------------------------------------------------
+                # SHORT SCROLL ONLY IF NECESSARY
+                # ------------------------------------------------
+
+                if not results:
+
+                    try:
+
+                        page.evaluate(
+                            """
+                            if (document.body) {
+                                window.scrollTo(
+                                    0,
+                                    document.body.scrollHeight
+                                );
+                            }
+                            """
+                        )
+
+                        page.wait_for_timeout(
+                            self.browser_scroll_wait
+                        )
+
+                        html = page.content()
+
+                        soup = BeautifulSoup(
+                            html,
+                            "html.parser"
+                        )
+
+                        results = self._parse_marketplace(
+                            marketplace,
+                            soup
+                        )
+
+                    except Exception as e:
+
+                        print(
+                            f"{marketplace}: "
+                            "Scroll warning:",
+                            e
+                        )
+
+                print(
+                    f"{marketplace}: "
+                    f"Playwright found "
+                    f"{len(results)} candidates."
+                )
+
+                browser.close()
+                browser = None
+
+            elapsed = (
+                time.perf_counter()
+                - started
+            )
+
+            print(
+                f"{marketplace}: "
+                f"Browser search completed in "
+                f"{elapsed:.2f}s."
+            )
+
+            return results[:self.search_result_limit]
+
+        except Exception as e:
+
+            print(
+                f"{marketplace} Playwright search failed:",
+                e
+            )
+
+            return []
+
+        finally:
+
+            try:
+
+                if browser:
+
+                    browser.close()
+
+            except Exception:
+
+                pass
+
+    # ========================================================
+    # MARKETPLACE PARSER ROUTER
+    # ========================================================
+
+    def _parse_marketplace(
+        self,
+        marketplace,
+        soup
+    ):
+
+        if marketplace == "Flipkart":
+
+            return self._parse_flipkart(
+                soup
+            )
+
+        if marketplace == "Amazon":
+
+            return self._parse_amazon(
+                soup
+            )
+
+        # Kept for future re-enable.
+
+        if marketplace == "Croma":
+
+            return self._parse_croma(
+                soup
+            )
+
+        if marketplace == "Reliance Digital":
+
+            return self._parse_reliance(
+                soup
+            )
+
+        return []
+
+    # ========================================================
+    # PARALLEL PRODUCT DETAIL FETCHING
+    # ========================================================
+
+    def _fetch_candidate_details(
+        self,
+        candidates
+    ):
+
+        if not candidates:
+
+            return []
+
+        candidates = candidates[
+            :self.max_candidates_per_marketplace
+        ]
+
+        # ====================================================
+        # DETERMINE WHICH PRODUCTS REALLY NEED DETAILS
+        # ====================================================
+
+        needs_detail = []
+        ready_candidates = []
+
+        for candidate in candidates:
+
+            if self._needs_full_details(
+                candidate
+            ):
+
+                needs_detail.append(
+                    candidate
+                )
+
+            else:
+
+                ready_candidates.append(
+                    candidate
+                )
+
+        print(
+            "\nSearch-page ready candidates:",
+            len(ready_candidates)
+        )
+
+        print(
+            "Candidates needing full page:",
+            len(needs_detail)
+        )
+
+        # ====================================================
+        # NOTHING NEEDS DETAIL
+        # ====================================================
+
+        if not needs_detail:
+
+            print(
+                "Using search-page data directly."
+            )
+
+            return ready_candidates
+
+        # ====================================================
+        # FETCH ONLY REQUIRED DETAILS
+        # ====================================================
+
+        print(
+            "\nFetching details for "
+            f"{len(needs_detail)} candidates..."
+        )
+
+        detailed_candidates = []
+
+        def fetch_one(candidate):
+
+            started = time.perf_counter()
+
+            marketplace = candidate.get(
+                "marketplace",
+                "Unknown"
+            )
+
+            product_url = candidate.get(
+                "product_url"
+            )
+
+            if not product_url:
+
+                return None
+
+            try:
+
+                print(
+                    f"\n[{marketplace}] "
+                    "Fetching full details:"
+                )
+
+                print(
+                    candidate.get(
+                        "name"
+                    )
+                )
+
+                # Separate fetcher per worker.
+                fetcher = GenericProductFetcher()
+
+                product = fetcher.fetch(
+                    product_url
+                )
+
+                if not product:
+
+                    product = {}
+
+                # =================================================
+                # AMAZON FALLBACK
+                # =================================================
+
+                if marketplace == "Amazon":
+
+                    if self._amazon_details_missing(
+                        product
+                    ):
+
+                        print(
+                            "Amazon: Generic fetch "
+                            "returned incomplete details."
+                        )
+
+                        # Browser fallback only when necessary.
+                        browser_product = (
+                            self._fetch_amazon_product_details(
+                                product_url
+                            )
+                        )
+
+                        product = (
+                            self._merge_product_data(
+                                product,
+                                browser_product
+                            )
+                        )
+
+                # =================================================
+                # MERGE ONLY AVAILABLE VALUES
+                # =================================================
+
+                self._merge_candidate_data(
+                    candidate,
+                    product
+                )
+
+                # =================================================
+                # CLEAN BRAND
+                # =================================================
+
+                if candidate.get("brand"):
+
+                    candidate["brand"] = (
+                        self._clean_brand(
+                            candidate.get("brand")
+                        )
+                    )
+
+                # =================================================
+                # MODEL
+                # =================================================
+
+                if not candidate.get("model"):
+
+                    model = (
+                        self._extract_model_from_name(
+                            candidate.get("name")
+                        )
+                    )
+
+                    if model:
+
+                        candidate["model"] = model
+
+                # =================================================
+                # CATEGORY
+                # =================================================
+
+                if not candidate.get("category"):
+
+                    candidate["category"] = (
+                        self._infer_category(
+                            candidate.get("name")
+                        )
+                    )
+
+                # =================================================
+                # AMAZON URL
+                # =================================================
+
+                if marketplace == "Amazon":
+
+                    candidate["product_url"] = (
+                        self._clean_amazon_url(
+                            candidate.get(
+                                "product_url"
+                            )
+                        )
+                    )
+
+                elapsed = (
+                    time.perf_counter()
+                    - started
+                )
+
+                print(
+                    f"{marketplace} detail completed "
+                    f"in {elapsed:.2f}s"
+                )
+
+                return candidate
+
+            except Exception as e:
+
+                elapsed = (
+                    time.perf_counter()
+                    - started
+                )
+
+                print(
+                    f"{marketplace} detail failed "
+                    f"after {elapsed:.2f}s:",
+                    e
+                )
+
+                return candidate
+
+        worker_count = min(
+            self.detail_workers,
+            len(needs_detail)
+        )
+
+        with ThreadPoolExecutor(
+            max_workers=worker_count
+        ) as executor:
+
+            futures = [
+                executor.submit(
+                    fetch_one,
+                    candidate
+                )
+                for candidate in needs_detail
+            ]
+
+            for future in as_completed(
+                futures
+            ):
+
+                try:
+
+                    result = future.result()
+
+                    if result:
+
+                        detailed_candidates.append(
+                            result
+                        )
+
+                except Exception as e:
+
+                    print(
+                        "Parallel detail error:",
+                        e
+                    )
+
+        # ====================================================
+        # COMBINE SEARCH-READY + FULL DETAILS
+        # ====================================================
+
+        final_candidates = (
+            ready_candidates
+            + detailed_candidates
+        )
+
+        print(
+            "\nCandidate processing complete:",
+            len(final_candidates)
+        )
+
+        return final_candidates
+
+    # ========================================================
+    # CHECK WHETHER FULL DETAILS ARE REQUIRED
+    # ========================================================
+
+    def _needs_full_details(
+        self,
+        candidate
+    ):
+
+        # Search result already contains enough information.
+        #
+        # We need:
+        #   price
+        #   rating
+        #   review count
+        #   brand
+        #   model
+        #   category
+        #
+        # Seller can remain unavailable because marketplace
+        # trust logic already handles seller information.
+
+        # Search-card prices are not authoritative. Flipkart in
+        # particular can expose MRP/offer/EMI values in the same card.
+        # Always fetch the actual product page before comparison so the
+        # live selling price is used. Amazon is also refreshed here for
+        # consistency.
+        marketplace = candidate.get("marketplace")
+
+        if marketplace in {"Flipkart", "Amazon"}:
+            return True
+
+        required = [
+
+            candidate.get("price"),
+            candidate.get("rating"),
+            candidate.get("review_count"),
+            candidate.get("brand"),
+            candidate.get("model"),
+            candidate.get("category")
+
+        ]
+
+        missing = sum(
+            1
+            for value in required
+            if value is None
+        )
+
+        return missing >= 2
+
+    # ========================================================
+    # MERGE PRODUCT DATA
+    # ========================================================
+
+    def _merge_candidate_data(
+        self,
+        candidate,
+        product
+    ):
+
+        if not product:
+
+            return
+
+        fields = [
+
+            "name",
+            "brand",
+            "model",
+            "category",
+            "price",
+            "mrp",
+            "currency",
+            "rating",
+            "review_count",
+            "image_url",
+            "availability",
+            "seller"
+
+        ]
+
+        for field in fields:
+
+            value = product.get(
+                field
+            )
+
+            if value is not None:
+
+                candidate[field] = value
+
+    # ========================================================
+    # AMAZON DETAILS CHECK
+    # ========================================================
+
+    def _amazon_details_missing(
+        self,
+        product
+    ):
+
+        if not product:
+
+            return True
+
+        important_fields = [
+
+            product.get("brand"),
+            product.get("price"),
+            product.get("rating"),
+            product.get("review_count")
+
+        ]
+
+        missing_count = sum(
+            1
+            for value in important_fields
+            if value is None
+        )
+
+        return missing_count >= 2
+
+    # ========================================================
+    # AMAZON BROWSER DETAIL FETCH
+    # ========================================================
+
+    def _fetch_amazon_product_details(
+        self,
+        product_url
+    ):
+
+        result = {}
+
+        try:
+
+            from playwright.sync_api import sync_playwright
+
+        except ImportError:
+
+            return result
+
+        browser = None
+
+        try:
+
+            with sync_playwright() as p:
+
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox"
+                    ]
+                )
+
+                context = browser.new_context(
+
+                    user_agent=(
+                        "Mozilla/5.0 "
+                        "(X11; Linux x86_64) "
+                        "AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) "
+                        "Chrome/131.0 Safari/537.36"
+                    ),
+
+                    locale="en-IN",
+
+                    viewport={
+                        "width": 1366,
+                        "height": 768
+                    }
+                )
+
+                page = context.new_page()
+
+                try:
+
+                    page.goto(
+                        product_url,
+                        wait_until="commit",
+                        timeout=self.detail_browser_timeout
+                    )
+                    try:
+                        page.wait_for_selector(
+                            "#productTitle, h1, .priceToPay, #corePrice_feature_div",
+                            timeout=min(self.amazon_detail_wait, 2500)
+                        )
+                    except Exception:
+                        page.wait_for_timeout(
+                            self.amazon_detail_wait
+                        )
+
+                except Exception:
+                    page.wait_for_timeout(
+                        self.amazon_detail_wait
+                    )
+
+                # =================================================
+                # TITLE
+                # =================================================
+
+                title = None
+
+                for selector in [
+                    "#productTitle",
+                    "h1"
+                ]:
+
+                    try:
+
+                        element = page.locator(
+                            selector
+                        ).first
+
+                        if element.count() > 0:
+
+                            title = element.inner_text(
+                                timeout=1200
+                            ).strip()
+
+                            if title:
+
+                                break
+
+                    except Exception:
+
+                        continue
+
+                # =================================================
+                # PRICE
+                # =================================================
+
+                price = None
+
+                price_selectors = [
+
+                    ".priceToPay .a-price-whole",
+
+                    ".priceToPay .a-offscreen",
+
+                    "#corePrice_feature_div .apex-core-price-identifier .a-price:not(.a-text-price) .a-offscreen",
+
+                    "#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen",
+
+                    "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen",
+
+                    "#priceblock_dealprice",
+
+                    "#priceblock_ourprice",
+
+                    "#priceblock_saleprice",
+
+                    "#corePriceDisplay_desktop_feature_div .a-price:not(.a-text-price):not(.basisPrice) .a-offscreen"
+
+                ]
+
+                for selector in price_selectors:
+
+                    try:
+
+                        element = page.locator(
+                            selector
+                        ).first
+
+                        if element.count() == 0:
+
+                            continue
+
+                        text = element.inner_text(
+                            timeout=1000
+                        )
+
+                        price = self._extract_price(
+                            text
+                        )
+
+                        if price is not None:
+
+                            break
+
+                    except Exception:
+
+                        continue
+
+                # =================================================
+                # RATING
+                # =================================================
+
+                rating = None
+
+                for selector in [
+
+                    "#acrPopover",
+
+                    "span[data-hook='rating-out-of-text']",
+
+                    "#averageCustomerReviews "
+                    ".a-icon-alt"
+
+                ]:
+
+                    try:
+
+                        element = page.locator(
+                            selector
+                        ).first
+
+                        if element.count() == 0:
+
+                            continue
+
+                        text = (
+                            element.get_attribute(
+                                "title"
+                            )
+                        )
+
+                        if not text:
+
+                            text = element.inner_text(
+                                timeout=1000
+                            )
+
+                        rating = self._extract_rating(
+                            text
+                        )
+
+                        if rating is not None:
+
+                            break
+
+                    except Exception:
+
+                        continue
+
+                # =================================================
+                # REVIEWS
+                # =================================================
+
+                review_count = None
+
+                for selector in [
+
+                    "#acrCustomerReviewText",
+
+                    "span[data-hook='total-review-count']",
+
+                    "#averageCustomerReviews "
+                    "#acrCustomerReviewLink"
+
+                ]:
+
+                    try:
+
+                        element = page.locator(
+                            selector
+                        ).first
+
+                        if element.count() == 0:
+
+                            continue
+
+                        text = element.inner_text(
+                            timeout=1000
+                        )
+
+                        review_count = (
+                            self._extract_review_count(
+                                text
+                            )
+                        )
+
+                        if review_count is not None:
+
+                            break
+
+                    except Exception:
+
+                        continue
+
+                # =================================================
+                # BRAND
+                # =================================================
+
+                brand = None
+
+                for selector in [
+
+                    "#bylineInfo",
+                    "#brand",
+                    "a#bylineInfo"
+
+                ]:
+
+                    try:
+
+                        element = page.locator(
+                            selector
+                        ).first
+
+                        if element.count() == 0:
+
+                            continue
+
+                        text = element.inner_text(
+                            timeout=1000
+                        ).strip()
+
+                        brand = self._clean_brand(
+                            text
+                        )
+
+                        if brand:
+
+                            break
+
+                    except Exception:
+
+                        continue
+
+                # =================================================
+                # IMAGE
+                # =================================================
+
+                image_url = None
+
+                for selector in [
+
+                    "#landingImage",
+                    "#imgBlkFront",
+                    "#mainImage"
+
+                ]:
+
+                    try:
+
+                        element = page.locator(
+                            selector
+                        ).first
+
+                        if element.count() == 0:
+
+                            continue
+
+                        image_url = (
+                            element.get_attribute(
+                                "src"
+                            )
+                        )
+
+                        if image_url:
+
+                            break
+
+                    except Exception:
+
+                        continue
+
+                context.close()
+                browser.close()
+
+                browser = None
+
+                return {
+
+                    "name": title,
+
+                    "brand": brand,
+
+                    "model":
+                        self._extract_model_from_name(
+                            title
+                        ),
+
+                    "category":
+                        self._infer_category(
+                            title
+                        ),
+
+                    "price": price,
+
+                    "mrp": None,
+
+                    "currency": "INR",
+
+                    "rating": rating,
+
+                    "review_count":
+                        review_count,
+
+                    "image_url":
+                        image_url
+
+                }
+
+        except Exception as e:
+
+            print(
+                "Amazon browser detail fetch failed:",
+                e
+            )
+
+            return {}
+
+        finally:
+
+            try:
+
+                if browser:
+
+                    browser.close()
+
+            except Exception:
+
+                pass
+
+    # ========================================================
+    # MERGE PRODUCT DATA
+    # ========================================================
+
+    def _merge_product_data(
+        self,
+        original,
+        fallback
+    ):
+
+        merged = dict(
+            original or {}
+        )
+
+        for key, value in (
+            fallback or {}
+        ).items():
+
+            if value is not None:
+
+                if not merged.get(key):
+
+                    merged[key] = value
+
+        return merged
+
+    # ========================================================
+    # CATEGORY INFERENCE
+    # ========================================================
+
+    def _infer_category(
+        self,
+        name
+    ):
+
+        if not name:
+
+            return None
+
+        text = str(
+            name
+        ).lower()
+
+        if any(
+            word in text
+            for word in [
+                "headphone",
+                "headphones",
+                "headset",
+                "earphone",
+                "earbuds",
+                "neckband"
+            ]
+        ):
+
+            return "headphone"
+
+        if "power" in text and "bank" in text:
+            return "powerbank"
+
+        if any(
+            word in text
+            for word in [
+                "laptop",
+                "notebook"
+            ]
+        ):
+
+            return "laptop"
+
+        if any(
+            word in text
+            for word in [
+                "iphone",
+                "smartphone",
+                "mobile",
+                "galaxy"
+            ]
+        ):
+
+            return "mobile"
+
+        if any(
+            word in text
+            for word in [
+                "smartwatch",
+                "watch"
+            ]
+        ):
+
+            return "smartwatch"
+
+        if any(
+            word in text
+            for word in [
+                "television",
+                "tv"
+            ]
+        ):
+
+            return "television"
+
+        return None
+
+    # ========================================================
+    # BRAND FROM NAME
+    # ========================================================
+
+    def _extract_brand_from_name(
+        self,
+        name
+    ):
+
+        if not name:
+
+            return None
+
+        text = str(
+            name
+        ).strip()
+
+        known_brands = [
+
+            "Portronics",
+            "PTron",
+            "Jabra",
+            "Sony",
+            "Samsung",
+            "Apple",
+            "Boat",
+            "boAt",
+            "JBL",
+            "OnePlus",
+            "Realme",
+            "Noise",
+            "Boult",
+            "HP",
+            "Dell",
+            "Lenovo",
+            "Asus",
+            "Acer",
+            "LG",
+            "Oppo",
+            "Vivo",
+            "Xiaomi",
+            "Redmi"
+
+        ]
+
+        lower_text = text.lower()
+
+        for brand in known_brands:
+
+            if re.search(r"\b" + re.escape(brand.lower()) + r"\b", lower_text):
+
+                return brand
+
+        return None
+
+    # ========================================================
+    # MODEL EXTRACTION
+    # ========================================================
+
+    def _extract_model_from_name(
+        self,
+        name
+    ):
+
+        if not name:
+
+            return None
+
+        text = str(name)
+
+        words = re.findall(r"[A-Za-z0-9-]+", text)
+        stop_words = {
+            "bluetooth", "wireless", "headphone", "headphones", "headset",
+            "earphone", "earphones", "earbuds", "neckband", "with", "for",
+            "power", "bank", "mah", "w", "gb", "tb"
+        }
+        brand = self._extract_brand_from_name(text)
+        if brand:
+            words = [word for word in words if word.lower() != brand.lower()]
+
+        model_words = []
+        numeric_seen = False
+        variant_words = {"pro", "plus", "max", "mini", "ultra", "anc", "v2"}
+        for word in words:
+            lower_word = word.lower()
+            if lower_word in stop_words:
+                break
+            if numeric_seen and lower_word not in variant_words:
+                break
+            model_words.append(word)
+            if re.search(r"\d", word):
+                numeric_seen = True
+            if len(model_words) >= 3:
+                break
+
+        return " ".join(model_words).strip() or None
+
+    # ========================================================
+    # PRICE EXTRACTION
+    # ========================================================
+
+    def _extract_price(
+        self,
+        text
+    ):
+
+        if not text:
+
+            return None
+
+        try:
+
+            cleaned = (
+                str(text)
+                .replace(",", "")
+                .replace("₹", "")
+            )
+
+            match = re.search(
+                r"(\d+(?:\.\d{1,2})?)",
+                cleaned
+            )
+
+            if match:
+
+                value = float(
+                    match.group(1)
+                )
+
+                # Avoid treating years etc. as prices.
+                if value > 0:
+
+                    return value
+
+        except Exception:
+
+            pass
+
+        return None
+
+    # ========================================================
+    # RATING EXTRACTION
+    # ========================================================
+
+    def _extract_rating(
+        self,
+        text
+    ):
+
+        if not text:
+
+            return None
+
+        try:
+
+            match = re.search(
+                r"([0-5](?:\.\d+)?)\s*out\s*of\s*5",
+                str(text),
+                re.IGNORECASE
+            )
+
+            if match:
+
+                return float(
+                    match.group(1)
+                )
+
+            match = re.search(
+                r"([0-5](?:\.\d+)?)",
+                str(text)
+            )
+
+            if match:
+
+                value = float(
+                    match.group(1)
+                )
+
+                if 0 <= value <= 5:
+
+                    return value
+
+        except Exception:
+
+            pass
+
+        return None
+
+    # ========================================================
+    # REVIEW COUNT
+    # ========================================================
+
+    def _extract_review_count(
+        self,
+        text
+    ):
+
+        if not text:
+
+            return None
+
+        try:
+
+            cleaned = str(
+                text
+            ).lower()
+
+            match = re.search(
+                r"([\d,]+(?:\.\d+)?)\s*(k|m)?",
+                cleaned
+            )
+
+            if not match:
+
+                return None
+
+            number = float(
+                match.group(1).replace(
+                    ",",
+                    ""
+                )
+            )
+
+            suffix = match.group(2)
+
+            if suffix == "k":
+
+                number *= 1000
+
+            elif suffix == "m":
+
+                number *= 1000000
+
+            return int(number)
+
+        except Exception:
+
+            return None
+
+    # ========================================================
+    # BRAND CLEANING
+    # ========================================================
+
+    def _clean_brand(
+        self,
+        text
+    ):
+
+        if not text:
+
+            return None
+
+        text = str(
+            text
+        ).strip()
+
+        text = re.sub(
+            r"^Visit the\s+",
+            "",
+            text,
+            flags=re.IGNORECASE
+        )
+
+        text = re.sub(
+            r"\s+Store$",
+            "",
+            text,
+            flags=re.IGNORECASE
+        )
+
+        text = re.sub(
+            r"^Brand:\s*",
+            "",
+            text,
+            flags=re.IGNORECASE
+        )
+
+        return text.strip() or None
+
+    # ========================================================
+    # AMAZON URL CLEANING
+    # ========================================================
+
+    def _clean_amazon_url(
+        self,
+        url
+    ):
+
+        if not url:
+
+            return url
+
+        match = re.search(
+            r"(https?://www\.amazon\.in)?"
+            r"(/dp/[A-Z0-9]{10})",
+            url,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            return (
+                "https://www.amazon.in"
+                + match.group(2)
+            )
+
+        match = re.search(
+            r"(https?://www\.amazon\.in)?"
+            r"(/gp/product/[A-Z0-9]{10})",
+            url,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            return (
+                "https://www.amazon.in"
+                + match.group(2)
+            )
+
+        return (
+            url
+            .split("?")[0]
+            .rstrip("/")
+        )
+
+    # ========================================================
+    # REMOVE DUPLICATES
+    # ========================================================
+
+    def _remove_duplicate_candidates(
+        self,
+        candidates
+    ):
+
+        unique_candidates = []
+
+        seen = set()
+
+        for candidate in candidates:
+
+            url = candidate.get(
+                "product_url"
+            )
+
+            if not url:
+
+                continue
+
+            clean_url = (
+                url
+                .split("?")[0]
+                .rstrip("/")
+            )
+
+            if clean_url in seen:
+
+                continue
+
+            seen.add(
+                clean_url
+            )
+
+            candidate["product_url"] = (
+                clean_url
+            )
+
+            unique_candidates.append(
+                candidate
+            )
+
+        return unique_candidates
+
+    # ========================================================
+    # FLIPKART SEARCH
+    # ========================================================
+
+    def _flipkart_search(
+        self,
+        query
+    ):
+
+        return (
+            "https://www.flipkart.com/search?"
+            f"q={quote_plus(query)}"
+        )
+
+    # ========================================================
+    # AMAZON SEARCH
+    # ========================================================
+
+    def _amazon_search(
+        self,
+        query
+    ):
+
+        return (
+            "https://www.amazon.in/s?"
+            f"k={quote_plus(query)}"
+        )
+
+    # ========================================================
+    # CROMA SEARCH
+    # ========================================================
+    # TEMPORARILY DISABLED
+    # ========================================================
+
+    def _croma_search(
+        self,
+        query
+    ):
+
+        return (
+            "https://www.croma.com/searchB?"
+            f"text={quote_plus(query)}"
+        )
+
+    # ========================================================
+    # RELIANCE DIGITAL SEARCH
+    # ========================================================
+    # TEMPORARILY DISABLED
+    # ========================================================
+
+    def _reliance_search(
+        self,
+        query
+    ):
+
+        return (
+            "https://www.reliancedigital.in/search?"
+            f"query={quote_plus(query)}"
+        )
+
+    # ========================================================
+    # FLIPKART PARSER
+    # ========================================================
+
+    def _parse_flipkart(
+        self,
+        soup
+    ):
+
+        candidates = []
+
+        seen_urls = set()
+
+        for link in soup.select(
+            "a[href]"
+        ):
+
+            href = link.get(
+                "href"
+            )
+
+            text = link.get_text(
+                " ",
+                strip=True
+            )
+
+            if not href or not text:
+
+                continue
+
+            if "/p/" not in href:
+
+                continue
+
+            if text.startswith("₹"):
+
+                continue
+
+            if len(text) < 15:
+
+                continue
+
+            if href.startswith("/"):
+
+                href = (
+                    "https://www.flipkart.com"
+                    + href
+                )
+
+            clean_url = (
+                href
+                .split("&q=")[0]
+            )
+
+            if clean_url in seen_urls:
+
+                continue
+
+            seen_urls.add(
+                clean_url
+            )
+
+            # =================================================
+            # TRY TO FIND PRODUCT CARD
+            # =================================================
+
+            card = (
+                link.find_parent(
+                    "div"
+                )
+            )
+
+            card_text = ""
+
+            if card:
+
+                card_text = card.get_text(
+                    " ",
+                    strip=True
+                )
+
+            price = None
+            rating = None
+            review_count = None
+            image_url = None
+
+            # -------------------------------------------------
+            # PRICE
+            # -------------------------------------------------
+
+            price_match = re.search(
+                r"₹\s*([\d,]+(?:\.\d+)?)",
+                card_text
+            )
+
+            if price_match:
+
+                price = self._extract_price(
+                    price_match.group(1)
+                )
+
+            # -------------------------------------------------
+            # RATING
+            # -------------------------------------------------
+
+            rating_match = re.search(
+                r"\b([0-5](?:\.\d+)?)\s*[★⭐]",
+                card_text
+            )
+
+            if rating_match:
+
+                rating = float(
+                    rating_match.group(1)
+                )
+
+            # -------------------------------------------------
+            # REVIEW COUNT
+            # -------------------------------------------------
+
+            review_match = re.search(
+                r"\(?\s*([\d,]+)\s*(?:Ratings?|Reviews?)",
+                card_text,
+                re.IGNORECASE
+            )
+
+            if review_match:
+
+                review_count = (
+                    self._extract_review_count(
+                        review_match.group(1)
+                    )
+                )
+
+            # -------------------------------------------------
+            # IMAGE
+            # -------------------------------------------------
+
+            if card:
+
+                image = card.select_one(
+                    "img"
+                )
+
+                if image:
+
+                    image_url = (
+                        image.get("src")
+                        or
+                        image.get("data-src")
+                    )
+
+            candidates.append({
+
+                "marketplace":
+                    "Flipkart",
+
+                "name":
+                    text[:500],
+
+                "product_url":
+                    clean_url,
+
+                "price":
+                    price,
+
+                "rating":
+                    rating,
+
+                "review_count":
+                    review_count,
+
+                "image_url":
+                    image_url
+
+            })
+
+            if len(candidates) >= self.search_result_limit:
+
+                break
+
+        return candidates
+
+    # ========================================================
+    # AMAZON PARSER
+    # ========================================================
+
+    def _extract_amazon_product_url(self, href, asin=None):
+        """Unwrap direct, sponsored, and ASIN-only Amazon result links."""
+        hrefs = []
+        if href:
+            hrefs.append(str(href))
+            parsed = urlparse(str(href))
+            for wrapped in parse_qs(parsed.query).get("url", []):
+                hrefs.append(unquote(wrapped))
+
+        for value in hrefs:
+            match = re.search(
+                r"/(?:dp|gp/product)/([A-Z0-9]{10})",
+                value,
+                re.IGNORECASE,
+            )
+            if match:
+                return "https://www.amazon.in/dp/" + match.group(1).upper()
+
+        if asin and re.fullmatch(r"[A-Z0-9]{10}", str(asin), re.I):
+            return "https://www.amazon.in/dp/" + str(asin).upper()
+        return None
+
+    def _parse_amazon(
+        self,
+        soup
+    ):
+
+        candidates = []
+
+        seen_urls = set()
+
+        products = soup.select(
+            "[data-component-type='s-search-result']"
+        )
+
+        if not products:
+
+            products = soup.select(
+                "div[data-asin]"
+            )
+
+        for product in products:
+
+            title = product.select_one(
+                "h2"
+            )
+
+            link = None
+
+            if title:
+                link = title.select_one("a")
+            if not link:
+                link = product.select_one("a[href]")
+
+            asin = product.get("data-asin")
+            href = link.get("href") if link else None
+            clean_url = self._extract_amazon_product_url(href, asin)
+            if not clean_url:
+                for possible_link in product.select("a[href]"):
+                    clean_url = self._extract_amazon_product_url(
+                        possible_link.get("href"), asin
+                    )
+                    if clean_url:
+                        link = possible_link
+                        break
+            if not clean_url:
+                continue
+
+            name = None
+
+            if title:
+                name = title.get_text(" ", strip=True)
+
+            # Amazon often puts only the brand in h2 and the actual title in
+            # another link in the same card. Prefer a meaningful card link.
+            if not name or len(name) < 12 or name.lower() in {
+                "boat", "goboult", "portronics", "sony", "noise"
+            }:
+                for possible_link in product.select("a[href]"):
+                    possible_text = possible_link.get_text(" ", strip=True)
+                    if (
+                        len(possible_text) >= 20
+                        and "sponsored" not in possible_text.lower()
+                        and not re.search(r"\b(?:stars?|ratings?|reviews?)\b", possible_text, re.I)
+                    ):
+                        name = possible_text
+                        break
+
+            if not name:
+                name = link.get_text(" ", strip=True)
+
+            if clean_url in seen_urls:
+
+                continue
+
+            seen_urls.add(
+                clean_url
+            )
+
+            # =================================================
+            # SEARCH CARD DATA
+            # =================================================
+
+            price = None
+            rating = None
+            review_count = None
+            image_url = None
+
+            # -------------------------------------------------
+            # PRICE
+            # -------------------------------------------------
+
+            price_element = product.select_one(
+                ".a-price .a-offscreen"
+            )
+
+            if price_element:
+
+                price = self._extract_price(
+                    price_element.get_text(
+                        " ",
+                        strip=True
+                    )
+                )
+
+            if price is None:
+
+                price_element = product.select_one(
+                    ".a-price-whole"
+                )
+
+                if price_element:
+
+                    price = self._extract_price(
+                        price_element.get_text(
+                            " ",
+                            strip=True
+                        )
+                    )
+
+            # -------------------------------------------------
+            # RATING
+            # -------------------------------------------------
+
+            rating_element = product.select_one(
+                ".a-icon-alt"
+            )
+
+            if rating_element:
+
+                rating = self._extract_rating(
+                    rating_element.get_text(
+                        " ",
+                        strip=True
+                    )
+                )
+
+            # -------------------------------------------------
+            # REVIEWS
+            # -------------------------------------------------
+
+            review_element = product.select_one(
+                "a[href*='#customerReviews']"
+            )
+
+            if review_element:
+
+                review_count = (
+                    self._extract_review_count(
+                        review_element.get_text(
+                            " ",
+                            strip=True
+                        )
+                    )
+                )
+
+            # -------------------------------------------------
+            # IMAGE
+            # -------------------------------------------------
+
+            image = product.select_one(
+                "img.s-image"
+            )
+
+            if image:
+
+                image_url = (
+                    image.get("src")
+                    or
+                    image.get("data-src")
+                )
+
+            # -------------------------------------------------
+            # BRAND
+            # -------------------------------------------------
+
+            brand = (
+                self._extract_brand_from_name(
+                    name
+                )
+            )
+
+            # -------------------------------------------------
+            # MODEL
+            # -------------------------------------------------
+
+            model = (
+                self._extract_model_from_name(
+                    name
+                )
+            )
+
+            # -------------------------------------------------
+            # CATEGORY
+            # -------------------------------------------------
+
+            category = (
+                self._infer_category(
+                    name
+                )
+            )
+
+            candidates.append({
+
+                "marketplace":
+                    "Amazon",
+
+                "name":
+                    name[:500]
+                    if name
+                    else None,
+
+                "product_url":
+                    clean_url,
+
+                "price":
+                    price,
+
+                "rating":
+                    rating,
+
+                "review_count":
+                    review_count,
+
+                "image_url":
+                    image_url,
+
+                "brand":
+                    brand,
+
+                "model":
+                    model,
+
+                "category":
+                    category
+
+            })
+
+            if len(candidates) >= self.search_result_limit:
+
+                break
+
+        return candidates
+
+    # ========================================================
+    # CROMA PARSER
+    # ========================================================
+    # KEPT FOR FUTURE RE-ENABLEMENT
+    # ========================================================
+
+    def _parse_croma(
+        self,
+        soup
+    ):
+
+        candidates = []
+
+        seen_urls = set()
+
+        for link in soup.select(
+            "a[href]"
+        ):
+
+            href = link.get(
+                "href",
+                ""
+            ).strip()
+
+            text = link.get_text(
+                " ",
+                strip=True
+            )
+
+            if not href:
+
+                continue
+
+            href_lower = href.lower()
+
+            is_product = (
+                "/p/" in href_lower
+                or "/product/" in href_lower
+                or "/products/" in href_lower
+            )
+
+            if not is_product:
+
+                continue
+
+            if href.startswith("/"):
+
+                href = (
+                    "https://www.croma.com"
+                    + href
+                )
+
+            if not href.startswith("http"):
+
+                continue
+
+            clean_url = (
+                href
+                .split("?")[0]
+                .rstrip("/")
+            )
+
+            excluded = [
+                "/search",
+                "/category",
+                "/collections",
+                "/offers",
+                "/store",
+                "/brand"
+            ]
+
+            if any(
+                item in clean_url.lower()
+                for item in excluded
+            ):
+
+                continue
+
+            if clean_url in seen_urls:
+
+                continue
+
+            if (
+                not text
+                or len(text) < 10
+            ):
+
+                parent = link.find_parent()
+
+                if parent:
+
+                    text = parent.get_text(
+                        " ",
+                        strip=True
+                    )
+
+            if (
+                not text
+                or len(text) < 10
+            ):
+
+                text = link.get(
+                    "aria-label",
+                    ""
+                ).strip()
+
+            if (
+                not text
+                or len(text) < 10
+            ):
+
+                continue
+
+            seen_urls.add(
+                clean_url
+            )
+
+            candidates.append({
+
+                "marketplace":
+                    "Croma",
+
+                "name":
+                    text[:500],
+
+                "product_url":
+                    clean_url
+
+            })
+
+            if len(candidates) >= (
+                self.max_candidates_per_marketplace
+            ):
+
+                break
+
+        return candidates
+
+    # ========================================================
+    # RELIANCE DIGITAL PARSER
+    # ========================================================
+    # KEPT FOR FUTURE RE-ENABLEMENT
+    # ========================================================
+
+    def _parse_reliance(
+        self,
+        soup
+    ):
+
+        candidates = []
+
+        seen_urls = set()
+
+        # ====================================================
+        # NORMAL LINKS
+        # ====================================================
+
+        for link in soup.select(
+            "a[href]"
+        ):
+
+            href = link.get(
+                "href",
+                ""
+            ).strip()
+
+            text = link.get_text(
+                " ",
+                strip=True
+            )
+
+            if not href:
+
+                continue
+
+            href_lower = href.lower()
+
+            is_product = (
+
+                "/product/" in href_lower
+
+                or "/products/" in href_lower
+
+                or "/p/" in href_lower
+
+                or "/buy/" in href_lower
+
+                or "product" in href_lower
+
+            )
+
+            if not is_product:
+
+                continue
+
+            if href.startswith("/"):
+
+                href = (
+                    "https://www.reliancedigital.in"
+                    + href
+                )
+
+            if not href.startswith("http"):
+
+                continue
+
+            clean_url = (
+                href
+                .split("?")[0]
+                .rstrip("/")
+            )
+
+            excluded = [
+
+                "/search",
+                "/category",
+                "/collections",
+                "/offers",
+                "/store",
+                "/brand",
+                "/blog",
+                "/support",
+                "/login",
+                "/cart",
+                "/help"
+
+            ]
+
+            if any(
+                item in clean_url.lower()
+                for item in excluded
+            ):
+
+                continue
+
+            if clean_url in seen_urls:
+
+                continue
+
+            if (
+                not text
+                or len(text) < 10
+            ):
+
+                parent = link.find_parent()
+
+                if parent:
+
+                    text = parent.get_text(
+                        " ",
+                        strip=True
+                    )
+
+            if (
+                not text
+                or len(text) < 10
+            ):
+
+                text = link.get(
+                    "aria-label",
+                    ""
+                ).strip()
+
+            if (
+                not text
+                or len(text) < 10
+            ):
+
+                text = link.get(
+                    "title",
+                    ""
+                ).strip()
+
+            if (
+                not text
+                or len(text) < 10
+            ):
+
+                continue
+
+            bad_text = {
+
+                "login",
+                "sign in",
+                "add to cart",
+                "view all",
+                "shop now",
+                "buy now",
+                "see all",
+                "compare"
+
+            }
+
+            if text.lower() in bad_text:
+
+                continue
+
+            seen_urls.add(
+                clean_url
+            )
+
+            candidates.append({
+
+                "marketplace":
+                    "Reliance Digital",
+
+                "name":
+                    text[:500],
+
+                "product_url":
+                    clean_url
+
+            })
+
+            if len(candidates) >= (
+                self.max_candidates_per_marketplace
+            ):
+
+                break
+
+        # ====================================================
+        # DATA ATTRIBUTE FALLBACK
+        # ====================================================
+
+        if len(candidates) < (
+            self.max_candidates_per_marketplace
+        ):
+
+            elements = soup.select(
+                "[data-product-url], "
+                "[data-url], "
+                "[data-href], "
+                "[data-product-link]"
+            )
+
+            for element in elements:
+
+                href = (
+
+                    element.get(
+                        "data-product-url"
+                    )
+
+                    or element.get(
+                        "data-product-link"
+                    )
+
+                    or element.get(
+                        "data-url"
+                    )
+
+                    or element.get(
+                        "data-href"
+                    )
+
+                )
+
+                if not href:
+
+                    continue
+
+                if href.startswith("/"):
+
+                    href = (
+                        "https://www.reliancedigital.in"
+                        + href
+                    )
+
+                if not href.startswith("http"):
+
+                    continue
+
+                clean_url = (
+                    href
+                    .split("?")[0]
+                    .rstrip("/")
+                )
+
+                if clean_url in seen_urls:
+
+                    continue
+
+                text = element.get_text(
+                    " ",
+                    strip=True
+                )
+
+                if (
+                    not text
+                    or len(text) < 10
+                ):
+
+                    text = (
+                        element.get(
+                            "aria-label",
+                            ""
+                        )
+                        or
+                        element.get(
+                            "title",
+                            ""
+                        )
+                    ).strip()
+
+                if (
+                    not text
+                    or len(text) < 10
+                ):
+
+                    continue
+
+                seen_urls.add(
+                    clean_url
+                )
+
+                candidates.append({
+
+                    "marketplace":
+                        "Reliance Digital",
+
+                    "name":
+                        text[:500],
+
+                    "product_url":
+                        clean_url
+
+                })
+
+                if len(candidates) >= (
+                    self.max_candidates_per_marketplace
+                ):
+
+                    break
+
+        return candidates

@@ -1,0 +1,469 @@
+@import "tailwindcss";
+
+/* =========================================================
+   TRUSTCART 3D INTRO
+   ========================================================= */
+
+:root {
+  --trustcart-bg: #050b12;
+  --trustcart-blue: #19bfff;
+  --trustcart-teal: #16e0c2;
+  --trustcart-purple: #8b5cf6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  background: var(--trustcart-bg);
+  color: white;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+/* =========================================================
+   FULL SCREEN EXPERIENCE
+   ========================================================= */
+
+.trustcart-intro {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100svh;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      rgba(25, 191, 255, 0.08),
+      transparent 32%
+    ),
+    #050b12;
+}
+
+/* =========================================================
+   THREE.JS CANVAS
+   ========================================================= */
+
+.trustcart-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.trustcart-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* =========================================================
+   CENTER CONTENT
+   ========================================================= */
+
+.trustcart-content {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  pointer-events: none;
+
+  padding: 24px;
+}
+
+/* =========================================================
+   TRUSTCART TITLE
+   ========================================================= */
+
+.trustcart-title {
+  display: flex;
+  gap: 0.05em;
+
+  margin: 0;
+
+  font-size: clamp(
+    4rem,
+    10vw,
+    8.5rem
+  );
+
+  line-height: 0.9;
+
+  font-weight: 900;
+
+  letter-spacing: -0.075em;
+
+  user-select: none;
+
+  background:
+    linear-gradient(
+      100deg,
+      #ffffff 0%,
+      #dffbff 30%,
+      #19bfff 58%,
+      #16e0c2 78%,
+      #8b5cf6 100%
+    );
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+
+  filter:
+    drop-shadow(
+      0 0 18px
+      rgba(25, 191, 255, 0.22)
+    )
+    drop-shadow(
+      0 0 55px
+      rgba(22, 224, 194, 0.1)
+    );
+}
+
+/* =========================================================
+   TAGLINE
+   ========================================================= */
+
+.trustcart-tagline {
+  margin: 22px 0 0;
+
+  max-width: 520px;
+
+  color: rgba(255, 255, 255, 0.72);
+
+  font-size: clamp(
+    0.9rem,
+    1.4vw,
+    1.08rem
+  );
+
+  line-height: 1.6;
+
+  letter-spacing: 0.015em;
+
+  text-shadow:
+    0 2px 18px
+    rgba(0, 0, 0, 0.8);
+}
+
+/* =========================================================
+   LET'S GO BUTTON
+   ========================================================= */
+
+.lets-go-button {
+  pointer-events: auto;
+
+  position: relative;
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 14px;
+
+  margin-top: 34px;
+
+  min-width: 150px;
+
+  padding: 14px 24px;
+
+  border: 1px solid
+    rgba(96, 226, 255, 0.38);
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.12),
+      rgba(255, 255, 255, 0.035)
+    );
+
+  color: white;
+
+  font-size: 0.95rem;
+
+  font-weight: 700;
+
+  letter-spacing: 0.01em;
+
+  cursor: pointer;
+
+  backdrop-filter: blur(18px);
+
+  -webkit-backdrop-filter: blur(18px);
+
+  box-shadow:
+    0 10px 40px
+      rgba(0, 0, 0, 0.35),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.18),
+    0 0 20px
+      rgba(25, 191, 255, 0.12);
+
+  transition:
+    transform 300ms ease,
+    box-shadow 300ms ease,
+    border-color 300ms ease,
+    background 300ms ease;
+}
+
+.lets-go-button::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 1px;
+
+  border-radius: inherit;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0.16),
+      transparent 38%
+    );
+
+  opacity: 0.6;
+}
+
+.lets-go-button:hover {
+  transform:
+    translateY(-2px)
+    scale(1.055);
+
+  border-color:
+    rgba(88, 225, 255, 0.75);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(25, 191, 255, 0.17),
+      rgba(255, 255, 255, 0.06)
+    );
+
+  box-shadow:
+    0 14px 50px
+      rgba(0, 0, 0, 0.4),
+    inset 0 1px 0
+      rgba(255, 255, 255, 0.25),
+    0 0 32px
+      rgba(25, 191, 255, 0.38),
+    0 0 70px
+      rgba(22, 224, 194, 0.12);
+}
+
+.lets-go-button:active {
+  transform:
+    translateY(0)
+    scale(0.97);
+}
+
+.lets-go-button:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.button-arrow {
+  font-size: 1.2rem;
+
+  transition:
+    transform 250ms ease;
+}
+
+.lets-go-button:hover .button-arrow {
+  transform: translateX(4px);
+}
+
+.lets-go-scanning {
+  border-color:
+    rgba(22, 224, 194, 0.8);
+
+  box-shadow:
+    0 0 45px
+      rgba(22, 224, 194, 0.4),
+    inset 0 0 20px
+      rgba(25, 191, 255, 0.1);
+}
+
+/* =========================================================
+   LOADER
+   ========================================================= */
+
+.trustcart-loader {
+  position: absolute;
+
+  z-index: 100;
+
+  inset: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 16px;
+
+  background: #050b12;
+
+  color:
+    rgba(255, 255, 255, 0.5);
+
+  font-size: 0.7rem;
+
+  font-weight: 600;
+
+  letter-spacing: 0.28em;
+
+  text-transform: uppercase;
+
+  pointer-events: none;
+}
+
+.loader-ring {
+  width: 40px;
+  height: 40px;
+
+  border:
+    2px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-top-color:
+    var(--trustcart-blue);
+
+  border-right-color:
+    var(--trustcart-teal);
+
+  border-radius: 50%;
+
+  animation:
+    trustcart-spin 0.9s
+    linear infinite;
+
+  box-shadow:
+    0 0 25px
+      rgba(25, 191, 255, 0.25);
+}
+
+@keyframes trustcart-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================================
+   VIGNETTE
+   ========================================================= */
+
+.trustcart-vignette {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 10;
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      circle at center,
+      transparent 12%,
+      rgba(5, 11, 18, 0.05) 40%,
+      rgba(5, 11, 18, 0.58) 100%
+    );
+}
+
+/* =========================================================
+   SCAN FLASH
+   ========================================================= */
+
+.scan-flash {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 50;
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(25, 191, 255, 0.7),
+      transparent 45%
+    );
+
+  mix-blend-mode: screen;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 640px) {
+  .trustcart-title {
+    font-size: clamp(
+      3.5rem,
+      17vw,
+      5.5rem
+    );
+  }
+
+  .trustcart-tagline {
+    max-width: 320px;
+
+    font-size: 0.88rem;
+  }
+
+  .lets-go-button {
+    margin-top: 28px;
+
+    min-width: 140px;
+
+    padding:
+      13px 21px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
