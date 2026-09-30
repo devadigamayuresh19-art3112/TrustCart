@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -9,7 +8,7 @@ import {
   Sparkles,
   Torus,
 } from "@react-three/drei";
-import { ReactNode, useRef } from "react";
+import { useRef } from "react";
 import * as THREE from "three";
 
 const COLORS = {
@@ -22,140 +21,6 @@ const COLORS = {
   white: "#f5fffb",
 };
 
-/* =========================================================
-   CURSOR INTERACTION
-   ========================================================= */
-
-function InteractiveGroup({
-  position,
-  children,
-  strength = 1,
-  depth = 0.2,
-  reduceMotion = false,
-}: {
-  position: [number, number, number];
-  children: ReactNode;
-  strength?: number;
-  depth?: number;
-  reduceMotion?: boolean;
-}) {
-  const group = useRef<THREE.Group>(null);
-  const { pointer } = useThree();
-
-  useFrame(() => {
-    if (!group.current) return;
-
-    if (reduceMotion) {
-      group.current.position.set(
-        position[0],
-        position[1],
-        position[2]
-      );
-
-      group.current.rotation.set(0, 0, 0);
-      return;
-    }
-
-    const targetX =
-      position[0] +
-      pointer.x * 0.65 * strength;
-
-    const targetY =
-      position[1] +
-      pointer.y * 0.45 * strength;
-
-    const targetZ =
-      position[2] +
-      pointer.x * pointer.y * depth;
-
-    group.current.position.x =
-      THREE.MathUtils.lerp(
-        group.current.position.x,
-        targetX,
-        0.055
-      );
-
-    group.current.position.y =
-      THREE.MathUtils.lerp(
-        group.current.position.y,
-        targetY,
-        0.055
-      );
-
-    group.current.position.z =
-      THREE.MathUtils.lerp(
-        group.current.position.z,
-        targetZ,
-        0.045
-      );
-
-    group.current.rotation.x =
-      THREE.MathUtils.lerp(
-        group.current.rotation.x,
-        -pointer.y * 0.08 * strength,
-        0.05
-      );
-
-    group.current.rotation.y =
-      THREE.MathUtils.lerp(
-        group.current.rotation.y,
-        pointer.x * 0.1 * strength,
-        0.05
-      );
-  });
-
-  return (
-    <group ref={group}>
-      {children}
-    </group>
-  );
-}
-
-/* =========================================================
-   CURSOR LIGHT
-   ========================================================= */
-
-function CursorLight({
-  reduceMotion,
-}: {
-  reduceMotion: boolean;
-}) {
-  const light = useRef<THREE.PointLight>(null);
-  const { pointer } = useThree();
-
-  useFrame(() => {
-    if (!light.current || reduceMotion) return;
-
-    light.current.position.x =
-      THREE.MathUtils.lerp(
-        light.current.position.x,
-        pointer.x * 5,
-        0.06
-      );
-
-    light.current.position.y =
-      THREE.MathUtils.lerp(
-        light.current.position.y,
-        pointer.y * 3,
-        0.06
-      );
-  });
-
-  return (
-    <pointLight
-      ref={light}
-      color={COLORS.greenBright}
-      intensity={8}
-      distance={9}
-    />
-  );
-}
-
-/* =========================================================
-   CAMERA
-   ========================================================= */
-
-/* eslint-disable react-hooks/immutability */
 function CameraController({
   scanning,
   reduceMotion,
@@ -181,33 +46,29 @@ function CameraController({
     const targetY = pointer.y * 0.16;
     const targetZ = scanning ? 5.5 : 8;
 
-    camera.position.x =
-      THREE.MathUtils.lerp(
-        camera.position.x,
-        targetX,
-        0.035
-      );
+    camera.position.x = THREE.MathUtils.lerp(
+      camera.position.x,
+      targetX,
+      0.035
+    );
 
-    camera.position.y =
-      THREE.MathUtils.lerp(
-        camera.position.y,
-        targetY,
-        0.035
-      );
+    camera.position.y = THREE.MathUtils.lerp(
+      camera.position.y,
+      targetY,
+      0.035
+    );
 
-    camera.position.z =
-      THREE.MathUtils.lerp(
-        camera.position.z,
-        targetZ,
-        scanning ? 0.045 : 0.025
-      );
+    camera.position.z = THREE.MathUtils.lerp(
+      camera.position.z,
+      targetZ,
+      scanning ? 0.045 : 0.025
+    );
 
     camera.lookAt(0, 0, 0);
   });
 
   return null;
 }
-/* eslint-enable react-hooks/immutability */
 
 /* =========================================================
    CART
@@ -242,6 +103,7 @@ function ShoppingCart({
       ref={group}
       scale={scanning ? 1.08 : 1}
     >
+      {/* Main basket */}
       <RoundedBox
         args={[3.4, 1.5, 1.65]}
         radius={0.16}
@@ -257,6 +119,7 @@ function ShoppingCart({
         />
       </RoundedBox>
 
+      {/* Basket vertical bars */}
       {[-1.15, -0.58, 0, 0.58, 1.15].map(
         (x) => (
           <mesh
@@ -278,6 +141,7 @@ function ShoppingCart({
         )
       )}
 
+      {/* Basket horizontal bars */}
       {[-0.05, 0.3, 0.65, 1].map((y) => (
         <mesh
           key={`h-${y}`}
@@ -296,6 +160,7 @@ function ShoppingCart({
         </mesh>
       ))}
 
+      {/* Handle support */}
       <mesh
         position={[-1.9, 1.12, 0]}
         rotation={[0, 0, Math.PI / 2]}
@@ -313,6 +178,7 @@ function ShoppingCart({
         />
       </mesh>
 
+      {/* Handle */}
       <mesh
         position={[-1.65, 1.35, 0]}
         rotation={[0, 0, Math.PI / 2]}
@@ -328,6 +194,7 @@ function ShoppingCart({
         />
       </mesh>
 
+      {/* Wheels */}
       {[-1.1, 1.1].map((x) => (
         <Torus
           key={x}
@@ -343,6 +210,7 @@ function ShoppingCart({
         </Torus>
       ))}
 
+      {/* Green scanner strip */}
       <mesh position={[0, -0.29, 0.86]}>
         <boxGeometry
           args={[2.7, 0.035, 0.04]}
@@ -364,11 +232,13 @@ function ShoppingCart({
 
 function PriceTag({
   price,
+  position,
   rotation,
   scanning,
   hovered,
 }: {
   price: string;
+  position: [number, number, number];
   rotation: [number, number, number];
   scanning: boolean;
   hovered: boolean;
@@ -381,11 +251,14 @@ function PriceTag({
     const t = state.clock.elapsedTime;
 
     group.current.position.y =
-      Math.sin(t * 0.8) * 0.11;
+      position[1] +
+      Math.sin(t * 0.8 + position[0]) *
+        0.11;
 
     group.current.rotation.z =
       rotation[2] +
-      Math.sin(t * 0.6) * 0.06;
+      Math.sin(t * 0.6 + position[1]) *
+        0.06;
 
     const targetScale = scanning
       ? 1.25
@@ -406,8 +279,10 @@ function PriceTag({
   return (
     <group
       ref={group}
+      position={position}
       rotation={rotation}
     >
+      {/* Tag */}
       <RoundedBox
         args={[1.4, 0.72, 0.09]}
         radius={0.12}
@@ -422,21 +297,16 @@ function PriceTag({
           metalness={0.5}
           roughness={0.18}
           clearcoat={1}
-          emissive={
-            hovered
-              ? COLORS.green
-              : "#03100c"
-          }
+          emissive={hovered ? COLORS.green : "#03100c"}
           emissiveIntensity={
             hovered ? 0.8 : 0.12
           }
         />
       </RoundedBox>
 
+      {/* Price display */}
       <mesh position={[0, 0, 0.055]}>
-        <planeGeometry
-          args={[1.05, 0.42]}
-        />
+        <planeGeometry args={[1.05, 0.42]} />
 
         <meshBasicMaterial
           color={COLORS.greenBright}
@@ -445,9 +315,8 @@ function PriceTag({
         />
       </mesh>
 
-      <mesh
-        position={[-0.48, 0, 0.07]}
-      >
+      {/* Tag hole */}
+      <mesh position={[-0.48, 0, 0.07]}>
         <sphereGeometry
           args={[0.055, 10, 10]}
         />
@@ -459,15 +328,18 @@ function PriceTag({
         />
       </mesh>
 
+      {/* Price made from simple geometry */}
       <PriceDisplay price={price} />
     </group>
   );
 }
 
-/* =========================================================
-   PRICE DISPLAY
-   ========================================================= */
-
+/*
+ * Lightweight price display.
+ * Uses HTML-like 3D text through canvas-independent
+ * geometry-free placeholder blocks to keep the scene
+ * performant on lower-power hardware.
+ */
 function PriceDisplay({
   price,
 }: {
@@ -511,7 +383,11 @@ function PriceDisplay({
    PRODUCTS
    ========================================================= */
 
-function Phone() {
+function Phone({
+  position,
+}: {
+  position: [number, number, number];
+}) {
   const ref = useRef<THREE.Group>(null);
 
   useFrame((state) => {
@@ -519,15 +395,13 @@ function Phone() {
 
     const t = state.clock.elapsedTime;
 
-    ref.current.rotation.y =
-      t * 0.35;
-
+    ref.current.rotation.y = t * 0.35;
     ref.current.rotation.x =
       Math.sin(t * 0.5) * 0.08;
   });
 
   return (
-    <group ref={ref}>
+    <group ref={ref} position={position}>
       <RoundedBox
         args={[0.65, 1.25, 0.12]}
         radius={0.08}
@@ -556,20 +430,23 @@ function Phone() {
   );
 }
 
-function Headphones() {
+function Headphones({
+  position,
+}: {
+  position: [number, number, number];
+}) {
   const ref = useRef<THREE.Group>(null);
 
   useFrame((state) => {
     if (!ref.current) return;
 
     ref.current.rotation.y =
-      Math.sin(
-        state.clock.elapsedTime * 0.5
-      ) * 0.35;
+      Math.sin(state.clock.elapsedTime * 0.5) *
+      0.35;
   });
 
   return (
-    <group ref={ref}>
+    <group ref={ref} position={position}>
       <Torus
         args={[
           0.48,
@@ -610,7 +487,11 @@ function Headphones() {
   );
 }
 
-function Laptop() {
+function Laptop({
+  position,
+}: {
+  position: [number, number, number];
+}) {
   const ref = useRef<THREE.Group>(null);
 
   useFrame((state) => {
@@ -618,15 +499,15 @@ function Laptop() {
 
     const t = state.clock.elapsedTime;
 
-    ref.current.rotation.y =
-      -t * 0.25;
+    ref.current.rotation.y = -t * 0.25;
 
     ref.current.position.y =
+      position[1] +
       Math.sin(t * 0.7) * 0.08;
   });
 
   return (
-    <group ref={ref}>
+    <group ref={ref} position={position}>
       <RoundedBox
         args={[1.2, 0.7, 0.08]}
         radius={0.05}
@@ -645,9 +526,7 @@ function Laptop() {
         position={[0, 0, 0.05]}
         rotation={[-0.25, 0, 0]}
       >
-        <planeGeometry
-          args={[0.9, 0.48]}
-        />
+        <planeGeometry args={[0.9, 0.48]} />
 
         <meshStandardMaterial
           color="#092d24"
@@ -659,7 +538,11 @@ function Laptop() {
   );
 }
 
-function Shoe() {
+function Shoe({
+  position,
+}: {
+  position: [number, number, number];
+}) {
   const ref = useRef<THREE.Group>(null);
 
   useFrame((state) => {
@@ -675,7 +558,7 @@ function Shoe() {
   });
 
   return (
-    <group ref={ref}>
+    <group ref={ref} position={position}>
       <RoundedBox
         args={[1.2, 0.45, 0.5]}
         radius={0.12}
@@ -689,9 +572,7 @@ function Shoe() {
         />
       </RoundedBox>
 
-      <mesh
-        position={[0.28, 0.05, 0.26]}
-      >
+      <mesh position={[0.28, 0.05, 0.26]}>
         <boxGeometry
           args={[0.45, 0.18, 0.03]}
         />
@@ -731,14 +612,7 @@ function ProductOrbit({
         rotationIntensity={0.2}
         floatIntensity={0.3}
       >
-        <InteractiveGroup
-          position={[-4, 1.7, -1]}
-          strength={1.15}
-          depth={0.45}
-          reduceMotion={reduceMotion}
-        >
-          <Phone />
-        </InteractiveGroup>
+        <Phone position={[-4, 1.7, -1]} />
       </Float>
 
       <Float
@@ -746,14 +620,9 @@ function ProductOrbit({
         rotationIntensity={0.25}
         floatIntensity={0.35}
       >
-        <InteractiveGroup
+        <Headphones
           position={[3.8, 1.5, -0.5]}
-          strength={1.1}
-          depth={0.4}
-          reduceMotion={reduceMotion}
-        >
-          <Headphones />
-        </InteractiveGroup>
+        />
       </Float>
 
       <Float
@@ -761,14 +630,9 @@ function ProductOrbit({
         rotationIntensity={0.2}
         floatIntensity={0.3}
       >
-        <InteractiveGroup
+        <Laptop
           position={[3.7, -1.7, -1]}
-          strength={0.95}
-          depth={0.5}
-          reduceMotion={reduceMotion}
-        >
-          <Laptop />
-        </InteractiveGroup>
+        />
       </Float>
 
       <Float
@@ -776,14 +640,9 @@ function ProductOrbit({
         rotationIntensity={0.3}
         floatIntensity={0.4}
       >
-        <InteractiveGroup
+        <Shoe
           position={[-3.7, -1.6, -0.5]}
-          strength={1.1}
-          depth={0.4}
-          reduceMotion={reduceMotion}
-        >
-          <Shoe />
-        </InteractiveGroup>
+        />
       </Float>
     </group>
   );
@@ -807,9 +666,7 @@ function ScannerRings({
 
     const t = state.clock.elapsedTime;
 
-    group.current.rotation.z =
-      t * 0.08;
-
+    group.current.rotation.z = t * 0.08;
     group.current.rotation.x =
       Math.sin(t * 0.25) * 0.08;
   });
@@ -899,10 +756,7 @@ export default function Scene3D({
         reduceMotion={reduceMotion}
       />
 
-      <CursorLight
-        reduceMotion={reduceMotion}
-      />
-
+      {/* Lighting */}
       <ambientLight intensity={0.5} />
 
       <directionalLight
@@ -931,69 +785,44 @@ export default function Scene3D({
         distance={8}
       />
 
-      {/* Main cart stays centered */}
+      {/* Main hero */}
       <ShoppingCart
         scanning={scanning}
         reduceMotion={reduceMotion}
       />
 
-      {/* Price tags */}
-
-      <InteractiveGroup
+      {/* Price comparison */}
+      <PriceTag
+        price="₹699"
         position={[-3.2, 2.1, -0.5]}
-        strength={0.9}
-        depth={0.4}
-        reduceMotion={reduceMotion}
-      >
-        <PriceTag
-          price="₹699"
-          rotation={[0.05, 0.2, -0.15]}
-          scanning={scanning}
-          hovered={buttonHovered}
-        />
-      </InteractiveGroup>
+        rotation={[0.05, 0.2, -0.15]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
 
-      <InteractiveGroup
+      <PriceTag
+        price="₹749"
         position={[3.2, 1.9, -0.3]}
-        strength={0.9}
-        depth={0.4}
-        reduceMotion={reduceMotion}
-      >
-        <PriceTag
-          price="₹749"
-          rotation={[-0.05, -0.15, 0.18]}
-          scanning={scanning}
-          hovered={buttonHovered}
-        />
-      </InteractiveGroup>
+        rotation={[-0.05, -0.15, 0.18]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
 
-      <InteractiveGroup
+      <PriceTag
+        price="₹679"
         position={[3.4, -1.3, 0]}
-        strength={0.9}
-        depth={0.4}
-        reduceMotion={reduceMotion}
-      >
-        <PriceTag
-          price="₹679"
-          rotation={[0.1, 0.15, -0.2]}
-          scanning={scanning}
-          hovered={buttonHovered}
-        />
-      </InteractiveGroup>
+        rotation={[0.1, 0.15, -0.2]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
 
-      <InteractiveGroup
+      <PriceTag
+        price="₹799"
         position={[-3.3, -1.1, -0.2]}
-        strength={0.9}
-        depth={0.4}
-        reduceMotion={reduceMotion}
-      >
-        <PriceTag
-          price="₹799"
-          rotation={[-0.1, -0.15, 0.2]}
-          scanning={scanning}
-          hovered={buttonHovered}
-        />
-      </InteractiveGroup>
+        rotation={[-0.1, -0.15, 0.2]}
+        scanning={scanning}
+        hovered={buttonHovered}
+      />
 
       <ProductOrbit
         reduceMotion={reduceMotion}
@@ -1004,6 +833,7 @@ export default function Scene3D({
         scanning={scanning}
       />
 
+      {/* Ground shadow */}
       <ContactShadows
         position={[0, -1.15, 0]}
         opacity={0.45}
@@ -1012,6 +842,7 @@ export default function Scene3D({
         far={4}
       />
 
+      {/* Particles */}
       <Sparkles
         count={reduceMotion ? 45 : 110}
         scale={[12, 8, 10]}

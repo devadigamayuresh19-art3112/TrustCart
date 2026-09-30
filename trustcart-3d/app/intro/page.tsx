@@ -11,14 +11,16 @@ export default function IntroPage() {
   const [sceneReady, setSceneReady] = useState(false);
   const [buttonHovered, setButtonHovered] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     );
-
-    setReduceMotion(mediaQuery.matches);
 
     const handleChange = () => {
       setReduceMotion(mediaQuery.matches);

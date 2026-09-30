@@ -805,7 +805,7 @@
 
 })();
 </script>
-```html
+
 <script>
 (function () {
 
@@ -836,16 +836,17 @@
        ===================================================== */
 
     let dots = [];
-
     let particles = [];
-
     let waves = [];
-
     let trustScans = [];
-
     let scanSymbols = [];
-
     let shockwaves = [];
+
+    /*
+     * Every character of TrustCart is now
+     * an independent object.
+     */
+    let dataLetters = [];
 
 
     /* =====================================================
@@ -858,13 +859,14 @@
 
     const clickRadius = 20;
 
+    const dataStreamWord = "TrustCart";
+
 
     /* =====================================================
        GRID
        ===================================================== */
 
     let columns = 0;
-
     let rows = 0;
 
 
@@ -873,7 +875,6 @@
        ===================================================== */
 
     const mouse = {
-
         x: -1000,
         y: -1000,
 
@@ -886,21 +887,39 @@
         speed: 0,
 
         active: false
-
     };
 
 
     /* =====================================================
-       TRUSTCART DATA STREAM
+       TRUSTCART WORD ANIMATION
        ===================================================== */
 
-    const dataStreamWord =
-        "TrustCart";
+    let wordCycle = 0;
 
-    let dataStream =
-        null;
+    let wordFinished = false;
 
-    let dataStreamTimer = null;
+    let wordFinishedTime = 0;
+
+    let wordStarted = false;
+
+
+    /*
+     * Different starting positions for every letter.
+     *
+     * Each number represents the percentage of the
+     * screen height where that letter starts.
+     */
+    const startYPattern = [
+        0.12,
+        0.76,
+        0.28,
+        0.88,
+        0.42,
+        0.68,
+        0.20,
+        0.82,
+        0.35
+    ];
 
 
     /* =====================================================
@@ -948,7 +967,6 @@
 
 
         createDots();
-
     }
 
 
@@ -1010,13 +1028,9 @@
                         Math.random() *
                         Math.PI *
                         2
-
                 });
-
             }
-
         }
-
     }
 
 
@@ -1066,7 +1080,6 @@
                         symbols.length
                     )
                 ]
-
         });
 
 
@@ -1075,9 +1088,7 @@
         ) {
 
             particles.shift();
-
         }
-
     }
 
 
@@ -1119,7 +1130,6 @@
                 1.5,
 
             text: ""
-
         });
 
 
@@ -1128,9 +1138,7 @@
         ) {
 
             particles.shift();
-
         }
-
     }
 
 
@@ -1153,7 +1161,6 @@
 
             opacity:
                 strength
-
         });
 
 
@@ -1162,9 +1169,7 @@
         ) {
 
             waves.shift();
-
         }
-
     }
 
 
@@ -1185,7 +1190,6 @@
             radius: 5,
 
             opacity: 0.9
-
         });
 
 
@@ -1194,7 +1198,6 @@
         ) {
 
             trustScans.shift();
-
         }
 
 
@@ -1242,9 +1245,7 @@
                     life: 1,
 
                     size: 12
-
                 });
-
             }
         );
 
@@ -1280,9 +1281,7 @@
                 x,
                 y
             );
-
         }
-
     }
 
 
@@ -1303,7 +1302,6 @@
             radius: 3,
 
             opacity: 0.8
-
         });
 
 
@@ -1312,9 +1310,7 @@
         ) {
 
             shockwaves.shift();
-
         }
-
     }
 
 
@@ -1335,7 +1331,6 @@
                     e.clientY;
 
                 mouse.active = true;
-
             }
 
 
@@ -1376,8 +1371,7 @@
             ) {
 
                 if (
-                    Math.random() <
-                    0.20
+                    Math.random() < 0.20
                 ) {
 
                     createWave(
@@ -1389,32 +1383,26 @@
                             0.4
                         )
                     );
-
                 }
 
 
                 if (
-                    Math.random() <
-                    0.08
+                    Math.random() < 0.08
                 ) {
 
                     createPriceParticle(
                         mouse.x,
                         mouse.y
                     );
-
                 }
 
 
                 if (
-                    Math.random() <
-                    0.22
+                    Math.random() < 0.22
                 ) {
 
                     createShoppingParticle();
-
                 }
-
             }
 
         },
@@ -1486,7 +1474,6 @@
                     ) {
 
                         continue;
-
                     }
 
 
@@ -1528,18 +1515,15 @@
 
                         closestDot =
                             dot;
-
                     }
-
                 }
-
             }
 
 
             if (
                 closestDot &&
                 closestDistance <
-                    clickRadius
+                clickRadius
             ) {
 
                 createTrustScan(
@@ -1605,14 +1589,10 @@
                                 ) *
                                 force *
                                 2.4;
-
                         }
-
                     }
                 );
-
             }
-
         },
         {
             passive: true
@@ -1643,10 +1623,9 @@
 
                 mouse.vx = 0;
                 mouse.vy = 0;
+
                 mouse.speed = 0;
-
             }
-
         }
     );
 
@@ -1720,7 +1699,6 @@
                         dy *
                         strength *
                         0.0015;
-
                 }
 
 
@@ -1748,7 +1726,6 @@
                    ----------------------------------------- */
 
                 dot.vx *= 0.84;
-
                 dot.vy *= 0.84;
 
 
@@ -1808,7 +1785,6 @@
                         0.19 +
                         strength *
                         0.58;
-
                 }
 
 
@@ -1837,7 +1813,6 @@
                         0.65 +
                         strength *
                         0.3;
-
                 }
 
 
@@ -1870,193 +1845,159 @@
 
             }
         );
-
     }
 
 
     /* =====================================================
-       CREATE TRUSTCART STREAM
+       CREATE ONE TRUSTCART LETTER
        ===================================================== */
 
-    function createDataStream() {
+    function createDataLetter(
+        character,
+        index
+    ) {
 
         /*
-         * Do not create another stream
-         * while one is already travelling.
+         * Calculate the final width of the word.
+         */
+
+       // ==========================================
+// FUTURISTIC VERTICAL RIGHT-SIDE POSITION
+// ==========================================
+
+const letterSpacing = width < 700 ? 30 : 38;
+
+// Keep TrustCart close to the right edge
+const targetX = width - (width < 700 ? 28 : 48);
+
+// Center the vertical word
+const totalHeight =
+    (dataStreamWord.length - 1) * letterSpacing;
+
+const targetStartY =
+    (height - totalHeight) / 2;
+
+const targetY =
+    targetStartY + index * letterSpacing;
+
+        /*
+         * DIFFERENT LEFT-SIDE STARTING POSITION
          *
-         * This keeps the word readable.
+         * This is the important part.
+         *
+         * Every character begins from a
+         * completely different vertical position.
          */
 
-        if (dataStream) return;
+        const startY =
+            height *
+            startYPattern[index];
 
 
         /*
-         * Start slightly outside the
-         * left side of the screen.
+         * Slightly different X positions.
+         *
+         * This makes the entrance feel more natural.
          */
 
-        dataStream = {
+        const startX =
+            -50 -
+            index * 12;
+
+
+        /*
+         * Each letter gets its own speed.
+         */
+
+        const speed =
+            0.018 +
+            Math.random() * 0.004;
+
+
+        dataLetters.push({
+
+            character:
+
+                character,
+
+            index:
+
+                index,
 
             x:
-                -80,
+
+                startX,
 
             y:
-                height *
-                (
-                    0.25 +
-                    Math.random() *
-                    0.50
-                ),
+
+                startY,
+
+            startX:
+
+                startX,
+
+            startY:
+
+                startY,
+
+            targetX:
+
+                targetX,
+
+            targetY:
+
+                targetY,
+
+            progress:
+
+                0,
 
             speed:
-                1.25,
 
-            spacing:
-                17,
+                speed,
 
-            life:
-                1,
+            wobble:
 
-            trail: []
+                Math.random() *
+                Math.PI *
+                2,
 
-        };
+            trail: [],
 
+            arrived:
+
+                false
+        });
     }
 
 
     /* =====================================================
-       DRAW TRUSTCART STREAM
+       START TRUSTCART WORD
        ===================================================== */
 
-    function drawDataStream() {
-
-        if (!dataStream) return;
-
-
-        const stream =
-            dataStream;
-
+    function startDataStream() {
 
         /*
-         * Move the complete word.
+         * Clear previous letters.
          */
 
-        stream.x +=
-            stream.speed;
+        dataLetters = [];
+
+        wordFinished = false;
+
+        wordFinishedTime = 0;
+
+        wordCycle++;
 
 
         /*
-         * Smooth vertical movement.
+         * Create every letter one after another.
          *
-         * This gives the word a subtle
-         * data-flow feeling without
-         * destroying readability.
+         * They DO NOT start together.
+         *
+         * Each one comes from its own
+         * position on the left.
          */
-
-        stream.y +=
-            Math.sin(
-                stream.x *
-                0.012
-            ) *
-            0.10;
-
-
-        /*
-         * Add trail positions.
-         */
-
-        stream.trail.push({
-
-            x: stream.x,
-            y: stream.y
-
-        });
-
-
-        if (
-            stream.trail.length >
-            10
-        ) {
-
-            stream.trail.shift();
-
-        }
-
-
-        /* -----------------------------------------
-           DRAW TRAIL
-           ----------------------------------------- */
-
-        for (
-            let i = 0;
-            i < stream.trail.length;
-            i++
-        ) {
-
-            const point =
-                stream.trail[i];
-
-
-            const trailOpacity =
-                (
-                    i /
-                    stream.trail.length
-                ) *
-                0.22;
-
-
-            ctx.beginPath();
-
-
-            ctx.arc(
-                point.x,
-                point.y,
-                1.1,
-                0,
-                Math.PI * 2
-            );
-
-
-            ctx.fillStyle =
-                `rgba(
-                    97,
-                    180,
-                    135,
-                    ${trailOpacity}
-                )`;
-
-
-            ctx.fill();
-
-        }
-
-
-        /* -----------------------------------------
-           DRAW EACH CHARACTER
-           ----------------------------------------- */
-
-        ctx.save();
-
-
-        ctx.font =
-            "600 14px Arial";
-
-
-        ctx.textAlign =
-            "center";
-
-
-        ctx.textBaseline =
-            "middle";
-
-
-        ctx.shadowBlur =
-            10;
-
-
-        ctx.shadowColor =
-            "rgba(97, 180, 135, 0.55)";
-
 
         for (
             let i = 0;
@@ -2064,104 +2005,397 @@
             i++
         ) {
 
-            /*
-             * Characters are placed
-             * next to each other.
-             */
+            setTimeout(
+                function () {
 
-            const character =
-                dataStreamWord[i];
+                    createDataLetter(
+                        dataStreamWord[i],
+                        i
+                    );
 
-
-            const characterX =
-                stream.x +
-                i *
-                stream.spacing;
-
-
-            /*
-             * Fade the first character
-             * in/out at the edges.
-             */
-
-            let opacity = 0.82;
-
-
-            if (
-                characterX < 40
-            ) {
-
-                opacity =
-                    Math.max(
-                        0,
-                        (
-                            characterX +
-                            80
-                        ) /
-                        120
-                    ) *
-                    0.82;
-
-            }
-
-
-            if (
-                characterX >
-                width - 40
-            ) {
-
-                opacity =
-                    Math.max(
-                        0,
-                        (
-                            width -
-                            characterX +
-                            80
-                        ) /
-                        120
-                    ) *
-                    0.82;
-
-            }
-
-
-            ctx.fillStyle =
-                `rgba(
-                    24,
-                    88,
-                    61,
-                    ${opacity}
-                )`;
-
-
-            ctx.fillText(
-                character,
-                characterX,
-                stream.y
+                },
+                i * 430
             );
-
         }
 
 
-        ctx.restore();
+        wordStarted = true;
+    }
+
+
+    /* =====================================================
+       DRAW TRUSTCART LETTERS
+       ===================================================== */
+
+    function drawDataStream() {
+
+        if (
+            dataLetters.length === 0
+        ) {
+
+            return;
+        }
 
 
         /*
-         * Remove the stream after
-         * the complete word leaves
-         * the screen.
+         * Update every letter independently.
+         */
+
+        for (
+            let i = 0;
+            i < dataLetters.length;
+            i++
+        ) {
+
+            const letter =
+                dataLetters[i];
+
+
+            /*
+             * Move toward target.
+             */
+
+            if (
+                !letter.arrived
+            ) {
+
+                letter.progress +=
+                    letter.speed;
+
+
+                if (
+                    letter.progress >= 1
+                ) {
+
+                    letter.progress = 1;
+
+                    letter.arrived = true;
+                }
+            }
+
+
+            /*
+             * Smooth easing.
+             *
+             * Starts fast and slows down
+             * naturally near the final position.
+             */
+
+            const eased =
+                1 -
+                Math.pow(
+                    1 -
+                    letter.progress,
+                    3
+                );
+
+
+            /*
+             * Horizontal movement.
+             */
+
+            letter.x =
+                letter.startX +
+                (
+                    letter.targetX -
+                    letter.startX
+                ) *
+                eased;
+
+
+            /*
+             * Vertical movement.
+             *
+             * The letter travels from its
+             * unique starting height toward
+             * the common TrustCart baseline.
+             */
+
+            const baseY =
+                letter.startY +
+                (
+                    letter.targetY -
+                    letter.startY
+                ) *
+                eased;
+
+
+            /*
+             * Floating movement is strong
+             * at the beginning and gradually
+             * disappears near the destination.
+             */
+
+            const wobble =
+                Math.sin(
+                    letter.progress *
+                    Math.PI *
+                    4 +
+                    letter.wobble
+                ) *
+                22 *
+                (
+                    1 -
+                    eased
+                );
+
+
+            letter.y =
+                baseY +
+                wobble;
+
+// ==========================================
+// TRUSTCART DIGITAL EFFECTS
+// ==========================================
+
+// Subtle horizontal digital glitch
+const glitch =
+    !letter.arrived
+        ? Math.sin(
+              performance.now() * 0.025 +
+              letter.index * 2.4
+          ) * 1.5
+        : 0;
+
+// Pulse once the letter arrives
+const pulse =
+    letter.arrived
+        ? 1 +
+          Math.sin(
+              performance.now() * 0.003 +
+              letter.index * 0.7
+          ) * 0.035
+        : 1;
+
+// Digital flicker while travelling
+const flicker =
+    !letter.arrived
+        ? 0.85 +
+          Math.random() * 0.15
+        : 1;
+
+letter.x += glitch;
+            /*
+             * Small glowing particle trail.
+             */
+
+            letter.trail.push({
+
+                x:
+                    letter.x,
+
+                y:
+                    letter.y,
+
+                life:
+                    1
+            });
+
+
+            if (
+                letter.trail.length >
+                10
+            ) {
+
+                letter.trail.shift();
+            }
+
+
+            /*
+             * Draw trail.
+             */
+
+            for (
+                let j = 0;
+                j < letter.trail.length;
+                j++
+            ) {
+
+                const point =
+                    letter.trail[j];
+
+
+                const trailOpacity =
+                    (
+                        j /
+                        letter.trail.length
+                    ) *
+                    0.18;
+
+
+                ctx.beginPath();
+
+
+                ctx.arc(
+                    point.x,
+                    point.y,
+                    1.1,
+                    0,
+                    Math.PI * 2
+                );
+
+
+                ctx.fillStyle =
+                    `rgba(
+                        97,
+                        180,
+                        135,
+                        ${trailOpacity}
+                    )`;
+
+
+                ctx.fill();
+            }
+
+
+            /*
+             * Letter opacity.
+             *
+             * Fade slightly while entering
+             * and become fully visible near
+             * the final position.
+             */
+
+           // ==========================================
+// NEON GLOW + DIGITAL FLICKER
+// ==========================================
+
+let opacity =
+    (0.18 + eased * 0.82) * flicker;
+
+let glow =
+    5 +
+    eased * 13;
+
+// Stronger glow immediately after arrival
+if (letter.arrived) {
+    glow +=
+        4 +
+        Math.sin(
+            performance.now() * 0.004 +
+            letter.index
+        ) * 2;
+}
+
+
+            ctx.save();
+
+ctx.font =
+    width < 700
+        ? "600 17px Arial"
+        : "600 21px Arial";
+
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+
+// Neon glow
+ctx.shadowBlur = glow;
+ctx.shadowColor =
+    "rgba(97, 180, 135, 0.85)";
+
+// Slight pulse
+ctx.globalAlpha = opacity * pulse;
+
+// Main TrustCart green
+ctx.fillStyle =
+    "rgba(97, 180, 135, 1)";
+
+ctx.fillText(
+    letter.character,
+    letter.x,
+    letter.y
+);
+// ==========================================
+// DIGITAL SCAN HIGHLIGHT
+// ==========================================
+
+if (letter.arrived) {
+
+    const scan =
+        Math.sin(
+            performance.now() * 0.002 +
+            letter.index * 0.8
+        );
+
+    if (scan > 0.92) {
+
+        ctx.save();
+
+        ctx.globalAlpha = 0.7;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            letter.x - 15,
+            letter.y
+        );
+
+        ctx.lineTo(
+            letter.x + 15,
+            letter.y
+        );
+
+        ctx.strokeStyle =
+            "rgba(97, 180, 135, 0.8)";
+
+        ctx.lineWidth = 1;
+
+        ctx.shadowBlur = 12;
+
+        ctx.shadowColor =
+            "rgba(97, 180, 135, 0.9)";
+
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+ctx.restore();
+        }
+
+
+        /*
+         * Check whether ALL nine characters
+         * have reached their final positions.
+         */
+
+        const allArrived =
+            dataLetters.length ===
+            dataStreamWord.length &&
+            dataLetters.every(
+                function (letter) {
+                    return letter.arrived;
+                }
+            );
+
+
+        if (
+            allArrived &&
+            !wordFinished
+        ) {
+
+            wordFinished =
+                true;
+
+            wordFinishedTime =
+                performance.now();
+        }
+
+
+        /*
+         * Keep "TrustCart" formed for
+         * approximately 2.5 seconds.
          */
 
         if (
-            stream.x >
-            width + 40
+            wordFinished &&
+            performance.now() -
+            wordFinishedTime >
+            2500
         ) {
 
-            dataStream =
-                null;
-
+            startDataStream();
         }
-
     }
 
 
@@ -2174,9 +2408,7 @@
         for (
             let i =
                 waves.length - 1;
-
             i >= 0;
-
             i--
         ) {
 
@@ -2229,11 +2461,8 @@
                     i,
                     1
                 );
-
             }
-
         }
-
     }
 
 
@@ -2250,9 +2479,7 @@
         for (
             let i =
                 trustScans.length - 1;
-
             i >= 0;
-
             i--
         ) {
 
@@ -2316,8 +2543,7 @@
                     24,
                     88,
                     61,
-                    ${scan.opacity *
-                    0.5}
+                    ${scan.opacity * 0.5}
                 )`;
 
 
@@ -2337,9 +2563,7 @@
                     i,
                     1
                 );
-
             }
-
         }
 
 
@@ -2350,9 +2574,7 @@
         for (
             let i =
                 scanSymbols.length - 1;
-
             i >= 0;
-
             i--
         ) {
 
@@ -2390,7 +2612,6 @@
             ctx.textAlign =
                 "center";
 
-
             ctx.textBaseline =
                 "middle";
 
@@ -2408,11 +2629,13 @@
                     24,
                     88,
                     61,
-                    ${Math.max(
-                        item.life,
-                        0
-                    ) *
-                    0.85}
+                    ${
+                        Math.max(
+                            item.life,
+                            0
+                        ) *
+                        0.85
+                    }
                 )`;
 
 
@@ -2434,11 +2657,8 @@
                     i,
                     1
                 );
-
             }
-
         }
-
     }
 
 
@@ -2451,9 +2671,7 @@
         for (
             let i =
                 shockwaves.length - 1;
-
             i >= 0;
-
             i--
         ) {
 
@@ -2506,11 +2724,8 @@
                     i,
                     1
                 );
-
             }
-
         }
-
     }
 
 
@@ -2523,9 +2738,7 @@
         for (
             let i =
                 particles.length - 1;
-
             i >= 0;
-
             i--
         ) {
 
@@ -2548,7 +2761,9 @@
                 0.98;
 
 
-            /* Tiny particles */
+            /*
+             * Tiny particles.
+             */
 
             if (
                 particle.text === ""
@@ -2571,17 +2786,20 @@
                         97,
                         180,
                         135,
-                        ${particle.life *
-                        0.35}
+                        ${
+                            particle.life *
+                            0.35
+                        }
                     )`;
 
 
                 ctx.fill();
-
             }
 
 
-            /* ₹ / ✓ / ↕ */
+            /*
+             * ₹ / ✓ / ↕
+             */
 
             else {
 
@@ -2594,7 +2812,6 @@
 
                 ctx.textAlign =
                     "center";
-
 
                 ctx.textBaseline =
                     "middle";
@@ -2613,8 +2830,10 @@
                         24,
                         88,
                         61,
-                        ${particle.life *
-                        0.7}
+                        ${
+                            particle.life *
+                            0.7
+                        }
                     )`;
 
 
@@ -2626,7 +2845,6 @@
 
 
                 ctx.restore();
-
             }
 
 
@@ -2638,11 +2856,8 @@
                     i,
                     1
                 );
-
             }
-
         }
-
     }
 
 
@@ -2677,8 +2892,16 @@
         /*
          * Rendering order.
          *
-         * NO NETWORK LINES.
-         * ONLY DOTS + EFFECTS.
+         * IMPORTANT:
+         * There are NO NETWORK LINES.
+         *
+         * Only:
+         * - dots
+         * - TrustCart letters
+         * - waves
+         * - scans
+         * - shockwaves
+         * - particles
          */
 
         drawDots();
@@ -2697,7 +2920,6 @@
         requestAnimationFrame(
             animate
         );
-
     }
 
 
@@ -2715,30 +2937,13 @@
 
 
     /*
-     * Start one complete
-     * "TrustCart" word every
-     * few seconds.
-     */
-
-    dataStreamTimer =
-        setInterval(
-            function () {
-
-                createDataStream();
-
-            },
-            5000
-        );
-
-
-    /*
-     * Start immediately.
+     * Start the first TrustCart sequence.
      */
 
     setTimeout(
         function () {
 
-            createDataStream();
+            startDataStream();
 
         },
         1200
@@ -2749,7 +2954,6 @@
 
 })();
 </script>
-
 
 
 </body>
