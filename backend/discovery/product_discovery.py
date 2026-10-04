@@ -53,8 +53,8 @@ class ProductDiscovery:
         # ====================================================
 
         # Temporarily use only 2 candidates per marketplace.
-        self.max_candidates_per_marketplace = 3
-        self.search_result_limit = 8
+        self.max_candidates_per_marketplace = 2
+        self.search_result_limit = 6
 
         # Faster network timeouts.
         self.http_timeout = 6
@@ -413,64 +413,32 @@ class ProductDiscovery:
                 )
 
                 # ------------------------------------------------
-                # AMAZON -> FLIPKART:
-                # DO NOT aggressively reject search-card models.
+                # RELAXED DISCOVERY FOR BOTH DIRECTIONS
+                #
+                # Search-card metadata is only a ranking signal.
+                # The actual product detail page + strict matcher
+                # decides whether the product is equivalent.
                 # ------------------------------------------------
 
-                if amazon_source and marketplace == "Flipkart":
-
-                    prioritized = (
-                        self._prioritize_amazon_to_flipkart_candidates(
-                            prepared,
-                            canonical_product
-                        )
-                    )
-
-                    print(
-                        f"[Flipkart] "
-                        f"Amazon-source candidates "
-                        f"kept after relaxed filtering: "
-                        f"{len(prioritized)}"
-                    )
-
-                    # Once we have enough candidates, stop searching.
-                    if len(prioritized) >= (
-                        self.max_candidates_per_marketplace
-                    ):
-                        results = prioritized
-                        break
-
-                else:
-
-                    # ------------------------------------------------
-                    # EXISTING BEHAVIOR
-                    # ------------------------------------------------
-
-                    prioritized, discarded = (
-                        self._prioritize_candidates(
-                            prepared,
-                            canonical_product
-                        )
-                    )
-
-                    if discarded:
-
-                        for candidate in discarded:
-
-                            print(
-                                f"[{marketplace}] "
-                                "DISCARDED before detail fetch | "
-                                f"{candidate.get('name')} | "
-                                f"model={candidate.get('model')}"
-                            )
-
-                    if self._has_exact_model(
-                        prioritized,
+                prioritized = (
+                    self._prioritize_amazon_to_flipkart_candidates(
+                        prepared,
                         canonical_product
-                    ):
+                    )
+                )
 
-                        results = prioritized
-                        break
+                print(
+                    f"[{marketplace}] "
+                    f"Candidates kept after relaxed filtering: "
+                    f"{len(prioritized)}"
+                )
+
+                # Once enough candidates are available, stop searching.
+                if len(prioritized) >= (
+                    self.max_candidates_per_marketplace
+                ):
+                    results = prioritized
+                    break
 
             # ------------------------------------------------
             # FINAL CANDIDATE SELECTION
@@ -482,23 +450,21 @@ class ProductDiscovery:
                 )
             )
 
-            if amazon_source and marketplace == "Flipkart":
+            # ------------------------------------------------
+            # FINAL CANDIDATE SELECTION
+            #
+            # Search cards are only discovery hints. Do not apply
+            # the old aggressive model rejection here because the
+            # actual product detail page + matcher performs the
+            # final identity validation.
+            # ------------------------------------------------
 
-                results = (
-                    self._prioritize_amazon_to_flipkart_candidates(
-                        prepared,
-                        canonical_product
-                    )
+            results = (
+                self._prioritize_amazon_to_flipkart_candidates(
+                    prepared,
+                    canonical_product
                 )
-
-            else:
-
-                results = (
-                    self._prioritize_candidates(
-                        prepared,
-                        canonical_product
-                    )[0]
-                )
+            )
 
             print(
                 f"[{marketplace}] "

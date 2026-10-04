@@ -99,6 +99,22 @@ class ProductMatcher:
             candidate_brand
         )
 
+        # Amazon search cards sometimes omit the manufacturer/brand
+        # even when the model identity is correct. In that case,
+        # infer the missing brand only after the model itself matches.
+        # An explicitly different brand is never overridden.
+        if (
+            target_brand
+            and not candidate_brand
+            and target_model
+            and candidate_model
+            and self._model_matches_target(
+                self._normalize_model(candidate_model),
+                self._normalize_model(target_model)
+            )
+        ):
+            candidate_brand = target_brand
+
         target_name = self._normalize(
             canonical_product.get("product_name")
         )
@@ -224,6 +240,29 @@ class ProductMatcher:
                 target_model_normalized
             ):
                 is_match = False
+
+        # ====================================================
+        # IMPORTANT PRODUCT VARIANT CHECK
+        # ====================================================
+        # A model can be identical while the actual sellable variant
+        # is different.
+        #
+        # Example:
+        #   Google Pixel 11 (256 GB)
+        #   Google Pixel 11 (512 GB)
+        #
+        # These must NOT be treated as equivalent products.
+        #
+        # At the same time, harmless specifications such as:
+        #   Studio Evo
+        #   Studio Evo 70hrs
+        #
+        # should remain compatible.
+        if not self._variant_specs_match(
+            target_name,
+            candidate_name
+        ):
+            is_match = False
 
 
         # ====================================================
@@ -454,15 +493,25 @@ class ProductMatcher:
         candidate_model,
         target_model
     ):
-        """Check whether a candidate model contains the complete target model.
+        """Check whether two marketplace model identities represent the same
+        core model, allowing harmless specification tokens on either side.
 
-        Marketplace titles may append specifications to a model name.
-        Example:
+        Examples:
             target:    Studio Evo
             candidate: Studio Evo 70hrs
+            -> MATCH
 
-        The target tokens must appear as the complete prefix so that
-        unrelated variants such as Studio Pro are not accepted.
+            target:    Studio Evo 70hrs
+            candidate: Studio Evo
+            -> MATCH
+
+            target:    Rockerz 370
+            candidate: Rockerz 370 Pro
+            -> NO MATCH
+
+            target:    Studio Evo
+            candidate: Studio Pro
+            -> NO MATCH
         """
 
         candidate_model = self._normalize_model(candidate_model)
@@ -477,10 +526,151 @@ class ProductMatcher:
         candidate_tokens = candidate_model.split()
         target_tokens = target_model.split()
 
-        return (
+        # ----------------------------------------------------
+        # CORE MODEL PREFIX MATCH
+        # ----------------------------------------------------
+        # Marketplace metadata may include specifications such as:
+        # 70hrs, 50 hours, 5g, 32gb, 10000mah, etc.
+        #
+        # If one model is a prefix of the other, check whether the
+        # extra tokens look like specifications rather than a variant.
+        # ----------------------------------------------------
+
+        def is_specification(token):
+            token = token.lower()
+
+            specification_patterns = (
+                r"^\d+(?:\.\d+)?(?:hrs?|hours?|h)$",
+                r"^(?:2g|3g|4g|5g)$",
+                r"^\d+(?:\.\d+)?(?:gb|tb|mb)$",
+                r"^\d+(?:\.\d+)?(?:mah)$",
+                r"^\d+(?:\.\d+)?(?:w|watts?)$",
+                r"^\d+(?:\.\d+)?(?:mm|cm)$",
+                r"^\d+(?:\.\d+)?(?:hz|khz)$",
+                r"^\d+(?:\.\d+)?(?:ms)$",
+                r"^\d+(?:\.\d+)?(?:inch|in)$",
+                r"^\d+(?:\.\d+)?(?:mp)$",
+                r"^\d+(?:\.\d+)?(?:mah)$",
+                r"^\d+(?:\.\d+)?$",
+            )
+
+            return any(
+                re.match(pattern, token)
+                for pattern in specification_patterns
+            )
+
+        # Candidate has extra specification tokens.
+        if (
             len(candidate_tokens) > len(target_tokens)
             and candidate_tokens[:len(target_tokens)] == target_tokens
-        )
+        ):
+            extras = candidate_tokens[len(target_tokens):]
+            return all(is_specification(token) for token in extras)
+
+        # Target has extra specification tokens.
+        if (
+            len(target_tokens) > len(candidate_tokens)
+            and target_tokens[:len(candidate_tokens)] == candidate_tokens
+        ):
+            extras = target_tokens[len(candidate_tokens):]
+            return all(is_specification(token) for token in extras)
+
+        return False
+
+
+    # ========================================================
+    # PRODUCT VARIANT COMPATIBILITY
+    # ========================================================
+
+    def _variant_specs_match(self, target_name, candidate_name):
+        """Reject materially different product variants.
+
+        The model identity alone is not enough for products such as
+        smartphones and laptops because storage/RAM/network variants
+        can share the exact same model name.
+
+        Important differences:
+            256 GB vs 512 GB
+            8 GB RAM vs 12 GB RAM
+            4G vs 5G
+
+        Harmless specifications such as battery capacity, playtime,
+        wattage, dimensions, etc. are intentionally ignored here.
+        """
+
+        target = self._normalize(target_name)
+        candidate = self._normalize(candidate_name)
+
+        if not target or not candidate:
+            return True
+
+        def extract_specs(text):
+            specs = {}
+
+            # Storage capacity.
+            storage_matches = re.findall(
+                r"\b(\d+(?:\.\d+)?)\s*(gb|tb)\b(?!\s*(?:ram|memory)\b)",
+                text,
+                flags=re.IGNORECASE
+            )
+
+            if storage_matches:
+                values = []
+                for number, unit in storage_matches:
+                    value = float(number)
+                    if unit.lower() == "tb":
+                        value *= 1024
+                    values.append(int(value) if value.is_integer() else value)
+                specs["storage"] = tuple(sorted(set(values)))
+
+            # RAM. Only capture values explicitly associated with RAM.
+            ram_matches = re.findall(
+                r"\b(\d+(?:\.\d+)?)\s*gb\s*(?:ram|memory)\b",
+                text,
+                flags=re.IGNORECASE
+            )
+
+            if ram_matches:
+                specs["ram"] = tuple(
+                    sorted(set(float(value) for value in ram_matches))
+                )
+
+            # Network generation is a meaningful phone variant.
+            network_matches = re.findall(
+                r"\b([2345]g)\b",
+                text,
+                flags=re.IGNORECASE
+            )
+
+            if network_matches:
+                specs["network"] = tuple(
+                    sorted(set(value.lower() for value in network_matches))
+                )
+
+            return specs
+
+        target_specs = extract_specs(target)
+        candidate_specs = extract_specs(candidate)
+
+        # If both products explicitly specify a material variant,
+        # the values must agree.
+        for key in ("storage", "ram", "network"):
+            target_value = target_specs.get(key)
+            candidate_value = candidate_specs.get(key)
+
+            if (
+                target_value
+                and candidate_value
+                and target_value != candidate_value
+            ):
+                print(
+                    f"Variant mismatch: {key} | "
+                    f"target={target_value} | "
+                    f"candidate={candidate_value}"
+                )
+                return False
+
+        return True
 
 
     # ========================================================
@@ -674,6 +864,12 @@ class ProductMatcher:
 
 
         for word in words:
+
+            # Product-specification boundary.
+            # Check the original token BEFORE punctuation is removed,
+            # otherwise "w/" becomes just "w".
+            if re.match(r"^(?:w/|with(?:/|$))", word, flags=re.IGNORECASE):
+                break
 
             clean_word = re.sub(
                 r"[^a-z0-9-]",

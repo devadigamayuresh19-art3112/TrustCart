@@ -1,4 +1,3 @@
-
 import re
 
 
@@ -7,8 +6,11 @@ class CanonicalProductGenerator:
     def generate(self, product):
 
         name = product.get("name") or ""
+
         brand = product.get("brand") or self._infer_brand(name)
+
         model = product.get("model")
+
         category = product.get("category")
 
         # --------------------------------------------------
@@ -16,6 +18,7 @@ class CanonicalProductGenerator:
         # --------------------------------------------------
 
         clean_name = self._clean_text(name)
+
         if not category:
             category = self._infer_category(clean_name)
 
@@ -27,7 +30,9 @@ class CanonicalProductGenerator:
         # from a title containing ``Rockerz 370``).  Prefer the identity
         # found in the complete title when it contains a stronger
         # alphanumeric identifier.
+
         extracted_model = self._extract_model(clean_name, brand)
+
         if not model or (
             extracted_model
             and any(char.isdigit() for char in extracted_model)
@@ -134,31 +139,57 @@ class CanonicalProductGenerator:
         # --------------------------------------------------
 
         specification_words = [
+
             "bluetooth",
+
             "wireless",
+
             "headphones",
+
             "headphone",
+
             "earbuds",
+
             "earphones",
+
             "smartwatch",
+
             "mobile",
+
             "phone",
+
             "laptop",
+
             "television",
+
             "tv",
+
             "monitor",
+
             "speaker",
+
             "camera",
+
             "power",
+
             "bank",
+
             "mah",
+
             "wh",
+
             "over",
+
             "ear",
+
             "with",
+
             "mic",
+
             "playtime",
+
             "drivers"
+
         ]
 
         words = working_name.split()
@@ -167,13 +198,55 @@ class CanonicalProductGenerator:
 
         for word in words:
 
+            # --------------------------------------------------
+            # Product-specification boundary
+            #
+            # Do not allow phrases such as:
+            #   w/Large 1.52
+            #   with 70hrs
+            #   upto 40hrs
+            #   1.52 AMOLED
+            # to become part of the model identity.
+            #
+            # Keep genuine model identifiers such as:
+            #   Muffs M2
+            #   Studio Evo
+            #   Rockerz 370
+            #   WH-1000XM5
+            # --------------------------------------------------
+
+            if re.match(
+                r"^(?:w/|with(?:/|$))",
+                word,
+                flags=re.IGNORECASE
+            ):
+                break
+
             clean_word = re.sub(
-                r"[^\w-]",
+                r"[^\w.-]",
                 "",
                 word
             ).lower()
 
             if clean_word in specification_words:
+                break
+
+            # Specification-style numeric measurements/capacities.
+            #
+            # Examples:
+            #   1.52
+            #   1.96
+            #   40hrs
+            #   70hours
+            #   500mah
+            #
+            # A numeric model such as "370" or "XM5" is still allowed
+            # because those are normally part of the product identity.
+            if re.match(
+                r"^\d+(?:\.\d+)?(?:mm|cm|inch|in|hrs?|hours?|mah|wh|gb|tb|mp)$",
+                clean_word,
+                flags=re.IGNORECASE
+            ):
                 break
 
             model_words.append(word)
@@ -204,13 +277,19 @@ class CanonicalProductGenerator:
 
         parts = []
 
-        # Brand
+        # --------------------------------------------------
+        # BRAND
+        # --------------------------------------------------
+
         if brand:
             parts.append(
                 brand.strip()
             )
 
-        # Model
+        # --------------------------------------------------
+        # MODEL
+        # --------------------------------------------------
+
         if model:
 
             if model.lower() not in [
@@ -218,15 +297,38 @@ class CanonicalProductGenerator:
                 for p in parts
             ]:
 
-                parts.append(model.strip())
+                parts.append(
+                    model.strip()
+                )
 
-        # A numeric/alphanumeric model is the strongest identity signal.
-        # Extra generic category words can make marketplace search rank close
-        # variants (Rockerz 411/371) above the exact Rockerz 370 listing.
-        if model and re.search(r"\d", str(model)) and re.search(r"[a-zA-Z]", str(model)):
-            return self._clean_text(" ".join(parts))
+        # --------------------------------------------------
+        # NUMERIC / ALPHANUMERIC MODEL
+        #
+        # Keep the primary query focused on the strongest
+        # product identity signal.
+        #
+        # Example:
+        # APPLE iPhone 15
+        # pTron Studio Evo 70hrs
+        #
+        # Additional specifications such as 128GB will be
+        # handled by discovery query variants.
+        # --------------------------------------------------
 
-        # Category
+        if (
+            model
+            and re.search(r"\d", str(model))
+            and re.search(r"[a-zA-Z]", str(model))
+        ):
+
+            return self._clean_text(
+                " ".join(parts)
+            )
+
+        # --------------------------------------------------
+        # CATEGORY
+        # --------------------------------------------------
+
         category_map = {
 
             "headphone":
@@ -281,32 +383,73 @@ class CanonicalProductGenerator:
                     category_text
                 )
 
-        # Keep the query compact, but retain distinctive product words when
-        # the source has no reliable model (common for power banks and
-        # marketplace titles with marketing-heavy names).
+        # --------------------------------------------------
+        # Keep the query compact, but retain distinctive
+        # product words when the source has no reliable model.
+        # --------------------------------------------------
+
         if len(parts) < 2:
+
             fallback_words = []
+
             stop_words = {
-                "with", "for", "and", "the", "new", "original",
-                "sale", "offer", "discount", "free", "shipping",
-                "warranty", "emi", "cashback", "seller"
+
+                "with",
+                "for",
+                "and",
+                "the",
+                "new",
+                "original",
+                "sale",
+                "offer",
+                "discount",
+                "free",
+                "shipping",
+                "warranty",
+                "emi",
+                "cashback",
+                "seller"
             }
-            for word in re.findall(r"[A-Za-z0-9]+", name):
+
+            for word in re.findall(
+                r"[A-Za-z0-9]+",
+                name
+            ):
+
                 lower_word = word.lower()
+
                 if lower_word in stop_words or lower_word in {
-                    "bluetooth", "wireless", "headset", "headphones",
-                    "headphone", "earphones", "earbuds"
+
+                    "bluetooth",
+                    "wireless",
+                    "headset",
+                    "headphones",
+                    "headphone",
+                    "earphones",
+                    "earbuds"
+
                 }:
+
                     continue
+
                 if word not in fallback_words:
-                    fallback_words.append(word)
+
+                    fallback_words.append(
+                        word
+                    )
+
                 if len(fallback_words) >= 4:
+
                     break
+
             if fallback_words:
-                parts.extend(fallback_words)
+
+                parts.extend(
+                    fallback_words
+                )
 
         # --------------------------------------------------
-        # Fallback
+        # FALLBACK
         # --------------------------------------------------
 
         if len(parts) < 2:
@@ -329,41 +472,119 @@ class CanonicalProductGenerator:
             " ".join(parts)
         )
 
+
     def _infer_category(self, name):
+
         text = str(name or '').lower()
+
         if any(word in text for word in {
-            'headphone', 'headset', 'earphone', 'earbuds', 'neckband'
+            'headphone',
+            'headset',
+            'earphone',
+            'earbuds',
+            'neckband'
         }):
+
             return 'headphone'
+
         if 'power' in text and 'bank' in text:
+
             return 'powerbank'
+
         if 'laptop' in text or 'notebook' in text:
+
             return 'laptop'
+
         if 'smartphone' in text or 'mobile' in text:
+
             return 'mobile'
+
         if 'smartwatch' in text:
+
             return 'smartwatch'
+
         return None
 
+
     def _infer_brand(self, name):
+
         known_brands = [
-            'Portronics', 'PTron', 'Jabra', 'Sony', 'Samsung', 'Apple', 'Boat',
-            'JBL', 'OnePlus', 'Realme', 'Noise', 'Boult', 'HP', 'Dell',
-            'Lenovo', 'Asus', 'Acer', 'LG', 'Oppo', 'Vivo', 'Xiaomi', 'Redmi',
-            'PTROX', 'PTron', 'pTron'
+
+            'Portronics',
+            'PTron',
+            'Jabra',
+            'Sony',
+            'Samsung',
+            'Apple',
+            'Boat',
+            'JBL',
+            'OnePlus',
+            'Realme',
+            'Noise',
+            'Boult',
+            'HP',
+            'Dell',
+            'Lenovo',
+            'Asus',
+            'Acer',
+            'LG',
+            'Oppo',
+            'Vivo',
+            'Xiaomi',
+            'Redmi',
+            'PTROX',
+            'PTron',
+            'pTron'
+
         ]
+
         text = str(name or '')
+
         for brand in known_brands:
-            if re.search(r'\b' + re.escape(brand) + r'\b', text, re.I):
+
+            if re.search(
+                r'\b' + re.escape(brand) + r'\b',
+                text,
+                re.I
+            ):
+
                 return brand
 
-        words = re.findall(r'[A-Za-z0-9.-]+', text)
+        words = re.findall(
+            r'[A-Za-z0-9.-]+',
+            text
+        )
+
         for word in words:
-            clean = re.sub(r'[^A-Za-z]', '', word)
-            if len(clean) > 2 and clean.lower() not in {
-                'bluetooth', 'wireless', 'headphone', 'headphones', 'earbuds',
-                'earphones', 'neckband', 'vibration', 'alert', 'playtime',
-                'waterproof', 'india', 'buy', 'online'
-            }:
+
+            clean = re.sub(
+                r'[^A-Za-z]',
+                '',
+                word
+            )
+
+            if (
+                len(clean) > 2
+                and clean.lower() not in {
+
+                    'bluetooth',
+                    'wireless',
+                    'headphone',
+                    'headphones',
+                    'earbuds',
+                    'earphones',
+                    'neckband',
+                    'vibration',
+                    'alert',
+                    'playtime',
+                    'waterproof',
+                    'india',
+                    'buy',
+                    'online'
+
+                }
+            ):
+
                 return clean.title()
+
         return None

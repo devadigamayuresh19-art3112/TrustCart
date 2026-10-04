@@ -12,3 +12,4 @@ venv/
 .DS_Store
 testsprite_tests/tmp/
 testsprite_tests/tmp/config.json
+trustcart_backup.dump
