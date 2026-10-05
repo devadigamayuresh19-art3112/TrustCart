@@ -1371,8 +1371,7 @@ function openReviewAnalysis(item) {
     const reviewWindow =
         window.open(
             "",
-            "_blank",
-            "noopener,noreferrer"
+            "_blank"
         );
 
     if (!reviewWindow) {
