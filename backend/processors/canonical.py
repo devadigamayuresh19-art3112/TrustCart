@@ -377,7 +377,33 @@ class CanonicalProductGenerator:
                 category.lower()
             )
 
-            if category_text:
+            # Do not force "Bluetooth Headphones" onto
+            # products whose source name clearly identifies
+            # them as wired / Lightning / USB-C earphones.
+            source_text = str(name or "").lower()
+
+            wired_indicators = (
+                "wired",
+                "lightning connector",
+                "usb-c",
+                "usb c",
+                "type-c",
+                "type c",
+                "3.5mm",
+                "3.5 mm",
+                "aux",
+                "auxiliary",
+            )
+
+            is_wired_product = any(
+                indicator in source_text
+                for indicator in wired_indicators
+            )
+
+            if category_text and not (
+                category.lower() in {"headphone", "headphones"}
+                and is_wired_product
+            ):
 
                 parts.append(
                     category_text
