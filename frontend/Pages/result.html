@@ -1,26 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
+
+<script>
+(function () {
+    const theme = localStorage.getItem("trustcart-theme");
+
+    if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.setAttribute(
+            "data-theme",
+            "dark"
+        );
+    } else {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.setAttribute(
+            "data-theme",
+            "light"
+        );
+    }
+})();
+</script>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>TrustCart | Comparison Results</title>
-
-    <meta
-        name="description"
-        content="TrustCart comparison results — compare prices, sellers and trust signals before buying."
-    >
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet"
     >
 
-    <link rel="stylesheet" href="../CSS/result.css">
+    <link
+        rel="stylesheet"
+        href="../CSS/result.css"
+    >
 </head>
 
 <body>
@@ -32,12 +53,18 @@
     ====================================================== -->
 
     <header class="topbar">
-
         <div class="topbar-inner">
 
-            <a href="/dashboard" class="brand" aria-label="TrustCart Dashboard">
+            <a
+                href="/dashboard"
+                class="brand"
+                aria-label="TrustCart Dashboard"
+            >
                 <div class="brand-logo">T</div>
-                <span>TrustCart</span>
+                <div class="brand-copy">
+                    <strong>TrustCart</strong>
+                    <span>Shop smarter. Trust better.</span>
+                </div>
             </a>
 
             <div class="page-heading">
@@ -51,37 +78,90 @@
                     class="theme-toggle"
                     id="themeToggle"
                     type="button"
-                    aria-label="Toggle dark mode"
-                    title="Toggle dark mode"
+                    aria-label="Toggle theme"
+                    title="Toggle theme"
                 >
                     ☾
                 </button>
 
-                <div
-                    class="top-avatar"
-                    id="topAvatar"
-                    aria-label="User profile"
-                >
-                    {{ initial }}
+                <div class="profile-menu-wrap">
+
+                    <button
+                        class="top-avatar"
+                        id="topAvatar"
+                        type="button"
+                        aria-label="Open profile menu"
+                    >
+                        {{ initial }}
+                    </button>
+
+                    <div
+                        class="profile-menu"
+                        id="profileMenu"
+                        aria-hidden="true"
+                    >
+
+                        <div class="profile-menu-user">
+
+                            <div
+                                class="profile-menu-avatar"
+                                id="avatarInitial"
+                            >
+                                {{ initial }}
+                            </div>
+
+                            <div class="profile-menu-details">
+                                <strong id="userName">User</strong>
+                                <span id="userEmail"></span>
+                            </div>
+
+                        </div>
+
+                        <div class="profile-menu-divider"></div>
+
+                        <a
+                            href="/dashboard"
+                            class="profile-menu-item"
+                        >
+                            <span>⌂</span>
+                            <span>Dashboard</span>
+                        </a>
+
+                        <button
+                            class="profile-menu-item profile-logout"
+                            id="profileLogout"
+                            type="button"
+                        >
+                            <span>↪</span>
+                            <span>Logout</span>
+                        </button>
+
+                    </div>
+
                 </div>
 
             </div>
 
         </div>
-
     </header>
 
 
     <!-- =====================================================
-         MAIN CONTENT
+         MAIN
     ====================================================== -->
 
     <main class="content">
 
+        <!-- Toolbar -->
+
         <div class="page-toolbar">
 
-            <a href="/dashboard" class="back-btn">
-                ← Back to Dashboard
+            <a
+                href="/dashboard"
+                class="back-btn"
+            >
+                <span>←</span>
+                <span>Back to Dashboard</span>
             </a>
 
             <div class="result-actions">
@@ -90,27 +170,27 @@
                     id="copySummaryBtn"
                     class="secondary-action"
                     type="button"
-                    title="Copy comparison summary"
                 >
-                    ⧉ Copy
+                    <span>⧉</span>
+                    <span>Copy</span>
                 </button>
 
                 <button
                     id="shareBtn"
                     class="secondary-action"
                     type="button"
-                    title="Share comparison"
                 >
-                    ↗ Share
+                    <span>↗</span>
+                    <span>Share</span>
                 </button>
 
                 <button
                     id="refreshBtn"
                     class="secondary-action refresh-btn"
                     type="button"
-                    title="Refresh comparison"
                 >
-                    ↻ Refresh
+                    <span>↻</span>
+                    <span>Refresh</span>
                 </button>
 
             </div>
@@ -122,26 +202,39 @@
              LOADING
         ================================================== -->
 
-        <div id="loading" class="loading-card">
+        <div
+            id="loading"
+            class="loading-card"
+        >
 
-            <div class="loader"></div>
+            <div class="loading-orb">
+                <div class="loader"></div>
+            </div>
 
-            <strong>Finding the smartest deal</strong>
+            <div class="loading-content">
 
-            <span>
-                Comparing sellers, prices and trust signals...
-            </span>
+                <span class="loading-eyebrow">
+                    TRUSTCART ANALYSIS
+                </span>
+
+                <strong>
+                    Finding the smartest deal
+                </strong>
+
+                <span>
+                    Comparing sellers, prices and trust signals...
+                </span>
+
+            </div>
 
             <div class="loading-progress">
                 <div class="loading-progress-fill"></div>
             </div>
 
             <div class="loading-steps">
-
-                <span>✓ Finding sellers</span>
-                <span>✓ Comparing prices</span>
-                <span>✓ Checking trust</span>
-
+                <span>✓ Sellers</span>
+                <span>✓ Prices</span>
+                <span>✓ Trust</span>
             </div>
 
         </div>
@@ -159,7 +252,13 @@
 
             <div class="error-icon">!</div>
 
-            <strong>Unable to load comparison</strong>
+            <span class="error-eyebrow">
+                COMPARISON ERROR
+            </span>
+
+            <strong>
+                Unable to load comparison
+            </strong>
 
             <p id="errorMessage">
                 Something went wrong while loading the comparison.
@@ -175,7 +274,10 @@
                     ↻ Try Again
                 </button>
 
-                <a href="/dashboard" class="secondary-btn">
+                <a
+                    href="/dashboard"
+                    class="secondary-btn"
+                >
                     ← Dashboard
                 </a>
 
@@ -188,12 +290,12 @@
              RESULTS
         ================================================== -->
 
-        <div id="results" style="display:none;">
+        <div
+            id="results"
+            style="display:none;"
+        >
 
-
-            <!-- =============================================
-                 PRODUCT HERO
-            ============================================== -->
+            <!-- PRODUCT HERO -->
 
             <section class="product-header-card">
 
@@ -241,15 +343,37 @@
                         Product Name
                     </h1>
 
-                    <p>
+                    <p class="product-brand">
                         Brand:
                         <strong id="productBrand">
                             Brand
                         </strong>
                     </p>
 
-                    <div class="product-source" id="productSource">
+                    <div
+                        class="product-source"
+                        id="productSource"
+                    >
                         Multiple marketplace listings analyzed
+                    </div>
+
+                    <div class="hero-highlights">
+
+                        <span>
+                            <b>✓</b>
+                            Price checked
+                        </span>
+
+                        <span>
+                            <b>✓</b>
+                            Seller checked
+                        </span>
+
+                        <span>
+                            <b>✓</b>
+                            Trust checked
+                        </span>
+
                     </div>
 
                 </div>
@@ -262,7 +386,9 @@
                     </div>
 
                     <div>
-                        <strong>Verified Comparison</strong>
+                        <strong>
+                            Verified Comparison
+                        </strong>
 
                         <span>
                             Multiple sellers checked
@@ -274,65 +400,58 @@
             </section>
 
 
-            <!-- =============================================
-                 QUICK STATS
-            ============================================== -->
+            <!-- QUICK STATS -->
 
             <section class="quick-stats">
 
                 <div class="stat-card">
-
-                    <div class="stat-icon">💰</div>
+                    <div class="stat-icon">₹</div>
 
                     <div>
                         <span>Best Price</span>
-                        <strong id="quickBestPrice">₹0</strong>
+                        <strong id="quickBestPrice">
+                            ₹0
+                        </strong>
                     </div>
-
                 </div>
 
-
                 <div class="stat-card">
-
-                    <div class="stat-icon">📉</div>
+                    <div class="stat-icon">↓</div>
 
                     <div>
                         <span>Potential Savings</span>
-                        <strong id="quickSavings">₹0</strong>
+                        <strong id="quickSavings">
+                            ₹0
+                        </strong>
                     </div>
-
                 </div>
 
-
                 <div class="stat-card">
-
-                    <div class="stat-icon">🏪</div>
+                    <div class="stat-icon">◎</div>
 
                     <div>
                         <span>Available Sellers</span>
-                        <strong id="quickSellerCount">0</strong>
+                        <strong id="quickSellerCount">
+                            0
+                        </strong>
                     </div>
-
                 </div>
 
-
                 <div class="stat-card">
-
-                    <div class="stat-icon">🛡️</div>
+                    <div class="stat-icon">✓</div>
 
                     <div>
                         <span>Trust Score</span>
-                        <strong id="quickTrustScore">0/100</strong>
+                        <strong id="quickTrustScore">
+                            0/100
+                        </strong>
                     </div>
-
                 </div>
 
             </section>
 
 
-            <!-- =============================================
-                 BEST DEAL
-            ============================================== -->
+            <!-- BEST DEAL -->
 
             <section class="best-deal">
 
@@ -340,18 +459,18 @@
 
                     <div class="deal-title">
 
-                        <span class="deal-trophy">🏆</span>
+                        <div class="deal-trophy">
+                            🏆
+                        </div>
 
                         <div>
                             <strong>BEST DEAL</strong>
-
                             <span>
-                                Smartest available offer
+                                TrustCart's recommended offer
                             </span>
                         </div>
 
                     </div>
-
 
                     <div
                         class="deal-status"
@@ -381,19 +500,11 @@
                             </div>
 
                             <div>
-
-                                <h2 id="bestSeller">
-                                    —
-                                </h2>
-
-                                <p id="bestWebsite">
-                                    —
-                                </p>
-
+                                <h2 id="bestSeller">—</h2>
+                                <p id="bestWebsite">—</p>
                             </div>
 
                         </div>
-
 
                         <div
                             class="deal-reason"
@@ -437,8 +548,19 @@
                             rel="noopener noreferrer"
                             style="display:none;"
                         >
-                            Buy Now →
+                            Buy Now
+                            <span>↗</span>
                         </a>
+
+                        <button
+                            id="bestAnalyzeBtn"
+                            class="analyze-btn"
+                            type="button"
+                            style="display:none;"
+                        >
+                            Analyze Reviews
+                            <span>→</span>
+                        </button>
 
                         <button
                             id="alertBtn"
@@ -455,14 +577,12 @@
             </section>
 
 
-            <!-- =============================================
-                 SMART INSIGHT
-            ============================================== -->
+            <!-- SMART INSIGHT -->
 
             <section class="smart-insight">
 
                 <div class="insight-icon">
-                    💡
+                    ✦
                 </div>
 
                 <div class="insight-content">
@@ -489,16 +609,13 @@
             </section>
 
 
-            <!-- =============================================
-                 TRUST ANALYSIS
-            ============================================== -->
+            <!-- TRUST -->
 
             <section class="trust-section">
 
                 <div class="section-heading">
 
                     <div>
-
                         <span class="eyebrow">
                             TRUST INSIGHTS
                         </span>
@@ -511,9 +628,7 @@
                             We analyze price, seller availability
                             and freshness before recommending an offer.
                         </p>
-
                     </div>
-
 
                     <div class="trust-score">
 
@@ -548,10 +663,14 @@
 
                     <div class="trust-card">
 
-                        <div class="trust-icon">₹</div>
+                        <div class="trust-icon">
+                            ₹
+                        </div>
 
                         <div>
-                            <strong>Price Advantage</strong>
+                            <strong>
+                                Price Advantage
+                            </strong>
 
                             <span id="priceAnalysis">
                                 Analyzing...
@@ -563,10 +682,14 @@
 
                     <div class="trust-card">
 
-                        <div class="trust-icon">✓</div>
+                        <div class="trust-icon">
+                            ✓
+                        </div>
 
                         <div>
-                            <strong>Seller Availability</strong>
+                            <strong>
+                                Seller Availability
+                            </strong>
 
                             <span id="sellerAnalysis">
                                 Analyzing...
@@ -578,10 +701,14 @@
 
                     <div class="trust-card">
 
-                        <div class="trust-icon">↻</div>
+                        <div class="trust-icon">
+                            ↻
+                        </div>
 
                         <div>
-                            <strong>Price Freshness</strong>
+                            <strong>
+                                Price Freshness
+                            </strong>
 
                             <span id="freshnessAnalysis">
                                 Analyzing...
@@ -593,10 +720,14 @@
 
                     <div class="trust-card">
 
-                        <div class="trust-icon">🛡</div>
+                        <div class="trust-icon">
+                            ★
+                        </div>
 
                         <div>
-                            <strong>Recommendation</strong>
+                            <strong>
+                                Recommendation
+                            </strong>
 
                             <span id="recommendation">
                                 Analyzing...
@@ -610,16 +741,13 @@
             </section>
 
 
-            <!-- =============================================
-                 PRICE VISUAL
-            ============================================== -->
+            <!-- MARKET VIEW -->
 
             <section class="price-section">
 
                 <div class="section-heading">
 
                     <div>
-
                         <span class="eyebrow">
                             MARKET VIEW
                         </span>
@@ -629,9 +757,9 @@
                         </h2>
 
                         <p>
-                            A visual comparison of prices across sellers.
+                            A simple view of the price difference
+                            across available marketplaces.
                         </p>
-
                     </div>
 
                 </div>
@@ -644,16 +772,13 @@
             </section>
 
 
-            <!-- =============================================
-                 SELLER COMPARISON
-            ============================================== -->
+            <!-- SELLER COMPARISON -->
 
             <section class="comparison-section">
 
                 <div class="section-heading">
 
                     <div>
-
                         <span class="eyebrow">
                             PRICE CHECK
                         </span>
@@ -663,31 +788,24 @@
                         </h2>
 
                         <p>
-                            Choose the platform that works best for you.
+                            Compare price, trust and review signals
+                            before you choose where to buy.
                         </p>
-
                     </div>
 
 
                     <div class="seller-tools">
 
                         <div class="seller-count">
-
                             <span>Sellers</span>
-
-                            <strong id="sellerCount">
-                                0
-                            </strong>
-
+                            <strong id="sellerCount">0</strong>
                         </div>
-
 
                         <select
                             id="sortSelect"
                             class="sort-select"
                             aria-label="Sort sellers"
                         >
-
                             <option value="best">
                                 Best Overall
                             </option>
@@ -711,7 +829,6 @@
                             <option value="seller">
                                 Seller Name
                             </option>
-
                         </select>
 
                     </div>
@@ -727,26 +844,37 @@
                         <span>PRICE</span>
                         <span>TRUST</span>
                         <span>UPDATED</span>
-                        <span>ACTION</span>
+                        <span>ACTIONS</span>
 
                     </div>
-
 
                     <div id="sellerRows"></div>
 
                 </div>
 
+                <div
+                    id="sellerEmpty"
+                    class="seller-empty"
+                    style="display:none;"
+                >
+                    <div>◎</div>
+                    <strong>
+                        No comparable sellers found
+                    </strong>
+                    <span>
+                        Try refreshing the comparison.
+                    </span>
+                </div>
+
             </section>
 
 
-            <!-- =============================================
-                 BUYING TIP
-            ============================================== -->
+            <!-- BUYING TIP -->
 
             <section class="buying-tip">
 
                 <div class="tip-icon">
-                    🎯
+                    💡
                 </div>
 
                 <div>
@@ -764,6 +892,15 @@
 
             </section>
 
+
+            <!-- FOOTER NOTE -->
+
+            <div class="results-footer">
+                <span>TrustCart</span>
+                <span>•</span>
+                <span>Compare before you buy.</span>
+            </div>
+
         </div>
 
     </main>
@@ -771,9 +908,9 @@
 </div>
 
 
-<!-- =========================================================
+<!-- =====================================================
      PRICE ALERT MODAL
-========================================================= -->
+====================================================== -->
 
 <div
     id="alertModal"
@@ -797,27 +934,22 @@
             ×
         </button>
 
-
         <div class="modal-icon">
             🔔
         </div>
-
 
         <span class="modal-eyebrow">
             PRICE TRACKING
         </span>
 
-
         <h2 id="alertTitle">
             Get notified when it gets cheaper
         </h2>
 
-
         <p>
-            Set your target price and TrustCart can
-            track when the product reaches it.
+            Set a target price and TrustCart can track
+            when the product reaches it.
         </p>
-
 
         <div class="target-price">
 
@@ -842,7 +974,6 @@
 
         </div>
 
-
         <div
             id="existingAlertStatus"
             class="existing-alert-status"
@@ -851,7 +982,6 @@
             🔔 Existing price alert loaded
         </div>
 
-
         <button
             id="saveAlert"
             class="save-alert"
@@ -859,7 +989,6 @@
         >
             🔔 Set Price Alert
         </button>
-
 
         <small id="alertMessage"></small>
 

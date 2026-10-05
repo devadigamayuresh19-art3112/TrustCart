@@ -17,8 +17,9 @@ import psycopg2
 from psycopg2 import errors
 import os
 import requests
+import secrets
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode
 from dotenv import load_dotenv
 
 try:
@@ -141,6 +142,7 @@ def is_supported_marketplace_url(url):
         or host.endswith("amazon")
         or "flipkart.com" in host
         or "fkrt.it" in host
+        or "snapdeal.com" in host
     )
 
 
@@ -822,8 +824,200 @@ def current_user():
 
 
 # ============================================================
+# PROFILE
+# ============================================================
+
+@app.route(
+    "/api/profile",
+    methods=["GET"]
+)
+def get_profile():
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+        return jsonify({
+            "success": False,
+            "message":
+                "Not authenticated."
+        }), 401
+
+    connection = None
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT id, name, email
+            FROM users
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (user_id,)
+        )
+
+        user = cursor.fetchone()
+
+        cursor.close()
+
+        if not user:
+            return jsonify({
+                "success": False,
+                "message":
+                    "User account not found."
+            }), 404
+
+        return jsonify({
+            "success": True,
+            "user": {
+                "id": user[0],
+                "name": user[1] or "",
+                "email": user[2] or ""
+            }
+        })
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Profile fetch error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to load profile."
+        }), 500
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
+@app.route(
+    "/api/profile",
+    methods=["PUT"]
+)
+def update_profile():
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+        return jsonify({
+            "success": False,
+            "message":
+                "Not authenticated."
+        }), 401
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    name = data.get("name")
+
+    if not isinstance(name, str):
+        return jsonify({
+            "success": False,
+            "message":
+                "Name must be text."
+        }), 400
+
+    name = name.strip()
+
+    if not name:
+        return jsonify({
+            "success": False,
+            "message":
+                "Name cannot be empty."
+        }), 400
+
+    if len(name) > 100:
+        return jsonify({
+            "success": False,
+            "message":
+                "Name must be 100 characters or fewer."
+        }), 400
+
+    connection = None
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE users
+            SET name = %s
+            WHERE id = %s
+            RETURNING id, name, email
+            """,
+            (
+                name,
+                user_id
+            )
+        )
+
+        user = cursor.fetchone()
+
+        if not user:
+            connection.rollback()
+            cursor.close()
+
+            return jsonify({
+                "success": False,
+                "message":
+                    "User account not found."
+            }), 404
+
+        connection.commit()
+        cursor.close()
+
+        session["name"] = user[1] or "User"
+        session["email"] = user[2] or ""
+
+        return jsonify({
+            "success": True,
+            "message":
+                "Profile updated successfully.",
+            "user": {
+                "id": user[0],
+                "name": user[1] or "",
+                "email": user[2] or ""
+            }
+        })
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Profile update error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to update profile."
+        }), 500
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
+# ============================================================
 # RESULT PAGE
 # ============================================================
+
 
 @app.route(
     "/result"
@@ -914,6 +1108,839 @@ def get_categories():
 # ============================================================
 # GET PRODUCTS
 # ============================================================
+
+
+# ============================================================
+# DASHBOARD PERSISTENCE APIs
+# ============================================================
+
+def get_authenticated_user_id():
+
+    value = session.get("user_id")
+
+    if value is None:
+        return None
+
+    try:
+        return int(value)
+
+    except (
+        TypeError,
+        ValueError
+    ):
+        return None
+
+
+@app.route(
+    "/api/dashboard/state",
+    methods=["GET"]
+)
+def dashboard_state():
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Not authenticated."
+        }), 401
+
+    connection = None
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.cursor()
+
+        # ----------------------------------------------------
+        # SEARCH HISTORY
+        # ----------------------------------------------------
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                product_id,
+                name,
+                brand,
+                category,
+                source_url,
+                image_url,
+                savings,
+                searched_at
+            FROM search_history
+            WHERE user_id = %s
+            ORDER BY searched_at DESC, id DESC
+            LIMIT 10
+            """,
+            (user_id,)
+        )
+
+        history_rows = cursor.fetchall()
+
+        history = []
+
+        for row in history_rows:
+
+            history.append({
+                "history_id": row[0],
+                "id": row[1],
+                "product_id": row[1],
+                "name": row[2],
+                "brand": row[3] or "",
+                "category": row[4] or "Product",
+                "source_url": row[5] or "",
+                "image_url": row[6] or "",
+                "savings": float(row[7] or 0),
+                "timestamp":
+                    row[8].isoformat()
+                    if row[8]
+                    else None
+            })
+
+
+        # ----------------------------------------------------
+        # SAVED PRODUCTS
+        # ----------------------------------------------------
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                product_id,
+                name,
+                brand,
+                category,
+                source_url,
+                image_url,
+                saved_at
+            FROM saved_products
+            WHERE user_id = %s
+            ORDER BY saved_at DESC, id DESC
+            """,
+            (user_id,)
+        )
+
+        saved_rows = cursor.fetchall()
+
+        saved = []
+
+        for row in saved_rows:
+
+            saved.append({
+                "saved_id": row[0],
+                "id": row[1],
+                "product_id": row[1],
+                "name": row[2],
+                "brand": row[3] or "",
+                "category": row[4] or "Product",
+                "source_url": row[5] or "",
+                "image_url": row[6] or "",
+                "saved_at":
+                    row[7].isoformat()
+                    if row[7]
+                    else None
+            })
+
+
+        # ----------------------------------------------------
+        # NOTIFICATION SETTINGS
+        # ----------------------------------------------------
+
+        cursor.execute(
+            """
+            SELECT enabled
+            FROM user_notification_settings
+            WHERE user_id = %s
+            """,
+            (user_id,)
+        )
+
+        setting_row = cursor.fetchone()
+
+        notifications_enabled = (
+            bool(setting_row[0])
+            if setting_row is not None
+            else True
+        )
+
+
+        # ----------------------------------------------------
+        # NOTIFICATIONS
+        # ----------------------------------------------------
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                title,
+                message,
+                type,
+                is_read,
+                created_at
+            FROM notifications
+            WHERE user_id = %s
+            ORDER BY created_at DESC, id DESC
+            LIMIT 20
+            """,
+            (user_id,)
+        )
+
+        notification_rows = cursor.fetchall()
+
+        notifications = []
+
+        for row in notification_rows:
+
+            notifications.append({
+                "id": row[0],
+                "title": row[1],
+                "message": row[2],
+                "type": row[3] or "general",
+                "is_read": bool(row[4]),
+                "created_at":
+                    row[5].isoformat()
+                    if row[5]
+                    else None
+            })
+
+
+        cursor.close()
+
+        return jsonify({
+            "success": True,
+            "history": history,
+            "saved": saved,
+            "notifications": notifications,
+            "notifications_enabled":
+                notifications_enabled
+        })
+
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Dashboard state error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to load dashboard data."
+        }), 500
+
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
+@app.route(
+    "/api/search-history",
+    methods=["POST"]
+)
+def save_search_history():
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Not authenticated."
+        }), 401
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    product_id = data.get(
+        "product_id",
+        data.get("id")
+    )
+
+    name = str(
+        data.get("name") or
+        "Compared Product"
+    ).strip()
+
+    brand = str(
+        data.get("brand") or ""
+    ).strip()
+
+    category = str(
+        data.get("category") or
+        "Product"
+    ).strip()
+
+    source_url = str(
+        data.get("source_url") or
+        data.get("product_url") or
+        data.get("url") or
+        ""
+    ).strip()
+
+    image_url = str(
+        data.get("image_url") or
+        ""
+    ).strip()
+
+    savings = data.get(
+        "savings",
+        0
+    )
+
+    if not source_url:
+
+        return jsonify({
+            "success": False,
+            "message": "Source URL is required."
+        }), 400
+
+    try:
+
+        savings = float(savings or 0)
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        savings = 0
+
+
+    connection = None
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.cursor()
+
+
+        if product_id is not None:
+
+            try:
+                product_id = int(product_id)
+
+            except (
+                TypeError,
+                ValueError
+            ):
+                product_id = None
+
+
+        # Remove previous occurrence so the newest
+        # comparison appears at the top.
+
+        if product_id is not None:
+
+            cursor.execute(
+                """
+                DELETE FROM search_history
+                WHERE user_id = %s
+                  AND product_id = %s
+                """,
+                (
+                    user_id,
+                    product_id
+                )
+            )
+
+        else:
+
+            cursor.execute(
+                """
+                DELETE FROM search_history
+                WHERE user_id = %s
+                  AND source_url = %s
+                """,
+                (
+                    user_id,
+                    source_url
+                )
+            )
+
+
+        cursor.execute(
+            """
+            INSERT INTO search_history(
+                user_id,
+                product_id,
+                name,
+                brand,
+                category,
+                source_url,
+                image_url,
+                savings
+            )
+            VALUES(
+                %s, %s, %s, %s,
+                %s, %s, %s, %s
+            )
+            RETURNING id
+            """,
+            (
+                user_id,
+                product_id,
+                name,
+                brand,
+                category,
+                source_url,
+                image_url,
+                savings
+            )
+        )
+
+        history_id = cursor.fetchone()[0]
+
+
+        # Keep only the latest 10 searches.
+
+        cursor.execute(
+            """
+            DELETE FROM search_history
+            WHERE id IN (
+                SELECT id
+                FROM search_history
+                WHERE user_id = %s
+                ORDER BY searched_at DESC, id DESC
+                OFFSET 10
+            )
+            """,
+            (user_id,)
+        )
+
+
+        connection.commit()
+
+        cursor.close()
+
+        return jsonify({
+            "success": True,
+            "history_id": history_id
+        })
+
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Save search history error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to save search history."
+        }), 500
+
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
+@app.route(
+    "/api/saved-products",
+    methods=["POST"]
+)
+def save_product():
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Not authenticated."
+        }), 401
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    product_id = data.get(
+        "product_id",
+        data.get("id")
+    )
+
+    try:
+        product_id = int(product_id)
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return jsonify({
+            "success": False,
+            "message": "Valid product ID is required."
+        }), 400
+
+
+    name = str(
+        data.get("name") or
+        "Product"
+    ).strip()
+
+    brand = str(
+        data.get("brand") or
+        ""
+    ).strip()
+
+    category = str(
+        data.get("category") or
+        "Product"
+    ).strip()
+
+    source_url = str(
+        data.get("source_url") or
+        data.get("product_url") or
+        data.get("url") or
+        ""
+    ).strip()
+
+    image_url = str(
+        data.get("image_url") or
+        ""
+    ).strip()
+
+
+    if not source_url:
+
+        return jsonify({
+            "success": False,
+            "message": "Source URL is required."
+        }), 400
+
+
+    connection = None
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO saved_products(
+                user_id,
+                product_id,
+                name,
+                brand,
+                category,
+                source_url,
+                image_url
+            )
+            VALUES(
+                %s, %s, %s, %s,
+                %s, %s, %s
+            )
+            ON CONFLICT (
+                user_id,
+                product_id
+            )
+            DO UPDATE SET
+                name = EXCLUDED.name,
+                brand = EXCLUDED.brand,
+                category = EXCLUDED.category,
+                source_url = EXCLUDED.source_url,
+                image_url = EXCLUDED.image_url
+            RETURNING id
+            """,
+            (
+                user_id,
+                product_id,
+                name,
+                brand,
+                category,
+                source_url,
+                image_url
+            )
+        )
+
+        saved_id = cursor.fetchone()[0]
+
+        connection.commit()
+
+        cursor.close()
+
+        return jsonify({
+            "success": True,
+            "saved_id": saved_id
+        })
+
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Save product error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to save product."
+        }), 500
+
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
+@app.route(
+    "/api/saved-products/<int:product_id>",
+    methods=["DELETE"]
+)
+def delete_saved_product(product_id):
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Not authenticated."
+        }), 401
+
+    connection = None
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            DELETE FROM saved_products
+            WHERE user_id = %s
+              AND product_id = %s
+            """,
+            (
+                user_id,
+                product_id
+            )
+        )
+
+        deleted = cursor.rowcount
+
+        connection.commit()
+
+        cursor.close()
+
+        return jsonify({
+            "success": True,
+            "deleted": deleted > 0
+        })
+
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Delete saved product error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to remove saved product."
+        }), 500
+
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
+@app.route(
+    "/api/notification-settings",
+    methods=["PUT"]
+)
+def update_notification_settings():
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Not authenticated."
+        }), 401
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    enabled = data.get(
+        "enabled"
+    )
+
+    if not isinstance(
+        enabled,
+        bool
+    ):
+
+        return jsonify({
+            "success": False,
+            "message": "enabled must be boolean."
+        }), 400
+
+
+    connection = None
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO user_notification_settings(
+                user_id,
+                enabled,
+                updated_at
+            )
+            VALUES(
+                %s, %s, CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                enabled = EXCLUDED.enabled,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                user_id,
+                enabled
+            )
+        )
+
+        connection.commit()
+
+        cursor.close()
+
+        return jsonify({
+            "success": True,
+            "enabled": enabled
+        })
+
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Notification settings error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to update notification settings."
+        }), 500
+
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
+@app.route(
+    "/api/notifications/read",
+    methods=["POST"]
+)
+def mark_notifications_read():
+
+    user_id = get_authenticated_user_id()
+
+    if user_id is None:
+
+        return jsonify({
+            "success": False,
+            "message": "Not authenticated."
+        }), 401
+
+    connection = None
+
+    try:
+
+        connection = get_db_connection()
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            UPDATE notifications
+            SET is_read = TRUE
+            WHERE user_id = %s
+              AND is_read = FALSE
+            """,
+            (user_id,)
+        )
+
+        updated = cursor.rowcount
+
+        connection.commit()
+
+        cursor.close()
+
+        return jsonify({
+            "success": True,
+            "updated": updated
+        })
+
+
+    except Exception as error:
+
+        if connection:
+            connection.rollback()
+
+        print(
+            "Mark notifications read error:",
+            error
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Unable to update notifications."
+        }), 500
+
+
+    finally:
+
+        if connection:
+            connection.close()
+
+
 
 @app.route(
     "/api/products",
@@ -1738,11 +2765,15 @@ def compare_product():
 
     except Exception as e:
 
+        import traceback
+
         print(
             "\nFULL COMPARISON ERROR:"
         )
 
         print(e)
+
+        traceback.print_exc()
 
         return jsonify({
             "success": False,
@@ -2019,6 +3050,586 @@ def login():
 
         if connection:
             connection.close()
+
+
+# ============================================================
+# OAUTH HELPERS
+# ============================================================
+
+def establish_user_session(user_id, name, email):
+    session["user_id"] = user_id
+    session["name"] = name or "User"
+    session["email"] = email
+    session.permanent = False
+
+
+def oauth_error(message):
+    print("OAuth error:", message)
+    return redirect(
+        "/Pages/login.html?oauth_error="
+        + urlencode({"message": message})
+    )
+
+
+def get_or_create_oauth_user(
+    provider,
+    provider_id,
+    name,
+    email
+):
+    connection = None
+
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        provider_column = (
+            "google_id"
+            if provider == "google"
+            else "facebook_id"
+        )
+
+        # ----------------------------------------------------
+        # 1. Existing account linked to this provider
+        # ----------------------------------------------------
+        cursor.execute(
+            f"""
+            SELECT id, name, email
+            FROM users
+            WHERE {provider_column} = %s
+            LIMIT 1
+            """,
+            (provider_id,)
+        )
+
+        user = cursor.fetchone()
+
+        if user:
+            cursor.close()
+            return user
+
+        # ----------------------------------------------------
+        # 2. Existing TrustCart account with same email
+        #    Link the OAuth provider to that account.
+        # ----------------------------------------------------
+        cursor.execute(
+            """
+            SELECT id, name, email
+            FROM users
+            WHERE LOWER(email) = LOWER(%s)
+            LIMIT 1
+            """,
+            (email,)
+        )
+
+        user = cursor.fetchone()
+
+        if user:
+            cursor.execute(
+                f"""
+                UPDATE users
+                SET {provider_column} = %s
+                WHERE id = %s
+                """,
+                (
+                    provider_id,
+                    user[0]
+                )
+            )
+
+            connection.commit()
+            cursor.close()
+
+            return user
+
+        # ----------------------------------------------------
+        # 3. Completely new OAuth account
+        # ----------------------------------------------------
+        safe_name = (
+            name.strip()
+            if isinstance(name, str) and name.strip()
+            else email.split("@")[0]
+        )
+
+        cursor.execute(
+            f"""
+            INSERT INTO users(
+                name,
+                email,
+                password_hash,
+                {provider_column}
+            )
+            VALUES(
+                %s,
+                %s,
+                NULL,
+                %s
+            )
+            RETURNING id, name, email
+            """,
+            (
+                safe_name,
+                email,
+                provider_id
+            )
+        )
+
+        user = cursor.fetchone()
+
+        connection.commit()
+        cursor.close()
+
+        return user
+
+    except errors.UniqueViolation:
+        if connection:
+            connection.rollback()
+
+        # A race condition may have created the account.
+        # Try the provider ID once more.
+        try:
+            cursor = connection.cursor()
+
+            cursor.execute(
+                f"""
+                SELECT id, name, email
+                FROM users
+                WHERE {provider_column} = %s
+                LIMIT 1
+                """,
+                (provider_id,)
+            )
+
+            user = cursor.fetchone()
+            cursor.close()
+
+            return user
+
+        except Exception:
+            return None
+
+    except Exception as e:
+        if connection:
+            connection.rollback()
+
+        print(
+            f"{provider.title()} OAuth database error:",
+            e
+        )
+
+        return None
+
+    finally:
+        if connection:
+            connection.close()
+
+
+# ============================================================
+# GOOGLE OAUTH
+# ============================================================
+
+@app.route("/auth/google")
+def google_login():
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+
+    if not client_id or not redirect_uri:
+        return oauth_error(
+            "Google OAuth is not configured."
+        )
+
+    state = secrets.token_urlsafe(32)
+
+    session["google_oauth_state"] = state
+
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "online",
+        "prompt": "select_account"
+    }
+
+    authorization_url = (
+        "https://accounts.google.com/o/oauth2/v2/auth?"
+        + urlencode(params)
+    )
+
+    return redirect(authorization_url)
+
+
+@app.route("/auth/google/callback")
+def google_callback():
+
+    error = request.args.get("error")
+
+    if error:
+        session.pop("google_oauth_state", None)
+        return oauth_error(
+            "Google login was cancelled."
+        )
+
+    state = request.args.get("state")
+    saved_state = session.pop(
+        "google_oauth_state",
+        None
+    )
+
+    if (
+        not state
+        or not saved_state
+        or not secrets.compare_digest(
+            state,
+            saved_state
+        )
+    ):
+        return oauth_error(
+            "Invalid Google OAuth state."
+        )
+
+    code = request.args.get("code")
+
+    if not code:
+        return oauth_error(
+            "Google authorization code was missing."
+        )
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+
+    if not client_id or not client_secret or not redirect_uri:
+        return oauth_error(
+            "Google OAuth is not configured."
+        )
+
+    try:
+
+        token_response = requests.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code"
+            },
+            timeout=15
+        )
+
+        if not token_response.ok:
+            print(
+                "Google token error:",
+                token_response.text
+            )
+
+            return oauth_error(
+                "Google token exchange failed."
+            )
+
+        token_data = token_response.json()
+
+        access_token = token_data.get(
+            "access_token"
+        )
+
+        if not access_token:
+            return oauth_error(
+                "Google access token was missing."
+            )
+
+        userinfo_response = requests.get(
+            "https://openidconnect.googleapis.com/v1/userinfo",
+            headers={
+                "Authorization":
+                    f"Bearer {access_token}"
+            },
+            timeout=15
+        )
+
+        if not userinfo_response.ok:
+            print(
+                "Google userinfo error:",
+                userinfo_response.text
+            )
+
+            return oauth_error(
+                "Unable to retrieve Google account information."
+            )
+
+        userinfo = userinfo_response.json()
+
+        google_id = userinfo.get("sub")
+        email = (
+            userinfo.get("email")
+            or ""
+        ).strip().lower()
+
+        name = (
+            userinfo.get("name")
+            or ""
+        ).strip()
+
+        if not google_id or not email:
+            return oauth_error(
+                "Google did not provide a valid account."
+            )
+
+        user = get_or_create_oauth_user(
+            "google",
+            google_id,
+            name,
+            email
+        )
+
+        if not user:
+            return oauth_error(
+                "Unable to create or find your TrustCart account."
+            )
+
+        establish_user_session(
+            user[0],
+            user[1],
+            user[2]
+        )
+
+        return redirect("/dashboard")
+
+    except requests.RequestException as e:
+
+        print(
+            "Google OAuth request error:",
+            e
+        )
+
+        return oauth_error(
+            "Unable to connect to Google."
+        )
+
+    except Exception as e:
+
+        print(
+            "Google OAuth error:",
+            e
+        )
+
+        return oauth_error(
+            "Google login failed."
+        )
+
+
+# ============================================================
+# FACEBOOK OAUTH
+# ============================================================
+
+@app.route("/auth/facebook")
+def facebook_login():
+
+    app_id = os.getenv("FACEBOOK_APP_ID")
+    redirect_uri = os.getenv(
+        "FACEBOOK_REDIRECT_URI"
+    )
+
+    if not app_id or not redirect_uri:
+        return oauth_error(
+            "Facebook OAuth is not configured."
+        )
+
+    state = secrets.token_urlsafe(32)
+
+    session["facebook_oauth_state"] = state
+
+    params = {
+        "client_id": app_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": "email,public_profile",
+        "state": state
+    }
+
+    authorization_url = (
+        "https://www.facebook.com/dialog/oauth?"
+        + urlencode(params)
+    )
+
+    return redirect(authorization_url)
+
+
+@app.route("/auth/facebook/callback")
+def facebook_callback():
+
+    error = request.args.get("error")
+
+    if error:
+        session.pop(
+            "facebook_oauth_state",
+            None
+        )
+
+        return oauth_error(
+            "Facebook login was cancelled."
+        )
+
+    state = request.args.get("state")
+    saved_state = session.pop(
+        "facebook_oauth_state",
+        None
+    )
+
+    if (
+        not state
+        or not saved_state
+        or not secrets.compare_digest(
+            state,
+            saved_state
+        )
+    ):
+        return oauth_error(
+            "Invalid Facebook OAuth state."
+        )
+
+    code = request.args.get("code")
+
+    if not code:
+        return oauth_error(
+            "Facebook authorization code was missing."
+        )
+
+    app_id = os.getenv("FACEBOOK_APP_ID")
+    app_secret = os.getenv(
+        "FACEBOOK_APP_SECRET"
+    )
+    redirect_uri = os.getenv(
+        "FACEBOOK_REDIRECT_URI"
+    )
+
+    if not app_id or not app_secret or not redirect_uri:
+        return oauth_error(
+            "Facebook OAuth is not configured."
+        )
+
+    try:
+
+        token_response = requests.get(
+            "https://graph.facebook.com/oauth/access_token",
+            params={
+                "client_id": app_id,
+                "client_secret": app_secret,
+                "redirect_uri": redirect_uri,
+                "code": code
+            },
+            timeout=15
+        )
+
+        if not token_response.ok:
+            print(
+                "Facebook token error:",
+                token_response.text
+            )
+
+            return oauth_error(
+                "Facebook token exchange failed."
+            )
+
+        token_data = token_response.json()
+
+        access_token = token_data.get(
+            "access_token"
+        )
+
+        if not access_token:
+            return oauth_error(
+                "Facebook access token was missing."
+            )
+
+        user_response = requests.get(
+            "https://graph.facebook.com/me",
+            params={
+                "fields": "id,name,email",
+                "access_token": access_token
+            },
+            timeout=15
+        )
+
+        if not user_response.ok:
+            print(
+                "Facebook userinfo error:",
+                user_response.text
+            )
+
+            return oauth_error(
+                "Unable to retrieve Facebook account information."
+            )
+
+        userinfo = user_response.json()
+
+        facebook_id = userinfo.get("id")
+
+        email = (
+            userinfo.get("email")
+            or ""
+        ).strip().lower()
+
+        name = (
+            userinfo.get("name")
+            or ""
+        ).strip()
+
+        if not facebook_id:
+            return oauth_error(
+                "Facebook did not provide a valid account."
+            )
+
+        if not email:
+            return oauth_error(
+                "Facebook did not provide an email address. "
+                "Please use another login method."
+            )
+
+        user = get_or_create_oauth_user(
+            "facebook",
+            facebook_id,
+            name,
+            email
+        )
+
+        if not user:
+            return oauth_error(
+                "Unable to create or find your TrustCart account."
+            )
+
+        establish_user_session(
+            user[0],
+            user[1],
+            user[2]
+        )
+
+        return redirect("/dashboard")
+
+    except requests.RequestException as e:
+
+        print(
+            "Facebook OAuth request error:",
+            e
+        )
+
+        return oauth_error(
+            "Unable to connect to Facebook."
+        )
+
+    except Exception as e:
+
+        print(
+            "Facebook OAuth error:",
+            e
+        )
+
+        return oauth_error(
+            "Facebook login failed."
+        )
 
 
 # ============================================================

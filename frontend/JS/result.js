@@ -1,6 +1,8 @@
+"use strict";
+
 /* =========================================================
-   TRUSTCART - RESULT PAGE JAVASCRIPT
-   ========================================================= */
+   TRUSTCART RESULT PAGE
+========================================================= */
 
 let currentPrices = [];
 let currentProduct = null;
@@ -16,13 +18,12 @@ let lastFocusedElement = null;
 
 const $ = (selector) => document.querySelector(selector);
 
-const $all = (selector) => [
-    ...document.querySelectorAll(selector)
-];
+const $all = (selector) =>
+    Array.from(document.querySelectorAll(selector));
 
 
 /* =========================================================
-   DOM REFERENCES
+   DOM
 ========================================================= */
 
 const loading = $("#loading");
@@ -30,15 +31,33 @@ const errorBox = $("#errorBox");
 const errorMessage = $("#errorMessage");
 const results = $("#results");
 
+const productImage = $("#productImage");
+const productImageFallback = $("#productImageFallback");
 const productName = $("#productName");
 const productBrand = $("#productBrand");
 const productCategory = $("#productCategory");
+const productSource = $("#productSource");
+const comparisonStatus = $("#comparisonStatus");
+
+const quickBestPrice = $("#quickBestPrice");
+const quickSavings = $("#quickSavings");
+const quickSellerCount = $("#quickSellerCount");
+const quickTrustScore = $("#quickTrustScore");
 
 const bestSeller = $("#bestSeller");
 const bestWebsite = $("#bestWebsite");
+const bestSellerLogo = $("#bestSellerLogo");
 const bestPrice = $("#bestPrice");
 const savings = $("#savings");
+const savingsBadge = $("#savingsBadge");
+const dealReason = $("#dealReason");
+const dealStatus = $("#dealStatus");
+
 const bestBuyBtn = $("#bestBuyBtn");
+const bestAnalyzeBtn = $("#bestAnalyzeBtn");
+
+const smartInsight = $("#smartInsight");
+const smartInsightText = $("#smartInsightText");
 
 const trustScore = $("#trustScore");
 const trustLevel = $("#trustLevel");
@@ -46,377 +65,2188 @@ const trustLevel = $("#trustLevel");
 const priceAnalysis = $("#priceAnalysis");
 const sellerAnalysis = $("#sellerAnalysis");
 const freshnessAnalysis = $("#freshnessAnalysis");
-
 const recommendation = $("#recommendation");
-
-const sellerRows = $("#sellerRows");
-const sellerCount = $("#sellerCount");
-
-const themeToggle = $("#themeToggle");
-
-const quickBestPrice = $("#quickBestPrice");
-const quickSavings = $("#quickSavings");
-const quickSellerCount = $("#quickSellerCount");
-const quickTrustScore = $("#quickTrustScore");
 
 const priceBars = $("#priceBars");
 
-const smartInsight = $("#smartInsight");
-const smartInsightText = $("#smartInsightText");
-
-const dealReason = $("#dealReason");
-const buyingTip = $("#buyingTip");
-
+const sellerCount = $("#sellerCount");
+const sellerRows = $("#sellerRows");
+const sellerEmpty = $("#sellerEmpty");
 const sortSelect = $("#sortSelect");
 
-const alertModal = $("#alertModal");
-const alertClose = $("#alertClose");
-const alertCancel = $("#alertCancel");
-const alertSave = $("#alertSave");
-const alertPrice = $("#alertPrice");
-const alertBtn = $("#alertBtn");
+const buyingTip = $("#buyingTip");
 
-const productImage = $("#productImage");
-const productImageWrap = $("#productImageWrap");
+const themeToggle = $("#themeToggle");
+const topAvatar = $("#topAvatar");
+const profileMenu = $("#profileMenu");
+const avatarInitial = $("#avatarInitial");
+const userName = $("#userName");
+const userEmail = $("#userEmail");
+const profileLogout = $("#profileLogout");
 
-const checkedTime = $("#checkedTime");
-const savingsPercentage = $("#savingsPercentage");
-
-const refreshBtn = $("#refreshBtn");
-const copyBtn = $("#copyBtn");
+const copySummaryBtn = $("#copySummaryBtn");
 const shareBtn = $("#shareBtn");
-
+const refreshBtn = $("#refreshBtn");
 const retryBtn = $("#retryBtn");
 
+const alertBtn = $("#alertBtn");
+const alertModal = $("#alertModal");
+const closeModal = $("#closeModal");
+const targetPrice = $("#targetPrice");
+const saveAlert = $("#saveAlert");
 const alertMessage = $("#alertMessage");
 const existingAlertStatus = $("#existingAlertStatus");
 
-const closeModalFallback = $("#closeModal");
-const targetPriceFallback = $("#targetPrice");
-const saveAlertFallback = $("#saveAlert");
-
-const avatarName = $("#userName");
-const avatarEmail = $("#userEmail");
-const avatarInitial = $("#avatarInitial");
-
 
 /* =========================================================
-   PRODUCT ID
+   BASIC HELPERS
 ========================================================= */
 
-function getProductId() {
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
-    const params =
-        new URLSearchParams(
-            window.location.search
+
+function escapeAttribute(value) {
+    return escapeHtml(value);
+}
+
+
+function isSafeUrl(url) {
+    if (!url || typeof url !== "string") {
+        return false;
+    }
+
+    try {
+        const parsed = new URL(url, window.location.origin);
+
+        return (
+            parsed.protocol === "http:" ||
+            parsed.protocol === "https:"
         );
+    } catch {
+        return false;
+    }
+}
 
-    const queryId =
-        params.get("id") ||
-        params.get("product_id") ||
-        params.get("productId");
 
-    if (queryId) {
-        return queryId;
+function formatPrice(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return "₹0";
     }
 
-    const parts =
-        window.location.pathname
-            .split("/")
-            .filter(Boolean);
+    return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0
+    }).format(number);
+}
 
-    const resultIndex =
-        parts.indexOf("result");
 
-    if (
-        resultIndex !== -1 &&
-        parts[resultIndex + 1]
-    ) {
-        return parts[resultIndex + 1];
+function formatNumber(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return "0";
     }
 
-    return null;
+    return new Intl.NumberFormat("en-IN", {
+        maximumFractionDigits: 0
+    }).format(number);
+}
+
+
+function formatScore(value) {
+    const score = Number(value);
+
+    if (!Number.isFinite(score)) {
+        return "0";
+    }
+
+    return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+
+function marketplaceInitial(name) {
+    const value = String(name || "").toLowerCase();
+
+    if (value.includes("amazon")) return "A";
+    if (value.includes("flipkart")) return "F";
+    if (value.includes("snapdeal")) return "S";
+    if (value.includes("croma")) return "C";
+    if (value.includes("reliance")) return "R";
+    if (value.includes("myntra")) return "M";
+    if (value.includes("meesho")) return "M";
+
+    return String(name || "T").trim().charAt(0).toUpperCase() || "T";
+}
+
+
+function cleanSellerName(name) {
+    const value = String(name || "").trim();
+
+    if (!value) {
+        return "Marketplace";
+    }
+
+    const lower = value.toLowerCase();
+
+    if (lower.includes("amazon")) return "Amazon";
+    if (lower.includes("flipkart")) return "Flipkart";
+    if (lower.includes("snapdeal")) return "Snapdeal";
+    if (lower.includes("croma")) return "Croma";
+    if (lower.includes("reliance")) return "Reliance Digital";
+    if (lower.includes("myntra")) return "Myntra";
+    if (lower.includes("meesho")) return "Meesho";
+
+    return value;
+}
+
+
+function formatUpdatedDate(value) {
+    if (!value) {
+        return "Recently checked";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Recently checked";
+    }
+
+    return date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short"
+    });
+}
+
+
+function getTrustScore(item) {
+    const possibleValues = [
+        item?.trust_score,
+        item?.trustScore,
+        item?.score
+    ];
+
+    for (const value of possibleValues) {
+        const number = Number(value);
+
+        if (Number.isFinite(number)) {
+            return Math.max(0, Math.min(100, number));
+        }
+    }
+
+    return 70;
+}
+
+
+function getRating(item) {
+    const possibleValues = [
+        item?.rating,
+        item?.product_rating,
+        item?.seller_rating
+    ];
+
+    for (const value of possibleValues) {
+        const number = Number(value);
+
+        if (Number.isFinite(number)) {
+            return number;
+        }
+    }
+
+    return 0;
+}
+
+
+function getReviews(item) {
+    const possibleValues = [
+        item?.reviews,
+        item?.review_count,
+        item?.rating_count
+    ];
+
+    for (const value of possibleValues) {
+        const number = Number(value);
+
+        if (Number.isFinite(number)) {
+            return number;
+        }
+    }
+
+    return 0;
 }
 
 
 /* =========================================================
-   THEME
+   PRODUCT IMAGE
 ========================================================= */
 
-function initializeTheme() {
+function configureProductImage(product) {
 
-    const savedTheme =
-        localStorage.getItem(
-            "trustcart-theme"
-        );
+    if (!productImage) {
+        return;
+    }
 
-    if (savedTheme === "dark") {
+    const imageUrl =
+        product?.image_url ||
+        product?.imageUrl ||
+        product?.image ||
+        product?.thumbnail ||
+        "";
 
-        document.body.classList.add(
-            "dark"
-        );
+    const name =
+        product?.name ||
+        product?.title ||
+        "Product";
 
-        if (themeToggle) {
-            themeToggle.textContent = "☀";
+    productImage.onerror = () => {
 
-            themeToggle.setAttribute(
-                "aria-label",
-                "Switch to light mode"
-            );
+        productImage.style.display = "none";
+
+        if (productImageFallback) {
+            productImageFallback.style.display = "flex";
         }
+    };
+
+    if (!isSafeUrl(imageUrl)) {
+
+        productImage.style.display = "none";
+
+        if (productImageFallback) {
+            productImageFallback.style.display = "flex";
+        }
+
+        return;
+    }
+
+    productImage.src = imageUrl;
+    productImage.alt = name;
+
+    productImage.style.display = "block";
+    productImage.style.visibility = "visible";
+    productImage.style.objectFit = "contain";
+
+    if (productImageFallback) {
+        productImageFallback.style.display = "none";
+    }
+}
+
+
+/* =========================================================
+   NORMALIZATION
+========================================================= */
+
+function normalizePriceItem(item) {
+
+    if (!item || typeof item !== "object") {
+        return null;
+    }
+
+    const rawPrice =
+        item.price ??
+        item.current_price ??
+        item.selling_price ??
+        item.final_price;
+
+    const price = Number(rawPrice);
+
+    if (!Number.isFinite(price) || price <= 0) {
+        return null;
+    }
+
+    const seller = cleanSellerName(
+        item.seller ||
+        item.marketplace ||
+        item.platform ||
+        item.website ||
+        "Marketplace"
+    );
+
+    return {
+        ...item,
+
+        seller,
+
+        website:
+            item.website ||
+            seller,
+
+        price,
+
+        product_url:
+            item.product_url ||
+            item.productUrl ||
+            item.url ||
+            item.link ||
+            "",
+
+        trust_score: getTrustScore(item),
+
+        rating: getRating(item),
+
+        reviews: getReviews(item),
+
+        updated_at:
+            item.updated_at ||
+            item.updatedAt ||
+            item.timestamp ||
+            null
+    };
+}
+
+
+function extractPriceItems(data) {
+
+    const sources = [
+        data?.matching,
+        data?.price_comparison,
+        data?.prices,
+        data?.results,
+        data?.products
+    ];
+
+    for (const source of sources) {
+
+        if (Array.isArray(source) && source.length) {
+            return source;
+        }
+
+        if (
+            source &&
+            Array.isArray(source.products)
+        ) {
+            return source.products;
+        }
+
+        if (
+            source &&
+            Array.isArray(source.prices)
+        ) {
+            return source.prices;
+        }
+    }
+
+    if (Array.isArray(data)) {
+        return data;
+    }
+
+    return [];
+}
+
+
+function deduplicatePrices(items) {
+
+    const seen = new Set();
+    const output = [];
+
+    for (const item of items) {
+
+        const normalized = normalizePriceItem(item);
+
+        if (!normalized) {
+            continue;
+        }
+
+        const key = [
+            normalized.seller.toLowerCase(),
+            normalized.product_url || "",
+            normalized.price
+        ].join("|");
+
+        if (seen.has(key)) {
+            continue;
+        }
+
+        seen.add(key);
+        output.push(normalized);
+    }
+
+    return output;
+}
+
+
+/* =========================================================
+   SORTING
+========================================================= */
+
+function getSortedPrices(prices, mode) {
+
+    const items = [...prices];
+
+    const cheapest =
+        Math.min(
+            ...items.map((item) => Number(item.price))
+        );
+
+    switch (mode) {
+
+        case "price":
+        case "price-asc":
+        case "lowest":
+
+            return items.sort(
+                (a, b) => a.price - b.price
+            );
+
+        case "highest":
+
+            return items.sort(
+                (a, b) => b.price - a.price
+            );
+
+        case "trust":
+
+            return items.sort(
+                (a, b) =>
+                    getTrustScore(b) -
+                    getTrustScore(a)
+            );
+
+        case "rating":
+
+            return items.sort(
+                (a, b) =>
+                    getRating(b) -
+                    getRating(a)
+            );
+
+        case "seller":
+
+            return items.sort(
+                (a, b) =>
+                    a.seller.localeCompare(
+                        b.seller
+                    )
+            );
+
+        case "best":
+        default:
+
+            return items.sort((a, b) => {
+
+                const aScore =
+                    getTrustScore(a) -
+                    ((a.price - cheapest) / Math.max(cheapest, 1)) * 30;
+
+                const bScore =
+                    getTrustScore(b) -
+                    ((b.price - cheapest) / Math.max(cheapest, 1)) * 30;
+
+                return bScore - aScore;
+            });
+    }
+}
+
+
+/* =========================================================
+   BEST DEAL
+========================================================= */
+
+function chooseBestDeal(prices) {
+
+    if (!prices.length) {
+        return null;
+    }
+
+    const cheapest =
+        Math.min(
+            ...prices.map((item) => item.price)
+        );
+
+    return [...prices].sort((a, b) => {
+
+        const aPricePenalty =
+            ((a.price - cheapest) /
+                Math.max(cheapest, 1)) * 30;
+
+        const bPricePenalty =
+            ((b.price - cheapest) /
+                Math.max(cheapest, 1)) * 30;
+
+        const aScore =
+            getTrustScore(a) -
+            aPricePenalty;
+
+        const bScore =
+            getTrustScore(b) -
+            bPricePenalty;
+
+        return bScore - aScore;
+
+    })[0];
+}
+
+
+/* =========================================================
+   TRUST
+========================================================= */
+
+function calculateOverallTrust(prices) {
+
+    if (!prices.length) {
+        return 0;
+    }
+
+    const average =
+        prices.reduce(
+            (sum, item) =>
+                sum + getTrustScore(item),
+            0
+        ) / prices.length;
+
+    const sellerFactor =
+        Math.min(prices.length, 5) * 3;
+
+    return Math.round(
+        Math.min(
+            100,
+            average + sellerFactor
+        )
+    );
+}
+
+
+function getTrustLevel(score) {
+
+    if (score >= 85) {
+        return "Excellent";
+    }
+
+    if (score >= 75) {
+        return "Good";
+    }
+
+    if (score >= 60) {
+        return "Fair";
+    }
+
+    return "Low";
+}
+
+
+/* =========================================================
+   DISPLAY PRODUCT
+========================================================= */
+
+function displayProduct(product) {
+
+    const name =
+        product?.name ||
+        product?.title ||
+        product?.product_name ||
+        "Product";
+
+    const brand =
+        product?.brand ||
+        product?.brand_name ||
+        "Unknown";
+
+    const category =
+        product?.category ||
+        "Product";
+
+    if (productName) {
+        productName.textContent = name;
+    }
+
+    if (productBrand) {
+        productBrand.textContent = brand;
+    }
+
+    if (productCategory) {
+        productCategory.textContent = category;
+    }
+
+    if (productSource) {
+        productSource.textContent =
+            "Multiple marketplace listings analyzed";
+    }
+
+    configureProductImage(product);
+}
+
+
+/* =========================================================
+   QUICK STATS
+========================================================= */
+
+function displayQuickStats(prices, overallTrust) {
+
+    if (!prices.length) {
+        return;
+    }
+
+    const lowest =
+        Math.min(
+            ...prices.map((item) => item.price)
+        );
+
+    const highest =
+        Math.max(
+            ...prices.map((item) => item.price)
+        );
+
+    const savingsAmount =
+        Math.max(0, highest - lowest);
+
+    if (quickBestPrice) {
+        quickBestPrice.textContent =
+            formatPrice(lowest);
+    }
+
+    if (quickSavings) {
+        quickSavings.textContent =
+            formatPrice(savingsAmount);
+    }
+
+    if (quickSellerCount) {
+        quickSellerCount.textContent =
+            String(prices.length);
+    }
+
+    if (quickTrustScore) {
+        quickTrustScore.textContent =
+            `${formatScore(overallTrust)}/100`;
+    }
+}
+
+
+/* =========================================================
+   BEST DEAL UI
+========================================================= */
+
+function configureBestDeal(deal, prices) {
+
+    currentBestDeal = deal;
+
+    if (!deal) {
+        return;
+    }
+
+    const lowest =
+        Math.min(
+            ...prices.map((item) => item.price)
+        );
+
+    const savingsAmount =
+        Math.max(
+            0,
+            Math.max(
+                ...prices.map((item) => item.price)
+            ) - deal.price
+        );
+
+    const savingsPercentage =
+        savingsAmount > 0
+            ? Math.round(
+                (savingsAmount /
+                    Math.max(
+                        ...prices.map(
+                            (item) => item.price
+                        )
+                    )) * 100
+            )
+            : 0;
+
+    if (bestSeller) {
+        bestSeller.textContent =
+            deal.seller;
+    }
+
+    if (bestWebsite) {
+        bestWebsite.textContent =
+            deal.website || deal.seller;
+    }
+
+    if (bestSellerLogo) {
+        bestSellerLogo.textContent =
+            marketplaceInitial(deal.seller);
+    }
+
+    if (bestPrice) {
+        bestPrice.textContent =
+            formatPrice(deal.price);
+    }
+
+    if (savings) {
+
+        if (deal.price === lowest) {
+            savings.textContent =
+                "Lowest verified marketplace price";
+        } else {
+            savings.textContent =
+                "Strong price + trust balance";
+        }
+    }
+
+    if (savingsBadge) {
+
+        if (deal.price === lowest) {
+            savingsBadge.textContent =
+                "Lowest price";
+        } else {
+            savingsBadge.textContent =
+                "Best overall";
+        }
+    }
+
+    if (dealReason) {
+
+        if (deal.price === lowest) {
+            dealReason.textContent =
+                "Lowest available price across checked marketplaces.";
+        } else {
+            dealReason.textContent =
+                "Best balance of price and TrustCart trust signals.";
+        }
+    }
+
+    if (dealStatus) {
+        dealStatus.textContent =
+            `✓ ${formatScore(getTrustScore(deal))}/100 trust`;
+    }
+
+    configureBuyButton(
+        bestBuyBtn,
+        deal.product_url
+    );
+
+    if (bestAnalyzeBtn) {
+
+        if (deal.product_url) {
+
+            bestAnalyzeBtn.style.display =
+                "inline-flex";
+
+            bestAnalyzeBtn.onclick = () =>
+                openReviewAnalysis(deal);
+
+        } else {
+
+            bestAnalyzeBtn.style.display =
+                "none";
+        }
+    }
+}
+
+
+function configureBuyButton(button, url) {
+
+    if (!button) {
+        return;
+    }
+
+    if (!isSafeUrl(url)) {
+
+        button.style.display = "none";
+
+        return;
+    }
+
+    button.href = url;
+    button.style.display = "inline-flex";
+}
+
+
+/* =========================================================
+   SMART INSIGHT
+========================================================= */
+
+function displaySmartInsight(prices, deal) {
+
+    if (!prices.length || !deal) {
+        return;
+    }
+
+    const lowest =
+        Math.min(
+            ...prices.map((item) => item.price)
+        );
+
+    const highest =
+        Math.max(
+            ...prices.map((item) => item.price)
+        );
+
+    const spread =
+        highest - lowest;
+
+    if (deal.price === lowest) {
+
+        smartInsight.textContent =
+            `${deal.seller} has the lowest checked price.`;
+
+        smartInsightText.textContent =
+            `You are currently looking at the strongest price option among ${prices.length} checked marketplace${prices.length > 1 ? "s" : ""}.`;
 
     } else {
 
-        document.body.classList.remove(
-            "dark"
-        );
+        smartInsight.textContent =
+            `${deal.seller} offers the best overall balance.`;
 
-        if (themeToggle) {
-            themeToggle.textContent = "☾";
-
-            themeToggle.setAttribute(
-                "aria-label",
-                "Switch to dark mode"
-            );
-        }
+        smartInsightText.textContent =
+            `The cheapest listing is ${formatPrice(lowest)}, while the recommended deal scores better on overall trust.`;
     }
-}
 
+    if (spread === 0) {
 
-function toggleTheme() {
-
-    const isDark =
-        document.body.classList.toggle(
-            "dark"
-        );
-
-    localStorage.setItem(
-        "trustcart-theme",
-        isDark ? "dark" : "light"
-    );
-
-    if (themeToggle) {
-
-        themeToggle.textContent =
-            isDark ? "☀" : "☾";
-
-        themeToggle.setAttribute(
-            "aria-label",
-            isDark
-                ? "Switch to light mode"
-                : "Switch to dark mode"
-        );
+        smartInsightText.textContent =
+            "Prices are currently identical across the checked marketplaces.";
     }
 }
 
 
 /* =========================================================
-   USER / TOPBAR AVATAR
+   TRUST SECTION
 ========================================================= */
 
-async function loadCurrentUser() {
+function displayTrustAnalysis(prices, deal, overallTrust) {
+
+    const lowest =
+        Math.min(
+            ...prices.map((item) => item.price)
+        );
+
+    const highest =
+        Math.max(
+            ...prices.map((item) => item.price)
+        );
+
+    const spread =
+        highest - lowest;
+
+    if (trustScore) {
+        trustScore.textContent =
+            formatScore(overallTrust);
+    }
+
+    if (trustLevel) {
+        trustLevel.textContent =
+            getTrustLevel(overallTrust);
+    }
+
+    if (priceAnalysis) {
+
+        if (deal.price === lowest) {
+            priceAnalysis.textContent =
+                "This is the lowest checked price.";
+        } else {
+            priceAnalysis.textContent =
+                "Price is competitive with the market.";
+        }
+    }
+
+    if (sellerAnalysis) {
+
+        if (prices.length >= 3) {
+            sellerAnalysis.textContent =
+                `${prices.length} marketplace offers found.`;
+        } else if (prices.length === 2) {
+            sellerAnalysis.textContent =
+                "Two marketplace offers found.";
+        } else {
+            sellerAnalysis.textContent =
+                "Limited marketplace coverage.";
+        }
+    }
+
+    if (freshnessAnalysis) {
+        freshnessAnalysis.textContent =
+            "Prices were checked during this comparison.";
+    }
+
+    if (recommendation) {
+
+        if (overallTrust >= 85) {
+            recommendation.textContent =
+                "Strong recommendation.";
+        } else if (overallTrust >= 70) {
+            recommendation.textContent =
+                "Reasonable deal.";
+        } else {
+            recommendation.textContent =
+                "Review carefully before buying.";
+        }
+    }
+}
+
+
+/* =========================================================
+   PRICE BARS
+========================================================= */
+
+function renderPriceBars(prices) {
+
+    if (!priceBars) {
+        return;
+    }
+
+    priceBars.innerHTML = "";
+
+    if (!prices.length) {
+        return;
+    }
+
+    const maxPrice =
+        Math.max(
+            ...prices.map((item) => item.price)
+        );
+
+    const minPrice =
+        Math.min(
+            ...prices.map((item) => item.price)
+        );
+
+    const sorted =
+        [...prices].sort(
+            (a, b) => a.price - b.price
+        );
+
+    sorted.forEach((item) => {
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "price-bar-item";
+
+        if (item.price === minPrice) {
+            row.classList.add(
+                "best-price-bar"
+            );
+        }
+
+        const percentage =
+            maxPrice > 0
+                ? Math.max(
+                    10,
+                    Math.round(
+                        (item.price / maxPrice) * 100
+                    )
+                )
+                : 0;
+
+        row.innerHTML = `
+            <div class="price-bar-seller">
+                <div class="price-bar-logo">
+                    ${escapeHtml(
+                        marketplaceInitial(item.seller)
+                    )}
+                </div>
+
+                <span>
+                    ${escapeHtml(item.seller)}
+                </span>
+            </div>
+
+            <div class="price-track">
+                <div
+                    class="price-fill"
+                    style="width:${percentage}%"
+                ></div>
+            </div>
+
+            <div class="price-bar-value">
+                ${formatPrice(item.price)}
+            </div>
+        `;
+
+        priceBars.appendChild(row);
+    });
+}
+
+
+/* =========================================================
+   SELLER TABLE
+========================================================= */
+
+function renderSellerRows(prices) {
+
+    if (!sellerRows) {
+        return;
+    }
+
+    sellerRows.innerHTML = "";
+
+    if (sellerCount) {
+        sellerCount.textContent =
+            String(prices.length);
+    }
+
+    if (!prices.length) {
+
+        if (sellerEmpty) {
+            sellerEmpty.style.display =
+                "block";
+        }
+
+        return;
+    }
+
+    if (sellerEmpty) {
+        sellerEmpty.style.display =
+            "none";
+    }
+
+    const lowest =
+        Math.min(
+            ...prices.map((item) => item.price)
+        );
+
+    const sorted =
+        getSortedPrices(
+            prices,
+            sortSelect?.value || "best"
+        );
+
+    sorted.forEach((item) => {
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "seller-row";
+
+        const trust =
+            formatScore(
+                getTrustScore(item)
+            );
+
+        const rating =
+            getRating(item);
+
+        const reviews =
+            getReviews(item);
+
+        let differenceText = "Lowest price";
+
+        if (item.price > lowest) {
+
+            differenceText =
+                `+${formatPrice(
+                    item.price - lowest
+                )} vs lowest`;
+        }
+
+        const ratingText =
+            rating > 0
+                ? `★ ${rating.toFixed(1)}`
+                : "Rating unavailable";
+
+        const reviewsText =
+            reviews > 0
+                ? ` · ${formatNumber(reviews)} reviews`
+                : "";
+
+        const safeProductUrl =
+            isSafeUrl(item.product_url)
+                ? item.product_url
+                : "";
+
+        const analyzeButton = `
+            <button
+                class="analyze-btn seller-analyze-btn"
+                type="button"
+            >
+                Analyze
+                <span>→</span>
+            </button>
+        `;
+
+        const buyButton =
+            safeProductUrl
+                ? `
+                    <a
+                        class="buy-btn"
+                        href="${escapeAttribute(
+                            safeProductUrl
+                        )}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Buy
+                        <span>↗</span>
+                    </a>
+                `
+                : `
+                    <span
+                        class="link-unavailable"
+                    >
+                        Link unavailable
+                    </span>
+                `;
+
+        row.innerHTML = `
+            <div class="seller-platform">
+
+                <div class="seller-logo">
+                    ${escapeHtml(
+                        marketplaceInitial(
+                            item.seller
+                        )
+                    )}
+                </div>
+
+                <div>
+                    <strong>
+                        ${escapeHtml(
+                            item.seller
+                        )}
+
+                        ${
+                            item.price === lowest
+                                ? `
+                                    <span class="best-badge">
+                                        BEST
+                                    </span>
+                                  `
+                                : ""
+                        }
+                    </strong>
+
+                    <span>
+                        ${escapeHtml(
+                            item.website ||
+                            item.seller
+                        )}
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div class="seller-price">
+
+                ${formatPrice(item.price)}
+
+                <span class="price-difference">
+                    ${escapeHtml(
+                        differenceText
+                    )}
+                </span>
+
+            </div>
+
+
+            <div class="seller-trust">
+
+                <span class="trust-pill">
+                    ${trust}/100
+                </span>
+
+                <span class="seller-rating">
+                    ${escapeHtml(
+                        ratingText
+                    )}
+                    ${escapeHtml(
+                        reviewsText
+                    )}
+                </span>
+
+            </div>
+
+
+            <div class="seller-updated">
+                ${escapeHtml(
+                    formatUpdatedDate(
+                        item.updated_at
+                    )
+                )}
+            </div>
+
+
+            <div class="seller-action">
+                ${buyButton}
+                ${analyzeButton}
+            </div>
+        `;
+
+        const analyzeBtn =
+            row.querySelector(
+                ".seller-analyze-btn"
+            );
+
+        if (analyzeBtn) {
+
+            analyzeBtn.addEventListener(
+                "click",
+                () => openReviewAnalysis(item)
+            );
+        }
+
+        sellerRows.appendChild(row);
+    });
+}
+
+
+/* =========================================================
+   REVIEW ANALYSIS
+   TEMPORARY FAKE DATA
+========================================================= */
+
+function generateFakeReviewData(item) {
+
+    const seed =
+        Array.from(
+            String(item?.seller || "Marketplace")
+        ).reduce(
+            (sum, char) =>
+                sum + char.charCodeAt(0),
+            0
+        );
+
+    const positive =
+        78 + (seed % 15);
+
+    const neutral =
+        9 + (seed % 6);
+
+    const negative =
+        100 - positive - neutral;
+
+    const rating =
+        getRating(item) ||
+        Number(
+            (4.1 + (seed % 8) / 10)
+                .toFixed(1)
+        );
+
+    const reviews =
+        getReviews(item) ||
+        (1200 + (seed % 7000));
+
+    return {
+        positive,
+        neutral,
+        negative,
+        rating: Math.min(5, rating),
+        reviews,
+
+        summary:
+            positive >= 88
+                ? "Most sampled reviews appear positive."
+                : "Reviews are mostly positive with a few mixed signals.",
+
+        pros: [
+            "Good overall customer sentiment",
+            "Product quality frequently mentioned",
+            "Value for money mentioned by buyers"
+        ],
+
+        cons: [
+            "Some buyers mention delivery delays",
+            "A small number of mixed reviews",
+            "Individual seller experiences may vary"
+        ]
+    };
+}
+
+
+function openReviewAnalysis(item) {
+
+    const productTitle =
+        currentProduct?.name ||
+        currentProduct?.title ||
+        "Product";
+
+    const data =
+        generateFakeReviewData(item);
+
+    const seller =
+        cleanSellerName(item?.seller);
+
+    const productUrl =
+        isSafeUrl(item?.product_url)
+            ? item.product_url
+            : "#";
+
+    const reviewWindow =
+        window.open(
+            "",
+            "_blank",
+            "noopener,noreferrer"
+        );
+
+    if (!reviewWindow) {
+
+        showToast(
+            "Please allow pop-ups to open review analysis."
+        );
+
+        return;
+    }
+
+    const safeTitle =
+        escapeHtml(productTitle);
+
+    const safeSeller =
+        escapeHtml(seller);
+
+    reviewWindow.document.write(`
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>
+TrustCart | Review Analysis
+</title>
+
+<style>
+
+:root {
+    --green: #18583d;
+    --green-dark: #0d3d29;
+    --green-light: #61b487;
+    --green-soft: #e8f5ee;
+    --green-pale: #f5faf7;
+    --text: #17231e;
+    --muted: #718078;
+    --border: rgba(24,88,61,.11);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    color: var(--text);
+
+    background:
+        radial-gradient(
+            circle at 10% 0%,
+            rgba(97,180,135,.14),
+            transparent 30%
+        ),
+        #f4f8f6;
+}
+
+.page {
+    width: min(1080px, calc(100% - 36px));
+
+    margin: 0 auto;
+
+    padding: 36px 0 70px;
+}
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 20px;
+
+    margin-bottom: 28px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    color: var(--green-dark);
+
+    font-weight: 900;
+    font-size: 18px;
+}
+
+.logo-mark {
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 11px;
+
+    background: var(--green);
+    color: white;
+}
+
+.back {
+    padding: 9px 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: white;
+
+    color: var(--muted);
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.hero {
+    padding: 32px;
+
+    background: white;
+
+    border: 1px solid var(--border);
+    border-radius: 22px;
+
+    box-shadow:
+        0 15px 40px rgba(16,55,40,.07);
+}
+
+.eyebrow {
+    color: var(--green);
+
+    font-size: 9px;
+    font-weight: 900;
+
+    letter-spacing: .14em;
+}
+
+h1 {
+    max-width: 760px;
+
+    margin: 8px 0 5px;
+
+    color: var(--green-dark);
+
+    font-size: clamp(25px, 4vw, 38px);
+
+    line-height: 1.12;
+}
+
+.platform {
+    color: var(--muted);
+
+    font-size: 12px;
+}
+
+.grid {
+    display: grid;
+
+    grid-template-columns:
+        1.2fr
+        .8fr;
+
+    gap: 18px;
+
+    margin-top: 20px;
+}
+
+.card {
+    padding: 24px;
+
+    background: white;
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    box-shadow:
+        0 5px 20px rgba(16,55,40,.05);
+}
+
+.card h2 {
+    margin: 0 0 18px;
+
+    color: var(--green-dark);
+
+    font-size: 17px;
+}
+
+.score {
+    display: flex;
+    align-items: center;
+
+    gap: 20px;
+}
+
+.circle {
+    width: 100px;
+    height: 100px;
+
+    display: grid;
+    place-items: center;
+
+    border: 8px solid #dceee4;
+    border-radius: 50%;
+
+    color: var(--green-dark);
+
+    font-size: 24px;
+    font-weight: 900;
+}
+
+.score small {
+    display: block;
+
+    margin-top: 4px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+}
+
+.summary {
+    margin-top: 18px;
+
+    padding: 13px 15px;
+
+    border-radius: 12px;
+
+    background: var(--green-pale);
+
+    color: var(--text);
+
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.bar {
+    margin-bottom: 18px;
+}
+
+.bar-head {
+    display: flex;
+    justify-content: space-between;
+
+    margin-bottom: 7px;
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.track {
+    height: 9px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: #edf2ef;
+}
+
+.fill {
+    height: 100%;
+
+    border-radius: inherit;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(--green),
+            var(--green-light)
+        );
+}
+
+.columns {
+    display: grid;
+
+    grid-template-columns:
+        1fr
+        1fr;
+
+    gap: 18px;
+
+    margin-top: 18px;
+}
+
+.list {
+    padding: 18px;
+
+    border-radius: 14px;
+
+    background: var(--green-pale);
+}
+
+.list h3 {
+    margin: 0 0 10px;
+
+    color: var(--green-dark);
+
+    font-size: 13px;
+}
+
+.list p {
+    margin: 7px 0;
+
+    color: var(--muted);
+
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.notice {
+    margin-top: 18px;
+
+    padding: 18px;
+
+    border-radius: 14px;
+
+    background: #fff9eb;
+
+    color: #765d20;
+
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.buy {
+    display: inline-flex;
+
+    margin-top: 20px;
+
+    padding: 11px 17px;
+
+    border-radius: 11px;
+
+    background: var(--green);
+    color: white;
+
+    font-size: 12px;
+    font-weight: 800;
+}
+
+@media(max-width:700px) {
+
+    .page {
+        width: min(
+            calc(100% - 24px),
+            1080px
+        );
+
+        padding-top: 20px;
+    }
+
+    .hero {
+        padding: 23px;
+    }
+
+    .grid,
+    .columns {
+        grid-template-columns: 1fr;
+    }
+
+    .top {
+        align-items: flex-start;
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="page">
+
+    <div class="top">
+
+        <div class="logo">
+            <div class="logo-mark">T</div>
+            TrustCart
+        </div>
+
+        <button
+            class="back"
+            onclick="window.close()"
+        >
+            ← Back
+        </button>
+
+    </div>
+
+
+    <section class="hero">
+
+        <span class="eyebrow">
+            REVIEW INTELLIGENCE
+        </span>
+
+        <h1>
+            ${safeTitle}
+        </h1>
+
+        <div class="platform">
+            ${safeSeller} · Review analysis
+        </div>
+
+    </section>
+
+
+    <div class="grid">
+
+
+        <section class="card">
+
+            <h2>
+                Overall Sentiment
+            </h2>
+
+            <div class="score">
+
+                <div class="circle">
+                    ${data.rating.toFixed(1)}
+                </div>
+
+                <div>
+
+                    <strong>
+                        Mostly positive
+                    </strong>
+
+                    <small>
+                        Based on a simulated sample
+                    </small>
+
+                </div>
+
+            </div>
+
+            <div class="summary">
+                ${escapeHtml(data.summary)}
+            </div>
+
+        </section>
+
+
+        <section class="card">
+
+            <h2>
+                Review Distribution
+            </h2>
+
+            <div class="bar">
+
+                <div class="bar-head">
+                    <span>Positive</span>
+                    <span>${data.positive}%</span>
+                </div>
+
+                <div class="track">
+                    <div
+                        class="fill"
+                        style="width:${data.positive}%"
+                    ></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar">
+
+                <div class="bar-head">
+                    <span>Neutral</span>
+                    <span>${data.neutral}%</span>
+                </div>
+
+                <div class="track">
+                    <div
+                        class="fill"
+                        style="width:${data.neutral}%"
+                    ></div>
+                </div>
+
+            </div>
+
+
+            <div class="bar">
+
+                <div class="bar-head">
+                    <span>Negative</span>
+                    <span>${data.negative}%</span>
+                </div>
+
+                <div class="track">
+                    <div
+                        class="fill"
+                        style="width:${data.negative}%"
+                    ></div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <section class="card" style="margin-top:18px">
+
+        <h2>
+            Review Signals
+        </h2>
+
+        <div class="columns">
+
+            <div class="list">
+
+                <h3>
+                    Positive signals
+                </h3>
+
+                ${data.pros.map(
+                    (item) =>
+                        `<p>✓ ${escapeHtml(item)}</p>`
+                ).join("")}
+
+            </div>
+
+
+            <div class="list">
+
+                <h3>
+                    Things to check
+                </h3>
+
+                ${data.cons.map(
+                    (item) =>
+                        `<p>• ${escapeHtml(item)}</p>`
+                ).join("")}
+
+            </div>
+
+        </div>
+
+
+        <div class="notice">
+
+            <strong>
+                Demo analysis
+            </strong>
+
+            <br>
+
+            This review analysis is currently a
+            prototype using simulated data.
+            Real review scraping and AI sentiment
+            analysis can be connected here later.
+
+        </div>
+
+
+        ${
+            productUrl !== "#"
+                ? `
+                    <a
+                        class="buy"
+                        href="${escapeAttribute(productUrl)}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Open ${safeSeller} ↗
+                    </a>
+                  `
+                : ""
+        }
+
+    </section>
+
+</div>
+
+</body>
+
+</html>
+    `);
+
+    reviewWindow.document.close();
+}
+
+
+/* =========================================================
+   COMPARISON DISPLAY
+========================================================= */
+
+function displayComparisonData(product, prices) {
+
+    currentProduct = product;
+    currentPrices = prices;
+
+    displayProduct(product);
+
+    if (!prices.length) {
+
+        if (comparisonStatus) {
+            comparisonStatus.textContent =
+                "No sellers found";
+        }
+
+        if (sellerEmpty) {
+            sellerEmpty.style.display =
+                "block";
+        }
+
+        return;
+    }
+
+    const overallTrust =
+        calculateOverallTrust(prices);
+
+    const deal =
+        chooseBestDeal(prices);
+
+    displayQuickStats(
+        prices,
+        overallTrust
+    );
+
+    configureBestDeal(
+        deal,
+        prices
+    );
+
+    displaySmartInsight(
+        prices,
+        deal
+    );
+
+    displayTrustAnalysis(
+        prices,
+        deal,
+        overallTrust
+    );
+
+    renderPriceBars(prices);
+
+    renderSellerRows(prices);
+
+    if (comparisonStatus) {
+        comparisonStatus.textContent =
+            `✓ ${prices.length} seller${prices.length === 1 ? "" : "s"} compared`;
+    }
+
+    if (buyingTip) {
+
+        if (prices.length >= 3) {
+
+            buyingTip.textContent =
+                "You have several offers to compare. Check delivery charges, return policy and seller reviews before checkout.";
+
+        } else {
+
+            buyingTip.textContent =
+                "Only a limited number of marketplaces were available. Compare the final checkout price before buying.";
+        }
+    }
+}
+
+
+/* =========================================================
+   API LOADING
+========================================================= */
+
+async function loadComparison() {
+
+    showLoading();
+
+    hideError();
 
     try {
 
+        let storedResult = null;
+
+        try {
+
+            const raw =
+                sessionStorage.getItem(
+                    "trustcart_compare_result"
+                );
+
+            if (raw) {
+                storedResult =
+                    JSON.parse(raw);
+            }
+
+        } catch {
+            storedResult = null;
+        }
+
+
+        if (storedResult) {
+
+            currentComparison =
+                storedResult;
+
+            currentProductId =
+                storedResult.product_id ||
+                storedResult.productId ||
+                storedResult.id ||
+                null;
+
+            const product =
+                storedResult.product ||
+                storedResult.source_product ||
+                storedResult;
+
+            const rawPrices =
+                extractPriceItems(
+                    storedResult
+                );
+
+            const prices =
+                deduplicatePrices(
+                    rawPrices
+                );
+
+            displayComparisonData(
+                product,
+                prices
+            );
+
+            showResults();
+
+            return;
+        }
+
+
+        const urlParts =
+            window.location.pathname
+                .split("/")
+                .filter(Boolean);
+
+        const possibleId =
+            urlParts[urlParts.length - 1];
+
+        if (
+            possibleId &&
+            possibleId !== "result"
+        ) {
+            currentProductId =
+                possibleId;
+        }
+
+
+        if (!currentProductId) {
+
+            throw new Error(
+                "Comparison data could not be found."
+            );
+        }
+
+
         const response =
             await fetch(
-                "/api/me",
+                `/api/products/${encodeURIComponent(
+                    currentProductId
+                )}/prices`,
                 {
                     method: "GET",
-                    credentials: "include"
+                    headers: {
+                        Accept:
+                            "application/json"
+                    }
                 }
             );
 
         if (!response.ok) {
-            return;
+
+            throw new Error(
+                `Request failed (${response.status}).`
+            );
         }
 
         const data =
             await response.json();
 
-        if (
-            !data.success ||
-            !data.user
-        ) {
-            return;
-        }
+        currentComparison = data;
 
-        const user =
-            data.user;
+        const product =
+            data.product ||
+            data.source_product ||
+            data;
 
-        const name =
-            String(
-                user.name || "User"
-            ).trim();
+        const rawPrices =
+            extractPriceItems(data);
 
-        const email =
-            user.email || "";
+        const prices =
+            deduplicatePrices(rawPrices);
 
-        const initial =
-            name.charAt(0).toUpperCase() ||
-            "U";
-
-
-        /* -----------------------------------------
-           NORMAL USER ELEMENTS
-        ----------------------------------------- */
-
-        if (avatarName) {
-            avatarName.textContent =
-                name;
-        }
-
-        if (avatarEmail) {
-            avatarEmail.textContent =
-                email;
-        }
-
-
-        /* -----------------------------------------
-           IMPORTANT:
-           FORCE M INTO TOPBAR AVATAR
-        ----------------------------------------- */
-
-        const avatarSelectors = [
-            "#avatarInitial",
-            "#userInitial",
-            ".avatar-initial",
-            ".user-initial",
-            "[data-user-initial]"
-        ];
-
-        avatarSelectors.forEach(
-            selector => {
-
-                document
-                    .querySelectorAll(
-                        selector
-                    )
-                    .forEach(element => {
-
-                        element.textContent =
-                            initial;
-
-                        element.innerText =
-                            initial;
-
-                        element.style.display =
-                            "flex";
-
-                        element.style.alignItems =
-                            "center";
-
-                        element.style.justifyContent =
-                            "center";
-
-                        element.style.visibility =
-                            "visible";
-
-                        element.style.opacity =
-                            "1";
-                    });
-            }
+        displayComparisonData(
+            product,
+            prices
         );
 
-
-        /* -----------------------------------------
-           FALLBACK:
-           IF HTML ONLY HAS THE CIRCLE
-        ----------------------------------------- */
-
-        const fallbackSelectors = [
-            "#avatar",
-            ".avatar",
-            ".user-avatar",
-            ".profile-avatar"
-        ];
-
-        fallbackSelectors.forEach(
-            selector => {
-
-                document
-                    .querySelectorAll(
-                        selector
-                    )
-                    .forEach(avatar => {
-
-                        /*
-                         * Only add M if there is no
-                         * existing inner text.
-                         */
-                        if (
-                            !avatar.textContent.trim()
-                        ) {
-                            avatar.textContent =
-                                initial;
-                        }
-
-                        avatar.style.display =
-                            "flex";
-
-                        avatar.style.alignItems =
-                            "center";
-
-                        avatar.style.justifyContent =
-                            "center";
-
-                        avatar.style.visibility =
-                            "visible";
-
-                        avatar.style.opacity =
-                            "1";
-
-                        avatar.style.fontWeight =
-                            "700";
-                    });
-            }
-        );
-
-
-        /* -----------------------------------------
-           OTHER USER SELECTORS
-        ----------------------------------------- */
-
-        $all(
-            "[data-user-name], .user-name"
-        ).forEach(element => {
-            element.textContent =
-                name;
-        });
-
-        $all(
-            "[data-user-email], .user-email"
-        ).forEach(element => {
-            element.textContent =
-                email;
-        });
-
-        $all(
-            "[data-user-initial], .user-initial"
-        ).forEach(element => {
-            element.textContent =
-                initial;
-        });
-
-
-        console.log(
-            "TrustCart user avatar:",
-            initial
-        );
+        showResults();
 
     } catch (error) {
 
-        console.warn(
-            "Unable to load current user:",
+        console.error(
+            "TrustCart comparison error:",
             error
+        );
+
+        showError(
+            error?.message ||
+            "Unable to load comparison."
         );
     }
 }
 
 
 /* =========================================================
-   ERROR
+   LOADING / ERROR STATES
 ========================================================= */
+
+function showLoading() {
+
+    if (loading) {
+        loading.style.display = "block";
+    }
+
+    if (results) {
+        results.style.display = "none";
+    }
+
+    if (errorBox) {
+        errorBox.style.display = "none";
+    }
+}
+
+
+function showResults() {
+
+    if (loading) {
+        loading.style.display = "none";
+    }
+
+    if (errorBox) {
+        errorBox.style.display = "none";
+    }
+
+    if (results) {
+        results.style.display = "block";
+    }
+}
+
+
+function hideError() {
+
+    if (errorBox) {
+        errorBox.style.display = "none";
+    }
+}
+
 
 function showError(message) {
 
@@ -434,2780 +2264,8 @@ function showError(message) {
 
     if (errorMessage) {
         errorMessage.textContent =
-            message ||
-            "Something went wrong while loading the comparison.";
+            message;
     }
-}
-
-
-function hideError() {
-
-    if (errorBox) {
-        errorBox.style.display = "none";
-    }
-}
-
-
-/* =========================================================
-   LOADING
-========================================================= */
-
-function showLoading() {
-
-    hideError();
-
-    if (results) {
-        results.style.display = "none";
-    }
-
-    if (loading) {
-        loading.style.display = "flex";
-    }
-}
-
-
-function hideLoading() {
-
-    if (loading) {
-        loading.style.display = "none";
-    }
-}
-
-
-/* =========================================================
-   SAFE URL
-========================================================= */
-
-function isSafeUrl(value) {
-
-    if (!value) {
-        return false;
-    }
-
-    try {
-
-        const url =
-            new URL(value);
-
-        return (
-            url.protocol === "http:" ||
-            url.protocol === "https:"
-        );
-
-    } catch {
-        return false;
-    }
-}
-
-
-function safeUrl(value) {
-
-    return isSafeUrl(value)
-        ? value
-        : "#";
-}
-
-
-/* =========================================================
-   HTML ESCAPE
-========================================================= */
-
-function escapeHtml(value) {
-
-    return String(
-        value ?? ""
-    )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-}
-
-
-function escapeAttribute(value) {
-
-    return escapeHtml(value);
-}
-
-
-/* =========================================================
-   LOAD COMPARISON
-========================================================= */
-
-async function loadComparison() {
-
-    currentProductId =
-        getProductId();
-
-    showLoading();
-
-
-    /* -----------------------------------------
-       SESSION STORAGE FIRST
-    ----------------------------------------- */
-
-    try {
-
-        const stored =
-            sessionStorage.getItem(
-                "trustcart_compare_result"
-            );
-
-        if (stored) {
-
-            const parsed =
-                JSON.parse(stored);
-
-            if (
-                parsed &&
-                (
-                    parsed.success ||
-                    parsed.canonical ||
-                    parsed.matching ||
-                    parsed.price_comparison ||
-                    parsed.trust_analysis
-                )
-            ) {
-
-                displayComparisonResults(
-                    parsed
-                );
-
-                return;
-            }
-        }
-
-    } catch (error) {
-
-        console.warn(
-            "Invalid stored comparison:",
-            error
-        );
-    }
-
-
-    /* -----------------------------------------
-       BACKEND FALLBACK
-    ----------------------------------------- */
-
-    if (!currentProductId) {
-
-        showError(
-            "No product comparison was found. Please return to the dashboard and compare a product again."
-        );
-
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/products/${encodeURIComponent(currentProductId)}/prices`,
-                {
-                    method: "GET",
-                    credentials: "include"
-                }
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                `Unable to load comparison (${response.status}).`
-            );
-        }
-
-        const data =
-            await response.json();
-
-        displayComparisonResults(
-            data
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Comparison loading failed:",
-            error
-        );
-
-        showError(
-            error.message ||
-            "Unable to load comparison results."
-        );
-    }
-}
-
-
-/* =========================================================
-   DISPLAY COMPARISON RESULTS
-========================================================= */
-
-function displayComparisonResults(data) {
-
-    currentComparison =
-        data;
-
-    hideError();
-    hideLoading();
-
-
-    const canonical =
-        data?.canonical || {};
-
-    const sourceProduct =
-        data?.source_product ||
-        data?.sourceProduct ||
-        data?.product ||
-        {};
-
-    const matching =
-        data?.matching || {};
-
-    const priceComparison =
-        data?.price_comparison ||
-        data?.priceComparison ||
-        {};
-
-    const trustAnalysis =
-        data?.trust_analysis ||
-        data?.trustAnalysis ||
-        {};
-
-    const recommendationData =
-        data?.recommendation ||
-        data?.recommendation_data ||
-        {};
-
-
-    currentProduct = {
-        ...sourceProduct,
-        ...canonical
-    };
-
-
-    /* -----------------------------------------
-       BUILD SELLER PRICES
-    ----------------------------------------- */
-
-    let prices =
-        buildPricesFromMatching(
-            matching
-        );
-
-    if (!prices.length) {
-
-        prices =
-            buildPricesFromComparison(
-                priceComparison
-            );
-    }
-
-    if (!prices.length) {
-
-        prices =
-            buildPricesFromDirectData(
-                data
-            );
-    }
-
-    prices =
-        normalizePrices(
-            prices
-        );
-
-    prices =
-        applyTrustScores(
-            prices,
-            trustAnalysis
-        );
-
-    prices =
-        deduplicatePrices(
-            prices
-        );
-
-    currentPrices =
-        prices;
-
-
-    /* -----------------------------------------
-       DISPLAY
-    ----------------------------------------- */
-
-    displayComparisonData({
-        data,
-        canonical,
-        sourceProduct,
-        matching,
-        priceComparison,
-        trustAnalysis,
-        recommendationData,
-        prices
-    });
-}
-
-
-/* =========================================================
-   BUILD FROM MATCHING
-========================================================= */
-
-function buildPricesFromMatching(
-    matching
-) {
-
-    const list = [];
-
-    if (!matching) {
-        return list;
-    }
-
-    const candidates =
-        matching.candidates ||
-        matching.matches ||
-        matching.products ||
-        matching.results ||
-        matching.matched_products ||
-        [];
-
-    if (Array.isArray(candidates)) {
-
-        candidates.forEach(
-            candidate => {
-
-                const price =
-                    extractPrice(
-                        candidate
-                    );
-
-                if (
-                    price === null
-                ) {
-                    return;
-                }
-
-                list.push({
-                    ...candidate,
-                    price,
-                    match_score:
-                        candidate.match_score ??
-                        candidate.matchScore ??
-                        candidate.score
-                });
-            }
-        );
-    }
-
-    return list;
-}
-
-
-/* =========================================================
-   BUILD FROM PRICE COMPARISON
-========================================================= */
-
-function buildPricesFromComparison(
-    priceComparison
-) {
-
-    const list = [];
-
-    if (!priceComparison) {
-        return list;
-    }
-
-    const candidates =
-        priceComparison.prices ||
-        priceComparison.results ||
-        priceComparison.sellers ||
-        priceComparison.comparison ||
-        priceComparison.offers ||
-        [];
-
-    if (Array.isArray(candidates)) {
-
-        candidates.forEach(
-            item => {
-
-                const price =
-                    extractPrice(
-                        item
-                    );
-
-                if (
-                    price === null
-                ) {
-                    return;
-                }
-
-                list.push({
-                    ...item,
-                    price
-                });
-            }
-        );
-    }
-
-    return list;
-}
-
-
-/* =========================================================
-   BUILD DIRECT
-========================================================= */
-
-function buildPricesFromDirectData(
-    data
-) {
-
-    const list = [];
-
-    if (!data) {
-        return list;
-    }
-
-    const arrays = [
-        data.prices,
-        data.sellers,
-        data.results,
-        data.products,
-        data.offers,
-        data.comparison
-    ];
-
-    arrays.forEach(
-        array => {
-
-            if (!Array.isArray(array)) {
-                return;
-            }
-
-            array.forEach(
-                item => {
-
-                    const price =
-                        extractPrice(
-                            item
-                        );
-
-                    if (
-                        price === null
-                    ) {
-                        return;
-                    }
-
-                    list.push({
-                        ...item,
-                        price
-                    });
-                }
-            );
-        }
-    );
-
-    return list;
-}
-
-
-/* =========================================================
-   PRICE EXTRACTION
-========================================================= */
-
-function extractPrice(item) {
-
-    if (
-        item === null ||
-        item === undefined
-    ) {
-        return null;
-    }
-
-    const candidates = [
-        item.price,
-        item.selling_price,
-        item.sellingPrice,
-        item.current_price,
-        item.currentPrice,
-        item.amount,
-        item.offer_price,
-        item.offerPrice
-    ];
-
-    for (
-        const value of candidates
-    ) {
-
-        const number =
-            parsePrice(value);
-
-        if (
-            number !== null &&
-            number >= 0
-        ) {
-            return number;
-        }
-    }
-
-    return null;
-}
-
-
-function parsePrice(value) {
-
-    if (
-        value === null ||
-        value === undefined ||
-        value === ""
-    ) {
-        return null;
-    }
-
-    if (
-        typeof value === "number"
-    ) {
-
-        return Number.isFinite(value)
-            ? value
-            : null;
-    }
-
-    const cleaned =
-        String(value)
-            .replace(
-                /[₹$€£,\s]/g,
-                ""
-            )
-            .replace(
-                /[^\d.-]/g,
-                ""
-            );
-
-    const number =
-        parseFloat(
-            cleaned
-        );
-
-    return Number.isFinite(number)
-        ? number
-        : null;
-}
-
-
-/* =========================================================
-   NORMALIZE
-========================================================= */
-
-function normalizePrices(
-    prices
-) {
-
-    if (!Array.isArray(prices)) {
-        return [];
-    }
-
-    return prices
-        .map(item => {
-
-            const price =
-                extractPrice(
-                    item
-                );
-
-            if (
-                price === null
-            ) {
-                return null;
-            }
-
-            const seller =
-                cleanSellerName(
-                    item.seller ||
-                    item.marketplace ||
-                    item.platform ||
-                    item.website ||
-                    item.source ||
-                    item.store ||
-                    "Seller"
-                );
-
-            const website =
-                cleanWebsiteName(
-                    item.website ||
-                    item.marketplace ||
-                    item.platform ||
-                    item.source ||
-                    seller
-                );
-
-            const productUrl =
-                item.product_url ||
-                item.productUrl ||
-                item.url ||
-                item.link ||
-                item.source_url ||
-                item.sourceUrl ||
-                "";
-
-            return {
-                ...item,
-
-                price,
-
-                seller,
-
-                website,
-
-                product_url:
-                    isSafeUrl(productUrl)
-                        ? productUrl
-                        : "",
-
-                rating:
-                    parseNumber(
-                        item.rating ??
-                        item.stars ??
-                        item.product_rating
-                    ),
-
-                review_count:
-                    parseNumber(
-                        item.review_count ??
-                        item.reviewCount ??
-                        item.reviews
-                    ),
-
-                match_score:
-                    parseNumber(
-                        item.match_score ??
-                        item.matchScore ??
-                        item.score
-                    ),
-
-                trust_score:
-                    parseNumber(
-                        item.trust_score ??
-                        item.trustScore
-                    ),
-
-                trust_level:
-                    item.trust_level ||
-                    item.trustLevel ||
-                    "",
-
-                updated_at:
-                    item.updated_at ||
-                    item.updatedAt ||
-                    item.last_updated ||
-                    item.lastUpdated ||
-                    null
-            };
-        })
-        .filter(Boolean);
-}
-
-
-/* =========================================================
-   APPLY TRUST SCORES
-========================================================= */
-
-function applyTrustScores(
-    prices,
-    trustAnalysis
-) {
-
-    if (!Array.isArray(prices)) {
-        return [];
-    }
-
-    return prices.map(
-        item => {
-
-            const trust =
-                findTrustForSeller(
-                    item.seller,
-                    item.website,
-                    trustAnalysis
-                );
-
-            if (!trust) {
-                return item;
-            }
-
-            const score =
-                parseNumber(
-                    trust.trust_score ??
-                    trust.trustScore ??
-                    trust.score
-                );
-
-            return {
-                ...item,
-
-                trust_score:
-                    score,
-
-                trust_level:
-                    trust.trust_level ||
-                    trust.trustLevel ||
-                    trust.level ||
-                    trustLevelFromScore(
-                        score
-                    )
-            };
-        }
-    );
-}
-
-
-/* =========================================================
-   TRUST LOOKUP
-========================================================= */
-
-function findTrustForSeller(
-    seller,
-    website,
-    trustAnalysis
-) {
-
-    if (!trustAnalysis) {
-        return null;
-    }
-
-    const sellerText =
-        String(
-            seller || ""
-        ).toLowerCase();
-
-    const websiteText =
-        String(
-            website || ""
-        ).toLowerCase();
-
-
-    const sources = [
-        trustAnalysis,
-        trustAnalysis.sellers,
-        trustAnalysis.marketplaces,
-        trustAnalysis.platforms,
-        trustAnalysis.trust_scores
-    ];
-
-
-    for (
-        const source of sources
-    ) {
-
-        if (
-            !source ||
-            typeof source !== "object" ||
-            Array.isArray(source)
-        ) {
-            continue;
-        }
-
-        for (
-            const [key, value]
-            of Object.entries(source)
-        ) {
-
-            if (
-                !value ||
-                typeof value !== "object"
-            ) {
-                continue;
-            }
-
-            const keyText =
-                key.toLowerCase();
-
-            if (
-                sellerText.includes(
-                    keyText
-                ) ||
-                keyText.includes(
-                    sellerText
-                ) ||
-                websiteText.includes(
-                    keyText
-                ) ||
-                keyText.includes(
-                    websiteText
-                )
-            ) {
-                return value;
-            }
-        }
-    }
-
-
-    const arrays = [
-        trustAnalysis.sellers,
-        trustAnalysis.results,
-        trustAnalysis.marketplaces,
-        trustAnalysis.platforms,
-        trustAnalysis.breakdown
-    ];
-
-
-    for (
-        const array of arrays
-    ) {
-
-        if (!Array.isArray(array)) {
-            continue;
-        }
-
-        const found =
-            array.find(
-                item => {
-
-                    const itemSeller =
-                        String(
-                            item.seller ||
-                            item.website ||
-                            item.marketplace ||
-                            item.platform ||
-                            item.name ||
-                            ""
-                        ).toLowerCase();
-
-                    return (
-                        itemSeller === sellerText ||
-                        itemSeller.includes(sellerText) ||
-                        sellerText.includes(itemSeller) ||
-                        itemSeller === websiteText ||
-                        itemSeller.includes(websiteText) ||
-                        websiteText.includes(itemSeller)
-                    );
-                }
-            );
-
-        if (found) {
-            return found;
-        }
-    }
-
-    return null;
-}
-
-
-/* =========================================================
-   DEDUPLICATE
-========================================================= */
-
-function deduplicatePrices(
-    prices
-) {
-
-    const map =
-        new Map();
-
-    prices.forEach(
-        item => {
-
-            const key =
-                `${String(
-                    item.seller
-                ).toLowerCase()}-${item.price}`;
-
-            if (!map.has(key)) {
-                map.set(
-                    key,
-                    item
-                );
-            }
-        }
-    );
-
-    return [
-        ...map.values()
-    ];
-}
-
-
-/* =========================================================
-   MAIN DISPLAY
-========================================================= */
-
-function displayComparisonData({
-    data,
-    canonical,
-    sourceProduct,
-    matching,
-    priceComparison,
-    trustAnalysis,
-    recommendationData,
-    prices
-}) {
-
-    const product = {
-        ...sourceProduct,
-        ...canonical
-    };
-
-    currentProduct =
-        product;
-
-
-    /* =====================================================
-       PRODUCT INFORMATION
-    ===================================================== */
-
-    const name =
-        product.product_name ||
-        product.productName ||
-        product.name ||
-        product.title ||
-        "Product Comparison";
-
-    const brand =
-        product.brand ||
-        "";
-
-    const category =
-        product.category ||
-        "Product";
-
-
-    if (productName) {
-        productName.textContent =
-            name;
-    }
-
-    if (productBrand) {
-        productBrand.textContent =
-            brand
-                ? `Brand: ${brand}`
-                : "";
-    }
-
-    if (productCategory) {
-        productCategory.textContent =
-            category;
-    }
-
-
-    /* =====================================================
-       PRODUCT IMAGE
-       FIXED LEFT-SIDE POSITION
-    ===================================================== */
-
-    const imageUrl =
-        product.image_url ||
-        product.imageUrl ||
-        product.image ||
-        product.thumbnail ||
-        "";
-
-
-    if (
-        productImage &&
-        isSafeUrl(imageUrl)
-    ) {
-
-        productImage.src =
-            imageUrl;
-
-        productImage.alt =
-            name;
-
-        productImage.style.display =
-            "block";
-
-        productImage.style.visibility =
-            "visible";
-
-        productImage.style.objectFit =
-            "contain";
-
-        productImage.style.width =
-            "100%";
-
-        productImage.style.height =
-            "100%";
-
-
-        if (productImageWrap) {
-
-            productImageWrap.style.display =
-                "flex";
-
-            productImageWrap.style.alignItems =
-                "center";
-
-            productImageWrap.style.justifyContent =
-                "center";
-
-            productImageWrap.style.flexShrink =
-                "0";
-
-            productImageWrap.style.overflow =
-                "hidden";
-        }
-
-
-        productImage.onerror =
-            () => {
-
-                productImage.style.display =
-                    "none";
-            };
-    }
-
-
-    /* =====================================================
-       FORCE HERO LAYOUT
-    ===================================================== */
-
-    const productHero =
-        $(".product-hero");
-
-    if (productHero) {
-
-        productHero.style.display =
-            "grid";
-
-        productHero.style.gridTemplateColumns =
-            "260px minmax(0, 1fr)";
-
-        productHero.style.alignItems =
-            "center";
-
-        productHero.style.gap =
-            "32px";
-    }
-
-
-    if (productImageWrap) {
-
-        productImageWrap.style.width =
-            "260px";
-
-        productImageWrap.style.height =
-            "260px";
-
-        productImageWrap.style.minWidth =
-            "260px";
-
-        productImageWrap.style.maxWidth =
-            "260px";
-
-        productImageWrap.style.margin =
-            "0";
-
-        productImageWrap.style.position =
-            "relative";
-    }
-
-
-    const productInfo =
-        $(".product-info");
-
-    if (productInfo) {
-
-        productInfo.style.minWidth =
-            "0";
-
-        productInfo.style.width =
-            "100%";
-    }
-
-
-    if (productName) {
-
-        productName.style.maxWidth =
-            "100%";
-
-        productName.style.overflowWrap =
-            "anywhere";
-
-        productName.style.wordBreak =
-            "normal";
-    }
-
-
-    /* =====================================================
-       SORT
-    ===================================================== */
-
-    prices.sort(
-        (a, b) =>
-            a.price - b.price
-    );
-
-    currentPrices =
-        prices;
-
-
-    if (!prices.length) {
-
-        showError(
-            "No comparable seller prices were found for this product."
-        );
-
-        return;
-    }
-
-
-    /* =====================================================
-       BEST DEAL
-    ===================================================== */
-
-    const backendBestDeal =
-        priceComparison.best_deal ??
-        priceComparison.bestDeal ??
-        recommendationData.best_deal ??
-        recommendationData.bestDeal ??
-        data.best_deal ??
-        data.bestDeal;
-
-    const backendBestSeller =
-        priceComparison.best_seller ??
-        priceComparison.bestSeller ??
-        recommendationData.best_seller ??
-        recommendationData.bestSeller ??
-        data.best_seller ??
-        data.bestSeller;
-
-
-    const best =
-        findBestDeal(
-            prices,
-            backendBestDeal,
-            backendBestSeller
-        );
-
-    currentBestDeal =
-        best;
-
-
-    /* =====================================================
-       PRICE METRICS
-    ===================================================== */
-
-    const cheapestPrice =
-        Math.min(
-            ...prices.map(
-                item => item.price
-            )
-        );
-
-    const highestPrice =
-        Math.max(
-            ...prices.map(
-                item => item.price
-            )
-        );
-
-    const savingsAmount =
-        Math.max(
-            0,
-            highestPrice -
-            cheapestPrice
-        );
-
-    const savingsPercent =
-        highestPrice > 0
-            ? (
-                savingsAmount /
-                highestPrice
-            ) * 100
-            : 0;
-
-
-    /* =====================================================
-       BEST DEAL CARD
-    ===================================================== */
-
-    if (bestSeller) {
-        bestSeller.textContent =
-            best.seller;
-    }
-
-    if (bestWebsite) {
-        bestWebsite.textContent =
-            best.website;
-    }
-
-    if (bestPrice) {
-        bestPrice.textContent =
-            formatPrice(
-                best.price
-            );
-    }
-
-    if (savings) {
-        savings.textContent =
-            `Save ${formatPrice(
-                savingsAmount
-            )}`;
-    }
-
-    if (savingsPercentage) {
-        savingsPercentage.textContent =
-            `${savingsPercent.toFixed(1)}%`;
-    }
-
-
-    /* =====================================================
-       BUY BUTTON
-    ===================================================== */
-
-    configureBuyButton(
-        bestBuyBtn,
-        best.product_url
-    );
-
-
-    /* =====================================================
-       QUICK STATS
-    ===================================================== */
-
-    if (quickBestPrice) {
-        quickBestPrice.textContent =
-            formatPrice(
-                cheapestPrice
-            );
-    }
-
-    if (quickSavings) {
-        quickSavings.textContent =
-            savingsPercent > 0
-                ? `${savingsPercent.toFixed(1)}%`
-                : "—";
-    }
-
-    if (quickSellerCount) {
-        quickSellerCount.textContent =
-            prices.length;
-    }
-
-    if (sellerCount) {
-        sellerCount.textContent =
-            prices.length;
-    }
-
-
-    /* =====================================================
-       TRUST
-    ===================================================== */
-
-    const overallTrust =
-        getOverallTrust(
-            trustAnalysis,
-            recommendationData,
-            prices
-        );
-
-
-    if (quickTrustScore) {
-
-        quickTrustScore.textContent =
-            overallTrust !== null
-                ? formatScore(
-                    overallTrust
-                )
-                : "—";
-    }
-
-
-    if (trustScore) {
-
-        trustScore.textContent =
-            overallTrust !== null
-                ? formatScore(
-                    overallTrust
-                )
-                : "—";
-    }
-
-
-    if (trustLevel) {
-
-        trustLevel.textContent =
-            trustLevelFromScore(
-                overallTrust
-            );
-    }
-
-
-    updateTrustCircle(
-        overallTrust
-    );
-
-
-    /* =====================================================
-       ANALYSIS
-    ===================================================== */
-
-    if (priceAnalysis) {
-
-        priceAnalysis.textContent =
-            buildPriceAnalysis(
-                prices,
-                cheapestPrice,
-                highestPrice
-            );
-    }
-
-
-    if (sellerAnalysis) {
-
-        sellerAnalysis.textContent =
-            buildSellerAnalysis(
-                prices
-            );
-    }
-
-
-    if (freshnessAnalysis) {
-
-        freshnessAnalysis.textContent =
-            buildFreshnessAnalysis(
-                prices
-            );
-    }
-
-
-    /* =====================================================
-       RECOMMENDATION
-    ===================================================== */
-
-    if (recommendation) {
-
-        recommendation.textContent =
-            extractRecommendation(
-                recommendationData,
-                best,
-                savingsPercent
-            );
-    }
-
-
-    /* =====================================================
-       DEAL REASON
-    ===================================================== */
-
-    if (dealReason) {
-
-        dealReason.textContent =
-            buildDealReason(
-                best,
-                cheapestPrice,
-                highestPrice,
-                savingsPercent
-            );
-    }
-
-
-    /* =====================================================
-       SMART INSIGHT
-    ===================================================== */
-
-    const insight =
-        generateSmartInsight(
-            best,
-            prices,
-            savingsPercent,
-            overallTrust
-        );
-
-
-    if (smartInsightText) {
-        smartInsightText.textContent =
-            insight;
-    }
-
-
-    if (smartInsight) {
-        smartInsight.style.display =
-            "flex";
-    }
-
-
-    /* =====================================================
-       PRICE BARS
-    ===================================================== */
-
-    renderPriceBars(
-        prices
-    );
-
-
-    /* =====================================================
-       SELLER ROWS
-    ===================================================== */
-
-    renderSellerRows(
-        prices,
-        best
-    );
-
-
-    /* =====================================================
-       BUYING TIP
-    ===================================================== */
-
-    if (buyingTip) {
-
-        buyingTip.textContent =
-            buildBuyingTip(
-                best,
-                prices,
-                overallTrust
-            );
-    }
-
-
-    /* =====================================================
-       LAST CHECKED
-    ===================================================== */
-
-    updateCheckedTime(
-        prices,
-        data
-    );
-
-
-    /* =====================================================
-       PRICE ALERT
-    ===================================================== */
-
-    loadExistingAlert();
-
-
-    /* =====================================================
-       SHOW RESULT
-    ===================================================== */
-
-    if (results) {
-        results.style.display =
-            "block";
-    }
-}
-
-
-/* =========================================================
-   BEST DEAL
-========================================================= */
-
-function findBestDeal(
-    prices,
-    backendBestDeal,
-    backendBestSeller
-) {
-
-    if (!prices.length) {
-        return null;
-    }
-
-    const backendStrings = [];
-
-    collectBackendStrings(
-        backendBestDeal,
-        backendStrings
-    );
-
-    collectBackendStrings(
-        backendBestSeller,
-        backendStrings
-    );
-
-
-    for (
-        const text of backendStrings
-    ) {
-
-        const normalized =
-            text.toLowerCase();
-
-        const found =
-            prices.find(
-                item => {
-
-                    const seller =
-                        String(
-                            item.seller || ""
-                        ).toLowerCase();
-
-                    const website =
-                        String(
-                            item.website || ""
-                        ).toLowerCase();
-
-                    return (
-                        seller.includes(
-                            normalized
-                        ) ||
-                        normalized.includes(
-                            seller
-                        ) ||
-                        website.includes(
-                            normalized
-                        ) ||
-                        normalized.includes(
-                            website
-                        )
-                    );
-                }
-            );
-
-        if (found) {
-            return found;
-        }
-    }
-
-
-    return [...prices].sort(
-        (a, b) =>
-            a.price - b.price
-    )[0];
-}
-
-
-function collectBackendStrings(
-    value,
-    output
-) {
-
-    if (
-        value === null ||
-        value === undefined
-    ) {
-        return;
-    }
-
-    if (
-        typeof value === "string" ||
-        typeof value === "number"
-    ) {
-
-        const text =
-            String(value).trim();
-
-        if (text) {
-            output.push(text);
-        }
-
-        return;
-    }
-
-
-    if (Array.isArray(value)) {
-
-        value.forEach(
-            item =>
-                collectBackendStrings(
-                    item,
-                    output
-                )
-        );
-
-        return;
-    }
-
-
-    if (
-        typeof value === "object"
-    ) {
-
-        const keys = [
-            "seller",
-            "seller_name",
-            "sellerName",
-            "platform",
-            "marketplace",
-            "website",
-            "store",
-            "name"
-        ];
-
-        keys.forEach(
-            key => {
-
-                if (
-                    value[key] !==
-                    undefined
-                ) {
-
-                    collectBackendStrings(
-                        value[key],
-                        output
-                    );
-                }
-            }
-        );
-    }
-}
-
-
-/* =========================================================
-   BUY BUTTON
-========================================================= */
-
-function configureBuyButton(
-    button,
-    url
-) {
-
-    if (!button) {
-        return;
-    }
-
-    if (isSafeUrl(url)) {
-
-        button.href =
-            url;
-
-        button.target =
-            "_blank";
-
-        button.rel =
-            "noopener noreferrer";
-
-        button.removeAttribute(
-            "aria-disabled"
-        );
-
-        button.classList.remove(
-            "disabled"
-        );
-
-        button.style.pointerEvents =
-            "auto";
-
-        button.style.opacity =
-            "1";
-
-    } else {
-
-        button.href =
-            "#";
-
-        button.removeAttribute(
-            "target"
-        );
-
-        button.removeAttribute(
-            "rel"
-        );
-
-        button.setAttribute(
-            "aria-disabled",
-            "true"
-        );
-
-        button.classList.add(
-            "disabled"
-        );
-
-        button.style.pointerEvents =
-            "none";
-
-        button.style.opacity =
-            "0.55";
-    }
-}
-
-
-/* =========================================================
-   OVERALL TRUST
-========================================================= */
-
-function getOverallTrust(
-    trustAnalysis,
-    recommendationData,
-    prices
-) {
-
-    const directValues = [
-        trustAnalysis?.trust_score,
-        trustAnalysis?.trustScore,
-        trustAnalysis?.overall_score,
-        trustAnalysis?.overallScore,
-        trustAnalysis?.score,
-        recommendationData?.trust_score,
-        recommendationData?.trustScore
-    ];
-
-
-    for (
-        const value of directValues
-    ) {
-
-        const score =
-            parseNumber(value);
-
-        if (
-            score !== null &&
-            score >= 0
-        ) {
-
-            return clamp(
-                score,
-                0,
-                100
-            );
-        }
-    }
-
-
-    const scores =
-        prices
-            .map(
-                item =>
-                    parseNumber(
-                        item.trust_score
-                    )
-            )
-            .filter(
-                value =>
-                    value !== null &&
-                    value >= 0
-            );
-
-
-    if (scores.length) {
-
-        return clamp(
-            scores.reduce(
-                (sum, value) =>
-                    sum + value,
-                0
-            ) / scores.length,
-            0,
-            100
-        );
-    }
-
-
-    if (prices.length) {
-
-        const fallback =
-            prices.map(
-                calculateTrust
-            );
-
-        return clamp(
-            fallback.reduce(
-                (sum, value) =>
-                    sum + value,
-                0
-            ) / fallback.length,
-            0,
-            100
-        );
-    }
-
-    return null;
-}
-
-
-/* =========================================================
-   TRUST CALCULATION
-========================================================= */
-
-function calculateTrust(item) {
-
-    const backend =
-        parseNumber(
-            item.trust_score
-        );
-
-    if (
-        backend !== null &&
-        backend >= 0
-    ) {
-
-        return clamp(
-            backend,
-            0,
-            100
-        );
-    }
-
-    let score = 65;
-
-    const rating =
-        parseNumber(
-            item.rating
-        );
-
-    const reviews =
-        parseNumber(
-            item.review_count
-        );
-
-    const match =
-        parseNumber(
-            item.match_score
-        );
-
-
-    if (rating !== null) {
-
-        score +=
-            (rating - 3) * 8;
-    }
-
-
-    if (reviews !== null) {
-
-        if (reviews >= 1000) {
-            score += 8;
-
-        } else if (reviews >= 500) {
-            score += 6;
-
-        } else if (reviews >= 100) {
-            score += 4;
-
-        } else if (reviews < 20) {
-            score -= 5;
-        }
-    }
-
-
-    if (match !== null) {
-
-        score +=
-            (match - 70) * 0.15;
-    }
-
-
-    return clamp(
-        score,
-        0,
-        100
-    );
-}
-
-
-function trustLevelFromScore(
-    score
-) {
-
-    if (
-        score === null ||
-        score === undefined ||
-        Number.isNaN(
-            Number(score)
-        )
-    ) {
-        return "Unavailable";
-    }
-
-    const value =
-        Number(score);
-
-    if (value >= 85) {
-        return "Excellent";
-    }
-
-    if (value >= 70) {
-        return "Good";
-    }
-
-    if (value >= 55) {
-        return "Fair";
-    }
-
-    return "Low";
-}
-
-
-function updateTrustCircle(
-    score
-) {
-
-    const circle =
-        $(".score-circle");
-
-    if (!circle) {
-        return;
-    }
-
-    const value =
-        score === null
-            ? 0
-            : clamp(
-                Number(score),
-                0,
-                100
-            );
-
-
-    circle.style.setProperty(
-        "--trust-progress",
-        `${value}%`
-    );
-
-
-    circle.setAttribute(
-        "aria-label",
-        `Trust score ${formatScore(value)} out of 100`
-    );
-}
-
-
-/* =========================================================
-   PRICE BARS
-========================================================= */
-
-function renderPriceBars(
-    prices
-) {
-
-    if (!priceBars) {
-        return;
-    }
-
-    priceBars.innerHTML =
-        "";
-
-    if (!prices.length) {
-        return;
-    }
-
-
-    const maxPrice =
-        Math.max(
-            ...prices.map(
-                item => item.price
-            )
-        );
-
-    const minPrice =
-        Math.min(
-            ...prices.map(
-                item => item.price
-            )
-        );
-
-
-    const sorted =
-        [...prices].sort(
-            (a, b) =>
-                a.price - b.price
-        );
-
-
-    sorted.forEach(
-        item => {
-
-            const row =
-                document.createElement(
-                    "div"
-                );
-
-            row.className =
-                "price-bar-item";
-
-
-            if (
-                item.price ===
-                minPrice
-            ) {
-
-                row.classList.add(
-                    "best-price-bar"
-                );
-            }
-
-
-            const width =
-                maxPrice > 0
-                    ? Math.max(
-                        5,
-                        (
-                            item.price /
-                            maxPrice
-                        ) * 100
-                    )
-                    : 5;
-
-
-            row.innerHTML = `
-                <div class="price-bar-seller">
-
-                    <div class="price-bar-logo">
-                        ${escapeHtml(
-                            marketplaceInitial(
-                                item.seller
-                            )
-                        )}
-                    </div>
-
-                    <span>
-                        ${escapeHtml(
-                            item.seller
-                        )}
-                    </span>
-
-                </div>
-
-                <div class="price-track">
-
-                    <div
-                        class="price-fill"
-                        style="width:${width}%"
-                    ></div>
-
-                </div>
-
-                <div class="price-bar-value">
-                    ${formatPrice(
-                        item.price
-                    )}
-                </div>
-            `;
-
-
-            priceBars.appendChild(
-                row
-            );
-        }
-    );
-}
-
-
-/* =========================================================
-   SELLER ROWS
-========================================================= */
-
-function renderSellerRows(
-    prices,
-    best
-) {
-
-    if (!sellerRows) {
-        return;
-    }
-
-    sellerRows.innerHTML =
-        "";
-
-    if (!prices.length) {
-        return;
-    }
-
-
-    const lowest =
-        Math.min(
-            ...prices.map(
-                item => item.price
-            )
-        );
-
-
-    const sorted =
-        getSortedPrices(
-            prices
-        );
-
-
-    sorted.forEach(
-        (item, index) => {
-
-            const row =
-                document.createElement(
-                    "div"
-                );
-
-            row.className =
-                "seller-row";
-
-
-            if (
-                best &&
-                item.seller ===
-                    best.seller &&
-                item.price ===
-                    best.price
-            ) {
-
-                row.classList.add(
-                    "best-row"
-                );
-            }
-
-
-            const trust =
-                item.trust_score !==
-                    null &&
-                item.trust_score !==
-                    undefined
-                    ? item.trust_score
-                    : calculateTrust(
-                        item
-                    );
-
-
-            const level =
-                item.trust_level ||
-                trustLevelFromScore(
-                    trust
-                );
-
-
-            const ratingText =
-                item.rating !==
-                    null &&
-                item.rating !==
-                    undefined
-                    ? `★ ${formatNumber(
-                        item.rating,
-                        1
-                    )}`
-                    : "Rating unavailable";
-
-
-            const reviewsText =
-                item.review_count !==
-                    null &&
-                item.review_count !==
-                    undefined
-                    ? ` • ${formatCompactNumber(
-                        item.review_count
-                    )} reviews`
-                    : "";
-
-
-            const difference =
-                item.price -
-                lowest;
-
-
-            const differenceText =
-                difference > 0
-                    ? `+${formatPrice(
-                        difference
-                    )} vs best`
-                    : "Best available price";
-
-
-            row.innerHTML = `
-
-                <div class="seller-platform">
-
-                    <div class="seller-logo">
-                        ${escapeHtml(
-                            marketplaceInitial(
-                                item.seller
-                            )
-                        )}
-                    </div>
-
-                    <div>
-
-                        <strong>
-
-                            ${escapeHtml(
-                                item.seller
-                            )}
-
-                            ${
-                                item.price ===
-                                lowest
-                                    ? `
-                                        <span class="best-badge">
-                                            BEST
-                                        </span>
-                                      `
-                                    : ""
-                            }
-
-                        </strong>
-
-                        <span>
-                            ${escapeHtml(
-                                item.website
-                            )}
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                <div class="seller-price">
-
-                    ${formatPrice(
-                        item.price
-                    )}
-
-                    <span class="price-difference">
-                        ${escapeHtml(
-                            differenceText
-                        )}
-                    </span>
-
-                </div>
-
-
-                <div class="seller-trust">
-
-                    <span class="trust-pill">
-                        ${formatScore(
-                            trust
-                        )}/100
-                    </span>
-
-                    <span class="seller-rating">
-                        ${escapeHtml(
-                            ratingText
-                        )}
-                        ${escapeHtml(
-                            reviewsText
-                        )}
-                    </span>
-
-                </div>
-
-
-                <div class="seller-updated">
-
-                    ${escapeHtml(
-                        formatUpdatedDate(
-                            item.updated_at
-                        )
-                    )}
-
-                </div>
-
-
-                <div class="seller-action">
-
-                    ${
-                        isSafeUrl(
-                            item.product_url
-                        )
-                            ? `
-                                <a
-                                    class="buy-btn"
-                                    href="${escapeAttribute(
-                                        item.product_url
-                                    )}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Buy
-                                </a>
-                              `
-                            : `
-                                <span>
-                                    Link unavailable
-                                </span>
-                              `
-                    }
-
-                </div>
-            `;
-
-
-            row.style.animationDelay =
-                `${index * 40}ms`;
-
-
-            sellerRows.appendChild(
-                row
-            );
-        }
-    );
-}
-
-
-/* =========================================================
-   SORTING
-========================================================= */
-
-function getSortedPrices(
-    prices
-) {
-
-    const sorted =
-        [...prices];
-
-    const value =
-        sortSelect?.value ||
-        "price-asc";
-
-
-    switch (value) {
-
-        case "price":
-        case "price-asc":
-        case "lowest":
-
-            return sorted.sort(
-                (a, b) =>
-                    a.price - b.price
-            );
-
-
-        case "price-desc":
-        case "highest":
-
-            return sorted.sort(
-                (a, b) =>
-                    b.price - a.price
-            );
-
-
-        case "trust-desc":
-        case "trust":
-
-            return sorted.sort(
-                (a, b) =>
-                    getSellerTrust(b) -
-                    getSellerTrust(a)
-            );
-
-
-        case "rating-desc":
-        case "rating":
-
-            return sorted.sort(
-                (a, b) =>
-                    (
-                        b.rating ??
-                        -1
-                    ) -
-                    (
-                        a.rating ??
-                        -1
-                    )
-            );
-
-
-        case "seller":
-        case "seller-name":
-
-            return sorted.sort(
-                (a, b) =>
-                    String(
-                        a.seller
-                    ).localeCompare(
-                        String(
-                            b.seller
-                        )
-                    )
-            );
-
-
-        default:
-
-            return sorted.sort(
-                (a, b) =>
-                    a.price - b.price
-            );
-    }
-}
-
-
-function getSellerTrust(
-    item
-) {
-
-    const value =
-        parseNumber(
-            item.trust_score
-        );
-
-    return value !== null
-        ? value
-        : calculateTrust(
-            item
-        );
-}
-
-
-function handleSortChange() {
-
-    renderSellerRows(
-        currentPrices,
-        currentBestDeal
-    );
-}
-
-
-/* =========================================================
-   SMART INSIGHT
-========================================================= */
-
-function generateSmartInsight(
-    best,
-    prices,
-    savingsPercent,
-    overallTrust
-) {
-
-    if (
-        !best ||
-        !prices.length
-    ) {
-
-        return "TrustCart could not generate an insight for this comparison.";
-    }
-
-
-    const trustText =
-        overallTrust !== null
-            ? ` The overall trust score is ${formatScore(
-                overallTrust
-            )}/100.`
-            : "";
-
-
-    if (savingsPercent >= 40) {
-
-        return `${best.seller} offers a significantly lower price, with about ${savingsPercent.toFixed(
-            1
-        )}% potential savings compared with the highest listed price.${trustText}`;
-    }
-
-
-    if (savingsPercent >= 20) {
-
-        return `${best.seller} currently has a strong price advantage, saving about ${savingsPercent.toFixed(
-            1
-        )}% versus the highest listed offer.${trustText}`;
-    }
-
-
-    if (savingsPercent > 0) {
-
-        return `${best.seller} has the lowest listed price, although the difference between sellers is relatively small.${trustText}`;
-    }
-
-
-    return `${best.seller} currently has the lowest comparable price.${trustText}`;
-}
-
-
-/* =========================================================
-   ANALYSIS
-========================================================= */
-
-function buildPriceAnalysis(
-    prices,
-    lowest,
-    highest
-) {
-
-    if (!prices.length) {
-        return "No price information is available.";
-    }
-
-    if (
-        lowest === highest
-    ) {
-
-        return `All compared sellers are currently listed at ${formatPrice(
-            lowest
-        )}.`;
-    }
-
-
-    return `Prices currently range from ${formatPrice(
-        lowest
-    )} to ${formatPrice(
-        highest
-    )} across ${prices.length} seller${
-        prices.length === 1
-            ? ""
-            : "s"
-    }.`;
-}
-
-
-function buildSellerAnalysis(
-    prices
-) {
-
-    if (!prices.length) {
-        return "No seller information is available.";
-    }
-
-    const trusted =
-        prices.filter(
-            item =>
-                getSellerTrust(
-                    item
-                ) >= 70
-        ).length;
-
-
-    return `${trusted} of ${prices.length} compared seller${
-        prices.length === 1
-            ? ""
-            : "s"
-    } currently have a trust score of 70 or above.`;
-}
-
-
-function buildFreshnessAnalysis(
-    prices
-) {
-
-    const dates =
-        prices
-            .map(
-                item =>
-                    item.updated_at
-            )
-            .filter(Boolean);
-
-
-    if (!dates.length) {
-
-        return "Seller update timestamps were not provided by the source.";
-    }
-
-
-    const latest =
-        dates
-            .map(
-                value =>
-                    new Date(value)
-            )
-            .filter(
-                date =>
-                    !Number.isNaN(
-                        date.getTime()
-                    )
-            )
-            .sort(
-                (a, b) =>
-                    b - a
-            )[0];
-
-
-    if (!latest) {
-
-        return "Seller update timestamps were not available in a usable format.";
-    }
-
-
-    return `Latest available seller data was updated ${formatUpdatedDate(
-        latest.toISOString()
-    )}.`;
-}
-
-
-/* =========================================================
-   RECOMMENDATION
-========================================================= */
-
-function extractRecommendation(
-    recommendationData,
-    best,
-    savingsPercent
-) {
-
-    const text =
-        recommendationData?.reason ||
-        recommendationData?.message ||
-        recommendationData?.recommendation ||
-        recommendationData?.summary ||
-        recommendationData?.description;
-
-
-    if (
-        typeof text === "string" &&
-        text.trim()
-    ) {
-
-        return text.trim();
-    }
-
-
-    if (!best) {
-
-        return "Compare the available sellers before purchasing.";
-    }
-
-
-    if (savingsPercent >= 20) {
-
-        return `TrustCart recommends checking ${best.seller} first because it currently provides the strongest price advantage.`;
-    }
-
-
-    return `TrustCart recommends ${best.seller} as the current best-priced comparable seller.`;
-}
-
-
-/* =========================================================
-   DEAL REASON
-========================================================= */
-
-function buildDealReason(
-    best,
-    lowest,
-    highest,
-    savingsPercent
-) {
-
-    if (!best) {
-        return "Best comparable offer";
-    }
-
-
-    if (savingsPercent >= 30) {
-
-        return `Lowest price • ${savingsPercent.toFixed(
-            1
-        )}% below the highest offer`;
-    }
-
-
-    if (
-        best.price === lowest
-    ) {
-
-        return "Lowest comparable price";
-    }
-
-
-    return "Recommended comparable offer";
-}
-
-
-/* =========================================================
-   BUYING TIP
-========================================================= */
-
-function buildBuyingTip(
-    best,
-    prices,
-    overallTrust
-) {
-
-    if (!best) {
-
-        return "Always verify the final price, delivery charges and seller information before purchasing.";
-    }
-
-
-    const trust =
-        getSellerTrust(
-            best
-        );
-
-
-    if (trust >= 85) {
-
-        return `${best.seller} combines the current best price with a strong trust score. Still verify the final checkout price before buying.`;
-    }
-
-
-    if (trust >= 70) {
-
-        return `${best.seller} currently has a good trust score and the lowest comparable price. Check delivery, warranty and final checkout charges before buying.`;
-    }
-
-
-    return `${best.seller} has the lowest listed price, but its trust score is lower. Review seller details, ratings, warranty and return policy before purchasing.`;
-}
-
-
-/* =========================================================
-   LAST CHECKED
-========================================================= */
-
-function updateCheckedTime(
-    prices,
-    data
-) {
-
-    if (!checkedTime) {
-        return;
-    }
-
-
-    const dates =
-        prices
-            .map(
-                item =>
-                    item.updated_at
-            )
-            .filter(Boolean)
-            .map(
-                value =>
-                    new Date(value)
-            )
-            .filter(
-                date =>
-                    !Number.isNaN(
-                        date.getTime()
-                    )
-            );
-
-
-    if (dates.length) {
-
-        const latest =
-            dates.sort(
-                (a, b) =>
-                    b - a
-            )[0];
-
-
-        checkedTime.textContent =
-            `Last checked ${formatDate(
-                latest
-            )}`;
-
-        return;
-    }
-
-
-    const stored =
-        localStorage.getItem(
-            "trustcart_last_compare_time"
-        );
-
-
-    if (stored) {
-
-        const date =
-            new Date(stored);
-
-        if (
-            !Number.isNaN(
-                date.getTime()
-            )
-        ) {
-
-            checkedTime.textContent =
-                `Last checked ${formatDate(
-                    date
-                )}`;
-
-            return;
-        }
-    }
-
-
-    checkedTime.textContent =
-        "Comparison completed just now";
 }
 
 
@@ -3217,256 +2275,103 @@ function updateCheckedTime(
 
 async function refreshComparison() {
 
-    const url =
-        getSourceProductUrl();
-
-
-    if (!isSafeUrl(url)) {
-
-        showToast(
-            "Original product URL is not available for rechecking."
-        );
-
-        return;
-    }
-
-
     if (refreshBtn) {
 
-        refreshBtn.disabled =
-            true;
+        refreshBtn.disabled = true;
 
-        refreshBtn.classList.add(
-            "loading"
-        );
+        refreshBtn.innerHTML =
+            `<span>↻</span><span>Refreshing...</span>`;
     }
-
-
-    showLoading();
-
 
     try {
 
-        const response =
-            await fetch(
-                "/api/products/compare",
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    credentials:
-                        "include",
-
-                    body:
-                        JSON.stringify({
-                            url
-                        })
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                data?.message ||
-                data?.error ||
-                `Refresh failed (${response.status}).`
-            );
-        }
-
-
-        sessionStorage.setItem(
-            "trustcart_compare_result",
-            JSON.stringify(
-                data
-            )
+        sessionStorage.removeItem(
+            "trustcart_compare_result"
         );
 
-
-        localStorage.setItem(
-            "trustcart_last_compare_time",
-            new Date().toISOString()
-        );
-
-
-        displayComparisonResults(
-            data
-        );
-
-
-        showToast(
-            "Comparison refreshed successfully."
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Refresh failed:",
-            error
-        );
-
-
-        showError(
-            error.message ||
-            "Unable to refresh the comparison."
-        );
-
+        await loadComparison();
 
     } finally {
 
         if (refreshBtn) {
 
-            refreshBtn.disabled =
-                false;
+            refreshBtn.disabled = false;
 
-            refreshBtn.classList.remove(
-                "loading"
-            );
+            refreshBtn.innerHTML =
+                `<span>↻</span><span>Refresh</span>`;
         }
     }
-}
-
-
-function getSourceProductUrl() {
-
-    const product =
-        currentProduct ||
-        {};
-
-
-    const candidates = [
-        product.product_url,
-        product.productUrl,
-        product.source_url,
-        product.sourceUrl,
-        product.url
-    ];
-
-
-    for (
-        const value of candidates
-    ) {
-
-        if (
-            isSafeUrl(value)
-        ) {
-
-            return value;
-        }
-    }
-
-
-    return "";
 }
 
 
 /* =========================================================
-   COPY
+   SORT
 ========================================================= */
 
-async function copyComparison() {
+if (sortSelect) {
 
-    if (!currentPrices.length) {
+    sortSelect.addEventListener(
+        "change",
+        () => {
 
-        showToast(
-            "There is no comparison data to copy."
-        );
+            renderSellerRows(
+                currentPrices
+            );
+        }
+    );
+}
 
-        return;
-    }
 
+/* =========================================================
+   COPY SUMMARY
+========================================================= */
+
+function createSummaryText() {
 
     const product =
-        currentProduct?.product_name ||
         currentProduct?.name ||
         currentProduct?.title ||
         "Product";
 
+    if (!currentPrices.length) {
+        return `TrustCart comparison: ${product}\nNo comparable sellers found.`;
+    }
 
-    const best =
-        currentBestDeal;
-
-
-    const trust =
-        getOverallTrust(
-            currentComparison?.trust_analysis ||
-            currentComparison?.trustAnalysis ||
-            {},
-            currentComparison?.recommendation ||
-            {},
-            currentPrices
+    const sorted =
+        [...currentPrices].sort(
+            (a, b) => a.price - b.price
         );
 
+    const lines = [
+        `TrustCart Comparison`,
+        ``,
+        product,
+        ``
+    ];
 
-    const cheapest =
-        Math.min(
-            ...currentPrices.map(
-                item => item.price
-            )
+    sorted.forEach((item, index) => {
+
+        lines.push(
+            `${index + 1}. ${item.seller} — ${formatPrice(item.price)}`
         );
+    });
 
+    if (currentBestDeal) {
 
-    const highest =
-        Math.max(
-            ...currentPrices.map(
-                item => item.price
-            )
+        lines.push(
+            ``,
+            `Recommended: ${currentBestDeal.seller} — ${formatPrice(currentBestDeal.price)}`
         );
+    }
+
+    return lines.join("\n");
+}
 
 
-    const savingsPercent =
-        highest > 0
-            ? (
-                (
-                    highest -
-                    cheapest
-                ) /
-                highest
-            ) * 100
-            : 0;
+async function copySummary() {
 
-
-    const text = [
-        "TrustCart Comparison",
-        "",
-        `Product: ${product}`,
-        `Best Seller: ${
-            best?.seller ||
-            "Unavailable"
-        }`,
-        `Best Price: ${
-            best
-                ? formatPrice(
-                    best.price
-                )
-                : "Unavailable"
-        }`,
-        `Savings: ${savingsPercent.toFixed(
-            1
-        )}%`,
-        `Sellers Compared: ${
-            currentPrices.length
-        }`,
-        `Trust Score: ${
-            trust !== null
-                ? `${formatScore(
-                    trust
-                )}/100`
-                : "Unavailable"
-        }`,
-        "",
-        "Compared using TrustCart."
-    ].join("\n");
-
+    const text =
+        createSummaryText();
 
     try {
 
@@ -3474,22 +2379,14 @@ async function copyComparison() {
             text
         );
 
-
         showToast(
             "Comparison copied to clipboard."
         );
 
-
-    } catch (error) {
-
-        console.error(
-            "Clipboard failed:",
-            error
-        );
-
+    } catch {
 
         showToast(
-            "Unable to copy comparison."
+            "Could not copy the comparison."
         );
     }
 }
@@ -3501,24 +2398,8 @@ async function copyComparison() {
 
 async function shareComparison() {
 
-    const product =
-        currentProduct?.product_name ||
-        currentProduct?.name ||
-        currentProduct?.title ||
-        "Product";
-
-
-    const best =
-        currentBestDeal;
-
-
     const text =
-        best
-            ? `TrustCart found ${best.seller} with the best comparable price of ${formatPrice(
-                best.price
-            )} for ${product}.`
-            : `Check this comparison on TrustCart for ${product}.`;
-
+        createSummaryText();
 
     if (
         navigator.share
@@ -3528,29 +2409,295 @@ async function shareComparison() {
 
             await navigator.share({
                 title:
-                    `TrustCart - ${product}`,
-
-                text,
-
-                url:
-                    window.location.href
+                    "TrustCart Comparison",
+                text
             });
 
-            return;
-
-        } catch (error) {
-
-            if (
-                error?.name ===
-                "AbortError"
-            ) {
-                return;
-            }
+        } catch {
+            // User cancelled.
         }
+
+        return;
     }
 
+    await copySummary();
 
-    await copyComparison();
+    showToast(
+        "Sharing isn't available here. Summary copied instead."
+    );
+}
+
+
+/* =========================================================
+   THEME
+========================================================= */
+
+function applyTheme(theme) {
+
+    const isDark =
+        theme === "dark";
+
+    document.documentElement.classList.toggle(
+        "dark",
+        isDark
+    );
+
+    document.documentElement.dataset.theme =
+        isDark
+            ? "dark"
+            : "light";
+
+    document.body.classList.toggle(
+        "dark",
+        isDark
+    );
+
+    localStorage.setItem(
+        "trustcart-theme",
+        isDark
+            ? "dark"
+            : "light"
+    );
+
+    if (themeToggle) {
+
+        themeToggle.textContent =
+            isDark
+                ? "☀"
+                : "☾";
+
+    }
+
+}
+
+
+function initTheme() {
+
+    const savedTheme =
+        localStorage.getItem(
+            "trustcart-theme"
+        ) || "light";
+
+    applyTheme(
+        savedTheme
+    );
+
+}
+
+
+initTheme();
+
+
+if (themeToggle) {
+
+    themeToggle.addEventListener(
+        "click",
+        () => {
+
+            const isDark =
+                document.documentElement.classList.contains(
+                    "dark"
+                );
+
+            applyTheme(
+                isDark
+                    ? "light"
+                    : "dark"
+            );
+
+        }
+    );
+
+}
+
+
+window.addEventListener(
+    "storage",
+    event => {
+
+        if (
+            event.key ===
+            "trustcart-theme"
+        ) {
+
+            applyTheme(
+                event.newValue === "dark"
+                    ? "dark"
+                    : "light"
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   PROFILE
+========================================================= */
+
+function toggleProfileMenu() {
+
+    if (!profileMenu) {
+        return;
+    }
+
+    const isOpen =
+        profileMenu.getAttribute(
+            "aria-hidden"
+        ) === "false";
+
+    profileMenu.setAttribute(
+        "aria-hidden",
+        isOpen ? "true" : "false"
+    );
+
+    profileMenu.style.display =
+        isOpen ? "none" : "block";
+}
+
+
+if (topAvatar) {
+
+    topAvatar.addEventListener(
+        "click",
+        (event) => {
+
+            event.stopPropagation();
+
+            toggleProfileMenu();
+        }
+    );
+}
+
+
+document.addEventListener(
+    "click",
+    (event) => {
+
+        if (
+            profileMenu &&
+            !profileMenu.contains(event.target) &&
+            event.target !== topAvatar
+        ) {
+
+            profileMenu.setAttribute(
+                "aria-hidden",
+                "true"
+            );
+
+            profileMenu.style.display =
+                "none";
+        }
+    }
+);
+
+
+/* =========================================================
+   USER
+========================================================= */
+
+async function loadCurrentUser() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/me",
+                {
+                    method: "GET",
+                    headers: {
+                        Accept:
+                            "application/json"
+                    }
+                }
+            );
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data =
+            await response.json();
+
+        const user =
+            data.user ||
+            data;
+
+        const name =
+            user?.name ||
+            user?.full_name ||
+            user?.username ||
+            "User";
+
+        const email =
+            user?.email ||
+            "";
+
+        const initial =
+            String(name)
+                .trim()
+                .charAt(0)
+                .toUpperCase() ||
+            "U";
+
+        if (userName) {
+            userName.textContent =
+                name;
+        }
+
+        if (userEmail) {
+            userEmail.textContent =
+                email;
+        }
+
+        if (topAvatar) {
+            topAvatar.textContent =
+                initial;
+        }
+
+        if (avatarInitial) {
+            avatarInitial.textContent =
+                initial;
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Could not load user:",
+            error
+        );
+    }
+}
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+if (profileLogout) {
+
+    profileLogout.addEventListener(
+        "click",
+        async () => {
+
+            try {
+
+                await fetch(
+                    "/logout",
+                    {
+                        method: "GET"
+                    }
+                );
+
+            } catch {
+                // Redirect regardless.
+            }
+
+            window.location.href =
+                "/login";
+        }
+    );
 }
 
 
@@ -3558,124 +2705,44 @@ async function shareComparison() {
    PRICE ALERT
 ========================================================= */
 
-function getAlertStorageKey() {
-
-    return `trustcart-alert-${
-        currentProductId ||
-        "current"
-    }`;
-}
-
-
-function loadExistingAlert() {
-
-    const stored =
-        localStorage.getItem(
-            getAlertStorageKey()
-        );
-
-
-    if (!stored) {
-
-        updateAlertButton(
-            false
-        );
-
-        return;
-    }
-
-
-    try {
-
-        const alertData =
-            JSON.parse(
-                stored
-            );
-
-
-        if (
-            alertData &&
-            alertData.targetPrice !==
-                undefined
-        ) {
-
-            if (alertPrice) {
-
-                alertPrice.value =
-                    alertData.targetPrice;
-            }
-
-
-            if (
-                existingAlertStatus
-            ) {
-
-                existingAlertStatus.textContent =
-                    `Active alert: target price ₹${alertData.targetPrice}.`;
-
-                existingAlertStatus.style.display =
-                    "block";
-            }
-
-
-            updateAlertButton(
-                true
-            );
-        }
-
-
-    } catch {
-
-        localStorage.removeItem(
-            getAlertStorageKey()
-        );
-
-        updateAlertButton(
-            false
-        );
-    }
-}
-
-
 function openAlertModal() {
 
     if (!alertModal) {
         return;
     }
 
-
     lastFocusedElement =
         document.activeElement;
 
-
-    loadExistingAlert();
-
-
-    alertModal.classList.add(
-        "active"
-    );
-
+    alertModal.style.display =
+        "flex";
 
     alertModal.setAttribute(
         "aria-hidden",
         "false"
     );
 
+    if (targetPrice) {
 
-    document.body.style.overflow =
-        "hidden";
+        if (
+            currentBestDeal &&
+            Number(currentBestDeal.price) > 0 &&
+            !targetPrice.value
+        ) {
 
+            targetPrice.value =
+                Math.round(
+                    Number(
+                        currentBestDeal.price
+                    ) * 0.9
+                );
+        }
 
-    setTimeout(
-        () => {
-
-            if (alertPrice) {
-                alertPrice.focus();
-            }
-
-        },
-        100
-    );
+        setTimeout(
+            () => targetPrice.focus(),
+            50
+        );
+    }
 }
 
 
@@ -3685,21 +2752,13 @@ function closeAlertModal() {
         return;
     }
 
-
-    alertModal.classList.remove(
-        "active"
-    );
-
+    alertModal.style.display =
+        "none";
 
     alertModal.setAttribute(
         "aria-hidden",
         "true"
     );
-
-
-    document.body.style.overflow =
-        "";
-
 
     if (
         lastFocusedElement &&
@@ -3712,209 +2771,89 @@ function closeAlertModal() {
 }
 
 
-function savePriceAlert() {
+if (alertBtn) {
 
-    const input =
-        alertPrice ||
-        targetPriceFallback;
-
-
-    if (!input) {
-        return;
-    }
-
-
-    const target =
-        parsePrice(
-            input.value
-        );
-
-
-    if (
-        target === null ||
-        target <= 0
-    ) {
-
-        showAlertMessage(
-            "Please enter a valid target price."
-        );
-
-        return;
-    }
-
-
-    const alertData = {
-
-        targetPrice:
-            target,
-
-        productId:
-            currentProductId,
-
-        productName:
-            currentProduct?.product_name ||
-            currentProduct?.name ||
-            currentProduct?.title ||
-            "Product",
-
-        createdAt:
-            new Date().toISOString()
-    };
-
-
-    localStorage.setItem(
-        getAlertStorageKey(),
-        JSON.stringify(
-            alertData
-        )
-    );
-
-
-    updateAlertButton(
-        true
-    );
-
-
-    if (
-        existingAlertStatus
-    ) {
-
-        existingAlertStatus.textContent =
-            `Active alert: target price ₹${formatNumber(
-                target,
-                0
-            )}.`;
-
-        existingAlertStatus.style.display =
-            "block";
-    }
-
-
-    showAlertMessage(
-        "Price alert saved in this browser."
-    );
-
-
-    showToast(
-        "Price alert saved."
-    );
-
-
-    setTimeout(
-        closeAlertModal,
-        900
+    alertBtn.addEventListener(
+        "click",
+        openAlertModal
     );
 }
 
 
-function deletePriceAlert() {
+if (closeModal) {
 
-    localStorage.removeItem(
-        getAlertStorageKey()
-    );
-
-
-    updateAlertButton(
-        false
-    );
-
-
-    if (alertPrice) {
-        alertPrice.value =
-            "";
-    }
-
-
-    if (
-        existingAlertStatus
-    ) {
-
-        existingAlertStatus.textContent =
-            "";
-
-        existingAlertStatus.style.display =
-            "none";
-    }
-
-
-    showAlertMessage(
-        "Price alert removed."
-    );
-
-
-    showToast(
-        "Price alert removed."
+    closeModal.addEventListener(
+        "click",
+        closeAlertModal
     );
 }
 
 
-function updateAlertButton(
-    active
-) {
+if (alertModal) {
 
-    if (!alertBtn) {
-        return;
-    }
+    alertModal.addEventListener(
+        "click",
+        (event) => {
 
-
-    if (active) {
-
-        alertBtn.textContent =
-            "Price Alert Active";
-
-        alertBtn.classList.add(
-            "alert-active"
-        );
-
-        alertBtn.setAttribute(
-            "aria-label",
-            "Update price alert"
-        );
-
-    } else {
-
-        alertBtn.textContent =
-            "Set Price Alert";
-
-        alertBtn.classList.remove(
-            "alert-active"
-        );
-
-        alertBtn.setAttribute(
-            "aria-label",
-            "Set price alert"
-        );
-    }
+            if (
+                event.target === alertModal
+            ) {
+                closeAlertModal();
+            }
+        }
+    );
 }
 
 
-function showAlertMessage(
-    message
-) {
+if (saveAlert) {
 
-    if (alertMessage) {
-        alertMessage.textContent =
-            message;
-    }
-}
+    saveAlert.addEventListener(
+        "click",
+        () => {
 
+            const value =
+                Number(
+                    targetPrice?.value
+                );
 
-/* =========================================================
-   MODAL
-========================================================= */
+            if (
+                !Number.isFinite(value) ||
+                value <= 0
+            ) {
 
-function handleModalBackdropClick(
-    event
-) {
+                if (alertMessage) {
+                    alertMessage.textContent =
+                        "Enter a valid target price.";
+                }
 
-    if (
-        alertModal &&
-        event.target ===
-            alertModal
-    ) {
+                return;
+            }
 
-        closeAlertModal();
-    }
+            const product =
+                currentProduct?.name ||
+                currentProduct?.title ||
+                "Product";
+
+            localStorage.setItem(
+                `trustcart_alert_${product}`,
+                String(value)
+            );
+
+            if (existingAlertStatus) {
+                existingAlertStatus.style.display =
+                    "block";
+            }
+
+            if (alertMessage) {
+                alertMessage.textContent =
+                    `Alert set for ${formatPrice(value)}.`;
+            }
+
+            showToast(
+                `Price alert set for ${formatPrice(value)}.`
+            );
+        }
+    );
 }
 
 
@@ -3922,480 +2861,92 @@ function handleModalBackdropClick(
    TOAST
 ========================================================= */
 
-let toastTimer = null;
-
-
-function showToast(
-    message
-) {
+function showToast(message) {
 
     let toast =
-        $(".toast");
-
+        document.getElementById(
+            "trustcartToast"
+        );
 
     if (!toast) {
 
         toast =
-            document.createElement(
-                "div"
-            );
+            document.createElement("div");
 
-        toast.className =
-            "toast";
+        toast.id =
+            "trustcartToast";
 
-        toast.setAttribute(
-            "role",
-            "status"
-        );
+        toast.style.position =
+            "fixed";
 
-        document.body.appendChild(
-            toast
-        );
+        toast.style.left =
+            "50%";
+
+        toast.style.bottom =
+            "28px";
+
+        toast.style.transform =
+            "translateX(-50%) translateY(15px)";
+
+        toast.style.zIndex =
+            "2000";
+
+        toast.style.padding =
+            "11px 16px";
+
+        toast.style.borderRadius =
+            "11px";
+
+        toast.style.background =
+            "#0d3d29";
+
+        toast.style.color =
+            "#ffffff";
+
+        toast.style.fontSize =
+            "12px";
+
+        toast.style.fontWeight =
+            "700";
+
+        toast.style.boxShadow =
+            "0 12px 30px rgba(0,0,0,.18)";
+
+        toast.style.opacity =
+            "0";
+
+        toast.style.transition =
+            "opacity .2s ease, transform .2s ease";
+
+        document.body.appendChild(toast);
     }
-
 
     toast.textContent =
         message;
 
+    requestAnimationFrame(() => {
 
-    toast.classList.add(
-        "show"
-    );
+        toast.style.opacity =
+            "1";
 
+        toast.style.transform =
+            "translateX(-50%) translateY(0)";
+    });
 
     clearTimeout(
-        toastTimer
+        toast._timeout
     );
 
+    toast._timeout =
+        setTimeout(() => {
 
-    toastTimer =
-        setTimeout(
-            () => {
+            toast.style.opacity =
+                "0";
 
-                toast.classList.remove(
-                    "show"
-                );
+            toast.style.transform =
+                "translateX(-50%) translateY(15px)";
 
-            },
-            2800
-        );
-}
-
-
-/* =========================================================
-   FORMATTING
-========================================================= */
-
-function formatPrice(
-    value
-) {
-
-    const number =
-        Number(value);
-
-
-    if (
-        !Number.isFinite(number)
-    ) {
-        return "₹—";
-    }
-
-
-    return new Intl.NumberFormat(
-        "en-IN",
-        {
-            style:
-                "currency",
-
-            currency:
-                "INR",
-
-            maximumFractionDigits:
-                0
-        }
-    ).format(number);
-}
-
-
-function formatNumber(
-    value,
-    decimals = 0
-) {
-
-    const number =
-        Number(value);
-
-
-    if (
-        !Number.isFinite(number)
-    ) {
-        return "—";
-    }
-
-
-    return number.toFixed(
-        decimals
-    );
-}
-
-
-function formatScore(
-    value
-) {
-
-    const number =
-        Number(value);
-
-
-    if (
-        !Number.isFinite(number)
-    ) {
-        return "—";
-    }
-
-
-    return Number.isInteger(
-        number
-    )
-        ? String(number)
-        : number.toFixed(1);
-}
-
-
-function formatCompactNumber(
-    value
-) {
-
-    const number =
-        Number(value);
-
-
-    if (
-        !Number.isFinite(number)
-    ) {
-        return "—";
-    }
-
-
-    if (
-        number >= 1000000
-    ) {
-
-        return `${(
-            number /
-            1000000
-        ).toFixed(1)}M`;
-    }
-
-
-    if (
-        number >= 1000
-    ) {
-
-        return `${(
-            number /
-            1000
-        ).toFixed(1)}K`;
-    }
-
-
-    return String(
-        Math.round(
-            number
-        )
-    );
-}
-
-
-function formatDate(
-    value
-) {
-
-    const date =
-        value instanceof Date
-            ? value
-            : new Date(value);
-
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-
-        return "recently";
-    }
-
-
-    return new Intl.DateTimeFormat(
-        "en-IN",
-        {
-            dateStyle:
-                "medium",
-
-            timeStyle:
-                "short"
-        }
-    ).format(date);
-}
-
-
-function formatUpdatedDate(
-    value
-) {
-
-    if (!value) {
-        return "Update time unavailable";
-    }
-
-
-    const date =
-        new Date(value);
-
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-
-        return String(value);
-    }
-
-
-    return formatDate(
-        date
-    );
-}
-
-
-/* =========================================================
-   SELLER HELPERS
-========================================================= */
-
-function cleanSellerName(
-    value
-) {
-
-    const text =
-        String(
-            value || ""
-        ).trim();
-
-
-    if (!text) {
-        return "Seller";
-    }
-
-
-    const lower =
-        text.toLowerCase();
-
-
-    if (
-        lower.includes(
-            "amazon"
-        )
-    ) {
-        return "Amazon";
-    }
-
-
-    if (
-        lower.includes(
-            "flipkart"
-        )
-    ) {
-        return "Flipkart";
-    }
-
-
-    if (
-        lower.includes(
-            "croma"
-        )
-    ) {
-        return "Croma";
-    }
-
-
-    if (
-        lower.includes(
-            "reliance"
-        )
-    ) {
-        return "Reliance Digital";
-    }
-
-
-    if (
-        lower.includes(
-            "myntra"
-        )
-    ) {
-        return "Myntra";
-    }
-
-
-    if (
-        lower.includes(
-            "meesho"
-        )
-    ) {
-        return "Meesho";
-    }
-
-
-    if (
-        lower.includes(
-            "snapdeal"
-        )
-    ) {
-        return "Snapdeal";
-    }
-
-
-    return text;
-}
-
-
-function cleanWebsiteName(
-    value
-) {
-
-    return cleanSellerName(
-        value
-    );
-}
-
-
-function marketplaceInitial(
-    seller
-) {
-
-    const name =
-        cleanSellerName(
-            seller
-        );
-
-
-    const lower =
-        name.toLowerCase();
-
-
-    if (
-        lower.includes(
-            "amazon"
-        )
-    ) {
-        return "A";
-    }
-
-
-    if (
-        lower.includes(
-            "flipkart"
-        )
-    ) {
-        return "F";
-    }
-
-
-    if (
-        lower.includes(
-            "reliance"
-        )
-    ) {
-        return "R";
-    }
-
-
-    if (
-        lower.includes(
-            "croma"
-        )
-    ) {
-        return "C";
-    }
-
-
-    if (
-        lower.includes(
-            "myntra"
-        )
-    ) {
-        return "M";
-    }
-
-
-    if (
-        lower.includes(
-            "meesho"
-        )
-    ) {
-        return "M";
-    }
-
-
-    return (
-        name
-            .replace(
-                /[^a-zA-Z0-9]/g,
-                ""
-            )
-            .charAt(0)
-            .toUpperCase() ||
-        "S"
-    );
-}
-
-
-/* =========================================================
-   GENERIC HELPERS
-========================================================= */
-
-function parseNumber(
-    value
-) {
-
-    if (
-        value === null ||
-        value === undefined ||
-        value === ""
-    ) {
-        return null;
-    }
-
-
-    const number =
-        Number(
-            String(value)
-                .replace(
-                    /[^\d.-]/g,
-                    ""
-                )
-        );
-
-
-    return Number.isFinite(number)
-        ? number
-        : null;
-}
-
-
-function clamp(
-    value,
-    min,
-    max
-) {
-
-    return Math.min(
-        max,
-        Math.max(
-            min,
-            Number(value)
-        )
-    );
+        }, 2600);
 }
 
 
@@ -4403,203 +2954,74 @@ function clamp(
    EVENTS
 ========================================================= */
 
-function initializeEvents() {
+if (copySummaryBtn) {
 
-
-    /* Theme */
-
-    if (themeToggle) {
-
-        themeToggle.addEventListener(
-            "click",
-            toggleTheme
-        );
-    }
-
-
-    /* Sorting */
-
-    if (sortSelect) {
-
-        sortSelect.addEventListener(
-            "change",
-            handleSortChange
-        );
-    }
-
-
-    /* Refresh */
-
-    if (refreshBtn) {
-
-        refreshBtn.addEventListener(
-            "click",
-            refreshComparison
-        );
-    }
-
-
-    /* Copy */
-
-    if (copyBtn) {
-
-        copyBtn.addEventListener(
-            "click",
-            copyComparison
-        );
-    }
-
-
-    /* Share */
-
-    if (shareBtn) {
-
-        shareBtn.addEventListener(
-            "click",
-            shareComparison
-        );
-    }
-
-
-    /* Retry */
-
-    if (retryBtn) {
-
-        retryBtn.addEventListener(
-            "click",
-            loadComparison
-        );
-    }
-
-
-    /* Price alert */
-
-    if (alertBtn) {
-
-        alertBtn.addEventListener(
-            "click",
-            openAlertModal
-        );
-    }
-
-
-    if (alertClose) {
-
-        alertClose.addEventListener(
-            "click",
-            closeAlertModal
-        );
-    }
-
-
-    if (closeModalFallback) {
-
-        closeModalFallback.addEventListener(
-            "click",
-            closeAlertModal
-        );
-    }
-
-
-    if (alertCancel) {
-
-        alertCancel.addEventListener(
-            "click",
-            closeAlertModal
-        );
-    }
-
-
-    if (alertSave) {
-
-        alertSave.addEventListener(
-            "click",
-            savePriceAlert
-        );
-    }
-
-
-    if (saveAlertFallback) {
-
-        saveAlertFallback.addEventListener(
-            "click",
-            savePriceAlert
-        );
-    }
-
-
-    /* Modal */
-
-    if (alertModal) {
-
-        alertModal.addEventListener(
-            "click",
-            handleModalBackdropClick
-        );
-    }
-
-
-    /* Keyboard */
-
-    document.addEventListener(
-        "keydown",
-        event => {
-
-            if (
-                event.key ===
-                "Escape"
-            ) {
-
-                if (
-                    alertModal?.classList.contains(
-                        "active"
-                    )
-                ) {
-
-                    closeAlertModal();
-                }
-            }
-        }
+    copySummaryBtn.addEventListener(
+        "click",
+        copySummary
     );
-
-
-    /* Enter in alert */
-
-    if (alertPrice) {
-
-        alertPrice.addEventListener(
-            "keydown",
-            event => {
-
-                if (
-                    event.key ===
-                    "Enter"
-                ) {
-
-                    event.preventDefault();
-
-                    savePriceAlert();
-                }
-            }
-        );
-    }
 }
 
 
+if (shareBtn) {
+
+    shareBtn.addEventListener(
+        "click",
+        shareComparison
+    );
+}
+
+
+if (refreshBtn) {
+
+    refreshBtn.addEventListener(
+        "click",
+        refreshComparison
+    );
+}
+
+
+if (retryBtn) {
+
+    retryBtn.addEventListener(
+        "click",
+        loadComparison
+    );
+}
+
+
+document.addEventListener(
+    "keydown",
+    (event) => {
+
+        if (
+            event.key === "Escape" &&
+            alertModal?.style.display === "flex"
+        ) {
+
+            closeAlertModal();
+        }
+    }
+);
+
+
 /* =========================================================
-   INITIALIZATION
+   INIT
 ========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    async () => {
+    () => {
 
-        initializeTheme();
+        initTheme();
 
-        initializeEvents();
+        if (profileMenu) {
+            profileMenu.style.display =
+                "none";
+        }
 
-        await loadCurrentUser();
+        loadCurrentUser();
 
-        await loadComparison();
+        loadComparison();
     }
 );

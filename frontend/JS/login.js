@@ -503,9 +503,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 event.preventDefault();
 
-                alert(
-                    "Google login will be connected later."
-                );
+                window.location.href = "/auth/google";
 
             }
         );
@@ -527,9 +525,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 event.preventDefault();
 
-                alert(
-                    "Facebook login will be connected later."
-                );
+                window.location.href = "/auth/facebook";
 
             }
         );

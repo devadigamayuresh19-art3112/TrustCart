@@ -1913,6 +1913,51 @@ input:focus {
 }
 
 
+.product-card-visual {
+
+    width: 46px;
+    height: 46px;
+
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 auto;
+
+    overflow: hidden;
+
+    border-radius: 12px;
+
+    background:
+        rgba(97, 180, 135, 0.12);
+
+}
+
+
+.product-card-image {
+
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: contain;
+
+    border-radius: 12px;
+
+}
+
+
+.product-card-visual
+.product-card-icon {
+
+    width: 46px;
+    height: 46px;
+
+    margin: 0;
+
+}
+
+
 .product-category {
 
     max-width: 100px;
@@ -3659,3 +3704,273 @@ body.dark .mobile-nav {
     }
 
 }
+/* ============================================================
+   DASHBOARD PRODUCT IMAGES
+============================================================ */
+
+.history-visual,
+.saved-visual {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+    border-radius: 12px;
+    background: rgba(97, 180, 135, 0.12);
+}
+
+.history-product-image,
+.saved-product-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    border-radius: 12px;
+}
+
+.history-visual .history-icon,
+.saved-visual .saved-icon {
+    width: 46px;
+    height: 46px;
+    margin: 0;
+}
+
+
+
+/* ============================================================
+   EDIT PROFILE MODAL
+============================================================ */
+
+.profile-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.profile-modal.active {
+    display: flex;
+}
+
+.profile-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+}
+
+.profile-modal-card {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 500px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 28px;
+    border-radius: 22px;
+    background: var(--card-bg, #ffffff);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+    animation: profileModalIn 0.2s ease-out;
+}
+
+.profile-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.profile-modal-header h2 {
+    margin: 8px 0 6px;
+}
+
+.profile-modal-header p {
+    margin: 0;
+    opacity: 0.7;
+}
+
+.profile-modal-close {
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(128, 128, 128, 0.12);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.profile-modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.profile-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.profile-form-group label {
+    font-weight: 600;
+}
+
+.profile-form-group input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 13px 15px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    border-radius: 12px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    outline: none;
+}
+
+.profile-form-group input:focus {
+    border-color: var(--green, #18583d);
+    box-shadow: 0 0 0 3px rgba(24, 88, 61, 0.12);
+}
+
+.profile-form-group input[readonly] {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.profile-form-group small {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.profile-form-message {
+    min-height: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.profile-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.profile-modal-actions button {
+    min-width: 120px;
+}
+
+@keyframes profileModalIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 600px) {
+
+    .profile-modal {
+        padding: 14px;
+    }
+
+    .profile-modal-card {
+        padding: 22px;
+        border-radius: 18px;
+    }
+
+    .profile-modal-actions {
+        flex-direction: column-reverse;
+    }
+
+    .profile-modal-actions button {
+        width: 100%;
+    }
+
+}
+
+/* Equal Edit Profile action buttons */
+.profile-modal-actions .secondary-btn,
+.profile-modal-actions .primary-btn {
+    width: 140px;
+    min-width: 140px;
+    height: 46px;
+    padding: 0 18px;
+}
+
+@media (max-width: 600px) {
+    .profile-modal-actions .secondary-btn,
+    .profile-modal-actions .primary-btn {
+        width: 100%;
+        min-width: 0;
+    }
+}
+/* Edit Profile buttons - perfectly aligned */
+.profile-modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.profile-modal-actions .secondary-btn,
+.profile-modal-actions .primary-btn {
+    width: 140px;
+    min-width: 140px;
+    height: 46px;
+    padding: 0 18px;
+    margin: 0;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    vertical-align: middle;
+}
+
+/* Cancel button styling */
+.profile-modal-actions .secondary-btn {
+    border: 1px solid rgba(24, 88, 61, 0.35);
+    border-radius: 10px;
+    background: rgba(24, 88, 61, 0.06);
+    color: var(--green, #18583d);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.profile-modal-actions .secondary-btn:hover {
+    background: rgba(24, 88, 61, 0.12);
+    border-color: var(--green, #18583d);
+    transform: translateY(-1px);
+}
+
+.profile-modal-actions .secondary-btn:active {
+    transform: translateY(0);
+}
+
+/* Save button */
+.profile-modal-actions .primary-btn {
+    border-radius: 10px;
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .profile-modal-actions {
+        align-items: stretch;
+    }
+
+    .profile-modal-actions .secondary-btn,
+    .profile-modal-actions .primary-btn {
+        width: 100%;
+        min-width: 0;
+    }
+}
+

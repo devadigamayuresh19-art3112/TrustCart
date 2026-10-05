@@ -652,23 +652,37 @@ class ProductMatcher:
         target_specs = extract_specs(target)
         candidate_specs = extract_specs(candidate)
 
-        # If both products explicitly specify a material variant,
-        # the values must agree.
+        # If the target explicitly specifies a material variant,
+        # the candidate MUST also specify that variant and it MUST match.
+        #
+        # Example:
+        #   Target:    iPhone 16 256 GB
+        #   Candidate: iPhone 16 128 GB  -> reject
+        #   Candidate: iPhone 16         -> reject (variant unknown)
+        #   Candidate: iPhone 16 256 GB  -> accept
+        #
+        # This prevents an unverified candidate from being treated as
+        # an equivalent product when the source has a specific variant.
         for key in ("storage", "ram", "network"):
             target_value = target_specs.get(key)
             candidate_value = candidate_specs.get(key)
 
-            if (
-                target_value
-                and candidate_value
-                and target_value != candidate_value
-            ):
-                print(
-                    f"Variant mismatch: {key} | "
-                    f"target={target_value} | "
-                    f"candidate={candidate_value}"
-                )
-                return False
+            if target_value:
+                if not candidate_value:
+                    print(
+                        f"Variant missing: {key} | "
+                        f"target={target_value} | "
+                        f"candidate=unknown"
+                    )
+                    return False
+
+                if target_value != candidate_value:
+                    print(
+                        f"Variant mismatch: {key} | "
+                        f"target={target_value} | "
+                        f"candidate={candidate_value}"
+                    )
+                    return False
 
         return True
 

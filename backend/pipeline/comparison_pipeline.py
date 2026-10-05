@@ -58,14 +58,11 @@ class ComparisonPipeline:
         if "amazon." in url:
             return "Amazon"
 
-        if "flipkart.com" in url:
+        if "flipkart.com" in url or "fkrt.it" in url:
             return "Flipkart"
 
-        if "croma.com" in url:
-            return "Croma"
-
-        if "reliancedigital.in" in url:
-            return "Reliance Digital"
+        if "snapdeal.com" in url:
+            return "Snapdeal"
 
         return None
 
@@ -373,6 +370,50 @@ class ComparisonPipeline:
             )
         )
 
+        # ====================================================
+        # DEDUPLICATE MATCHES BY MARKETPLACE
+        # Keep only the best match from each marketplace.
+        # ====================================================
+
+        unique_matches = {}
+
+        for product in matched_products:
+            marketplace = (
+                str(
+                    product.get("marketplace")
+                    or ""
+                ).strip()
+            )
+
+            if not marketplace:
+                continue
+
+            existing = unique_matches.get(
+                marketplace
+            )
+
+            if existing is None:
+                unique_matches[marketplace] = product
+                continue
+
+            current_score = float(
+                product.get("match_score") or 0
+            )
+            existing_score = float(
+                existing.get("match_score") or 0
+            )
+
+            if current_score > existing_score:
+                unique_matches[marketplace] = product
+
+        matched_products = list(
+            unique_matches.values()
+        )
+
+        print(
+            "Matched products after deduplication:",
+            len(matched_products)
+        )
         source_marketplace = source_product.get("marketplace")
         has_other_marketplace_match = any(
             candidate.get("marketplace")
@@ -447,8 +488,7 @@ class ComparisonPipeline:
         )
 
         comparison_complete = bool(
-            has_other_marketplace_match
-            and price_result.get("product_count", 0) >= 2
+            price_result.get("product_count", 0) >= 1
         )
 
         # ====================================================

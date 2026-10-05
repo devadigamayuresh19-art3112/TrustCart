@@ -383,9 +383,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "click",
             function () {
 
-                alert(
-                    "Google authentication will be connected later."
-                );
+                window.location.href = "/auth/google";
 
             }
         );
@@ -406,9 +404,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "click",
             function () {
 
-                alert(
-                    "Facebook authentication will be connected later."
-                );
+                window.location.href = "/auth/facebook";
 
             }
         );

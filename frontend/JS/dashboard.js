@@ -132,6 +132,9 @@ let notificationsEnabled =
         "trustcart-notifications"
     ) !== "false";
 
+let notificationData =
+    [];
+
 
 function getStorageArray(key) {
 
@@ -817,6 +820,147 @@ function showLoading() {
 
 
 /* ============================================================
+   DATABASE DASHBOARD STATE
+============================================================ */
+
+async function loadDashboardState() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/dashboard/state",
+                {
+                    method: "GET",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    },
+
+                    credentials: "include"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            console.warn(
+                "Unable to load dashboard state."
+            );
+
+            return;
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !data.success
+        ) {
+
+            console.warn(
+                "Dashboard state request failed."
+            );
+
+            return;
+
+        }
+
+
+        /* ----------------------------------------------------
+           SEARCH HISTORY
+        ---------------------------------------------------- */
+
+        searchHistory =
+            Array.isArray(
+                data.history
+            )
+                ? data.history
+                : [];
+
+
+        saveStorage(
+            "trustcart-history",
+            searchHistory
+        );
+
+
+        /* ----------------------------------------------------
+           SAVED PRODUCTS
+        ---------------------------------------------------- */
+
+        savedProducts =
+            Array.isArray(
+                data.saved
+            )
+                ? data.saved
+                : [];
+
+
+        saveStorage(
+            "trustcart-saved",
+            savedProducts
+        );
+
+
+        /* ----------------------------------------------------
+           NOTIFICATION SETTINGS
+        ---------------------------------------------------- */
+
+        notificationsEnabled =
+            data.notifications_enabled !== false;
+
+        notificationData =
+            Array.isArray(
+                data.notifications
+            )
+                ? data.notifications
+                : [];
+
+        saveStorage(
+            "trustcart-notification-data",
+            notificationData
+        );
+
+
+        localStorage.setItem(
+            "trustcart-notifications",
+            String(
+                notificationsEnabled
+            )
+        );
+
+
+        /* ----------------------------------------------------
+           RENDER EVERYTHING
+        ---------------------------------------------------- */
+
+        renderHistory();
+
+        renderSavedProducts();
+
+        updateNotificationState();
+
+        updateStats();
+
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard state error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* ============================================================
    DISPLAY PRODUCTS
 ============================================================ */
 
@@ -828,10 +972,7 @@ function displayRecentProducts(
         return;
     }
 
-
-    recentProducts.innerHTML =
-        "";
-
+    recentProducts.innerHTML = "";
 
     if (
         !productList ||
@@ -839,17 +980,13 @@ function displayRecentProducts(
     ) {
 
         recentProducts.innerHTML = `
-
             <div class="loading-card">
                 No products available.
             </div>
-
         `;
 
         return;
-
     }
-
 
     productList
         .slice(0, 8)
@@ -861,10 +998,8 @@ function displayRecentProducts(
                         "div"
                     );
 
-
                 card.className =
                     "product-card";
-
 
                 const hasURL =
                     !!(
@@ -873,13 +1008,37 @@ function displayRecentProducts(
                         product.url
                     );
 
+                const imageURL =
+                    product.image_url ||
+                    product.image ||
+                    product.thumbnail ||
+                    "";
+
+                const imageHTML =
+                    imageURL
+                        ? `
+                            <img
+                                class="product-card-image"
+                                src="${escapeHTML(imageURL)}"
+                                alt="${escapeHTML(
+                                    product.name ||
+                                    "Product"
+                                )}"
+                                loading="lazy"
+                            >
+                        `
+                        : `
+                            <div class="product-card-icon">
+                                🛍️
+                            </div>
+                        `;
 
                 card.innerHTML = `
 
                     <div class="product-card-top">
 
-                        <div class="product-card-icon">
-                            🛍️
+                        <div class="product-card-visual">
+                            ${imageHTML}
                         </div>
 
                         <span class="product-category">
@@ -890,7 +1049,6 @@ function displayRecentProducts(
                         </span>
 
                     </div>
-
 
                     <div class="product-card-info">
 
@@ -910,7 +1068,6 @@ function displayRecentProducts(
 
                     </div>
 
-
                     <button
                         class="product-compare-btn"
                         type="button"
@@ -925,12 +1082,41 @@ function displayRecentProducts(
 
                 `;
 
+                const image =
+                    card.querySelector(
+                        ".product-card-image"
+                    );
+
+                if (image) {
+
+                    image.addEventListener(
+                        "error",
+                        () => {
+
+                            const fallback =
+                                document.createElement(
+                                    "div"
+                                );
+
+                            fallback.className =
+                                "product-card-icon";
+
+                            fallback.textContent =
+                                "🛍️";
+
+                            image.replaceWith(
+                                fallback
+                            );
+
+                        }
+                    );
+
+                }
 
                 const button =
                     card.querySelector(
                         ".product-compare-btn"
                     );
-
 
                 if (hasURL) {
 
@@ -946,7 +1132,6 @@ function displayRecentProducts(
                     );
 
                 }
-
 
                 recentProducts.appendChild(
                     card
@@ -1840,12 +2025,20 @@ async function openComparison(
                 "Product",
 
             source_url:
-                sourceURL
+                sourceURL,
+
+            image_url:
+                canonical.image_url ||
+                data.product?.image_url ||
+                product.image_url ||
+                product.image ||
+                product.thumbnail ||
+                ""
 
         };
 
 
-        addToHistory(
+        await addToHistory(
             historyProduct
         );
 
@@ -1896,7 +2089,7 @@ async function openComparison(
    HISTORY
 ============================================================ */
 
-function addToHistory(
+async function addToHistory(
     product
 ) {
 
@@ -1904,47 +2097,9 @@ function addToHistory(
         product.id ??
         product.product_id;
 
+    const historyProduct = {
 
-    searchHistory =
-        searchHistory.filter(
-            item => {
-
-                const itemId =
-                    item.id ??
-                    item.product_id;
-
-
-                if (
-                    productId !== null &&
-                    productId !== undefined
-                ) {
-
-                    return (
-                        String(itemId) !==
-                        String(productId)
-                    );
-
-                }
-
-
-                return (
-                    String(
-                        item.source_url ||
-                        ""
-                    ) !==
-                    String(
-                        product.source_url ||
-                        ""
-                    )
-                );
-
-            }
-        );
-
-
-    searchHistory.unshift({
-
-        id:
+        product_id:
             productId,
 
         name:
@@ -1965,28 +2120,188 @@ function addToHistory(
             product.url ||
             "",
 
-        timestamp:
-            new Date().toISOString()
+        image_url:
+            product.image_url ||
+            product.image ||
+            product.thumbnail ||
+            "",
 
-    });
+        savings:
+            Number(
+                product.savings || 0
+            )
+
+    };
 
 
-    searchHistory =
-        searchHistory.slice(
-            0,
-            10
+    if (!historyProduct.source_url) {
+
+        console.warn(
+            "History item has no source URL."
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/search-history",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+
+                        "Accept":
+                            "application/json"
+                    },
+
+                    credentials: "include",
+
+                    body:
+                        JSON.stringify(
+                            historyProduct
+                        )
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `History API returned ${response.status}`
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (!data.success) {
+
+            throw new Error(
+                data.message ||
+                "Unable to save search history."
+            );
+
+        }
+
+
+        /*
+         * Database is now the source of truth.
+         * Refresh the state so the dashboard contains
+         * exactly what PostgreSQL stored.
+         */
+
+        await loadDashboardState();
+
+
+    } catch (error) {
+
+        console.error(
+            "Database history save failed:",
+            error
         );
 
 
-    saveStorage(
-        "trustcart-history",
-        searchHistory
-    );
+        /*
+         * Temporary local fallback.
+         * This prevents the dashboard from appearing
+         * broken if the API is temporarily unavailable.
+         */
+
+        searchHistory =
+            searchHistory.filter(
+                item => {
+
+                    const itemId =
+                        item.id ??
+                        item.product_id;
+
+                    if (
+                        productId !== null &&
+                        productId !== undefined
+                    ) {
+
+                        return (
+                            String(itemId) !==
+                            String(productId)
+                        );
+
+                    }
+
+                    return (
+                        String(
+                            item.source_url ||
+                            ""
+                        ) !==
+                        String(
+                            historyProduct.source_url ||
+                            ""
+                        )
+                    );
+
+                }
+            );
 
 
-    renderHistory();
+        searchHistory.unshift({
 
-    updateStats();
+            id:
+                productId,
+
+            product_id:
+                productId,
+
+            name:
+                historyProduct.name,
+
+            brand:
+                historyProduct.brand,
+
+            category:
+                historyProduct.category,
+
+            source_url:
+                historyProduct.source_url,
+
+            image_url:
+                historyProduct.image_url,
+
+            savings:
+                historyProduct.savings,
+
+            timestamp:
+                new Date().toISOString()
+
+        });
+
+
+        searchHistory =
+            searchHistory.slice(
+                0,
+                10
+            );
+
+
+        saveStorage(
+            "trustcart-history",
+            searchHistory
+        );
+
+
+        renderHistory();
+
+        updateStats();
+
+    }
 
 }
 
@@ -2003,20 +2318,15 @@ function renderHistory() {
             "historyEmpty"
         );
 
-
     if (
         !historyList ||
         !historyEmpty
     ) {
-
         return;
-
     }
-
 
     historyList.innerHTML =
         "";
-
 
     if (
         searchHistory.length === 0
@@ -2029,10 +2339,8 @@ function renderHistory() {
 
     }
 
-
     historyEmpty.style.display =
         "none";
-
 
     searchHistory.forEach(
         product => {
@@ -2042,17 +2350,40 @@ function renderHistory() {
                     "div"
                 );
 
-
             item.className =
                 "history-item";
 
+            const imageURL =
+                product.image_url ||
+                product.image ||
+                product.thumbnail ||
+                "";
+
+            const imageHTML =
+                imageURL
+                    ? `
+                        <img
+                            class="history-product-image"
+                            src="${escapeHTML(imageURL)}"
+                            alt="${escapeHTML(
+                                product.name ||
+                                "Product"
+                            )}"
+                            loading="lazy"
+                        >
+                    `
+                    : `
+                        <div class="history-icon">
+                            🔗
+                        </div>
+                    `;
 
             item.innerHTML = `
 
                 <div class="history-product">
 
-                    <div class="history-icon">
-                        🔗
+                    <div class="history-visual">
+                        ${imageHTML}
                     </div>
 
                     <div>
@@ -2075,7 +2406,6 @@ function renderHistory() {
 
                 </div>
 
-
                 <button
                     type="button"
                     class="history-open-btn"
@@ -2085,6 +2415,39 @@ function renderHistory() {
 
             `;
 
+            const image =
+                item.querySelector(
+                    ".history-product-image"
+                );
+
+            if (image) {
+
+                image.addEventListener(
+                    "error",
+                    () => {
+
+                        const fallback =
+                            document.createElement(
+                                "div"
+                            );
+
+                        fallback.className =
+                            "history-icon";
+
+                        fallback.textContent =
+                            "🔗";
+
+                        image.replaceWith(
+                            fallback
+                        );
+
+                    },
+                    {
+                        once: true
+                    }
+                );
+
+            }
 
             item
                 .querySelector(
@@ -2113,7 +2476,6 @@ function renderHistory() {
                     }
                 );
 
-
             historyList.appendChild(
                 item
             );
@@ -2128,7 +2490,7 @@ function renderHistory() {
    SAVED PRODUCTS
 ============================================================ */
 
-function toggleSaved(
+async function toggleSaved(
     product
 ) {
 
@@ -2136,6 +2498,15 @@ function toggleSaved(
         product.id ??
         product.product_id;
 
+    if (
+        productId === undefined ||
+        productId === null
+    ) {
+        console.error(
+            "Cannot save product without product ID."
+        );
+        return;
+    }
 
     const index =
         savedProducts.findIndex(
@@ -2147,50 +2518,225 @@ function toggleSaved(
                 String(productId)
         );
 
+    const isAlreadySaved =
+        index >= 0;
 
-    if (index >= 0) {
+    try {
 
-        savedProducts.splice(
-            index,
-            1
+        let response;
+
+        if (isAlreadySaved) {
+
+            response =
+                await fetch(
+                    `/api/saved-products/${encodeURIComponent(
+                        productId
+                    )}`,
+                    {
+                        method: "DELETE",
+                        headers: {
+                            "Accept":
+                                "application/json"
+                        },
+                        credentials:
+                            "include"
+                    }
+                );
+
+        } else {
+
+            const savedProduct = {
+
+                product_id:
+                    productId,
+
+                name:
+                    product.name ||
+                    "Saved Product",
+
+                brand:
+                    product.brand ||
+                    "",
+
+                category:
+                    product.category ||
+                    "Product",
+
+                source_url:
+                    product.source_url ||
+                    product.product_url ||
+                    product.url ||
+                    "",
+
+                image_url:
+                    product.image_url ||
+                    product.image ||
+                    product.thumbnail ||
+                    ""
+            };
+
+            response =
+                await fetch(
+                    "/api/saved-products",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                            "Accept":
+                                "application/json"
+                        },
+                        credentials:
+                            "include",
+                        body:
+                            JSON.stringify(
+                                savedProduct
+                            )
+                    }
+                );
+        }
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Saved products API returned ${response.status}`
+            );
+
+        }
+
+        const data =
+            await response.json();
+
+        if (!data.success) {
+
+            throw new Error(
+                data.message ||
+                "Unable to update saved product."
+            );
+
+        }
+
+        if (isAlreadySaved) {
+
+            savedProducts.splice(
+                index,
+                1
+            );
+
+        } else {
+
+            savedProducts.push({
+
+                id:
+                    productId,
+
+                product_id:
+                    productId,
+
+                name:
+                    product.name ||
+                    "Saved Product",
+
+                brand:
+                    product.brand ||
+                    "",
+
+                category:
+                    product.category ||
+                    "Product",
+
+                source_url:
+                    product.source_url ||
+                    product.product_url ||
+                    product.url ||
+                    "",
+
+                image_url:
+                    product.image_url ||
+                    product.image ||
+                    product.thumbnail ||
+                    ""
+            });
+
+        }
+
+        saveStorage(
+            "trustcart-saved",
+            savedProducts
         );
 
-    } else {
+        renderSavedProducts();
 
-        savedProducts.push({
+        updateStats();
 
-            id:
-                productId,
+        await loadDashboardState();
 
-            name:
-                product.name,
+    } catch (error) {
 
-            brand:
-                product.brand,
+        console.error(
+            "Database saved-product update failed:",
+            error
+        );
 
-            category:
-                product.category,
+        /*
+         * Keep the previous localStorage behavior
+         * as a temporary fallback.
+         */
 
-            source_url:
-                product.source_url ||
-                product.product_url ||
-                product.url ||
-                ""
+        if (isAlreadySaved) {
 
-        });
+            savedProducts.splice(
+                index,
+                1
+            );
+
+        } else {
+
+            savedProducts.push({
+
+                id:
+                    productId,
+
+                product_id:
+                    productId,
+
+                name:
+                    product.name ||
+                    "Saved Product",
+
+                brand:
+                    product.brand ||
+                    "",
+
+                category:
+                    product.category ||
+                    "Product",
+
+                source_url:
+                    product.source_url ||
+                    product.product_url ||
+                    product.url ||
+                    "",
+
+                image_url:
+                    product.image_url ||
+                    product.image ||
+                    product.thumbnail ||
+                    ""
+            });
+
+        }
+
+        saveStorage(
+            "trustcart-saved",
+            savedProducts
+        );
+
+        renderSavedProducts();
+
+        updateStats();
 
     }
-
-
-    saveStorage(
-        "trustcart-saved",
-        savedProducts
-    );
-
-
-    renderSavedProducts();
-
-    updateStats();
 
 }
 
@@ -2207,20 +2753,15 @@ function renderSavedProducts() {
             "savedEmpty"
         );
 
-
     if (
         !container ||
         !empty
     ) {
-
         return;
-
     }
-
 
     container.innerHTML =
         "";
-
 
     if (
         savedProducts.length === 0
@@ -2233,10 +2774,8 @@ function renderSavedProducts() {
 
     }
 
-
     empty.style.display =
         "none";
-
 
     savedProducts.forEach(
         product => {
@@ -2246,17 +2785,40 @@ function renderSavedProducts() {
                     "div"
                 );
 
-
             item.className =
                 "saved-item";
 
+            const imageURL =
+                product.image_url ||
+                product.image ||
+                product.thumbnail ||
+                "";
+
+            const imageHTML =
+                imageURL
+                    ? `
+                        <img
+                            class="saved-product-image"
+                            src="${escapeHTML(imageURL)}"
+                            alt="${escapeHTML(
+                                product.name ||
+                                "Product"
+                            )}"
+                            loading="lazy"
+                        >
+                    `
+                    : `
+                        <div class="saved-icon">
+                            🛍️
+                        </div>
+                    `;
 
             item.innerHTML = `
 
                 <div class="saved-item-info">
 
-                    <div class="saved-icon">
-                        🛍️
+                    <div class="saved-visual">
+                        ${imageHTML}
                     </div>
 
                     <div>
@@ -2279,7 +2841,6 @@ function renderSavedProducts() {
 
                 </div>
 
-
                 <div class="saved-actions">
 
                     <button
@@ -2300,6 +2861,39 @@ function renderSavedProducts() {
 
             `;
 
+            const image =
+                item.querySelector(
+                    ".saved-product-image"
+                );
+
+            if (image) {
+
+                image.addEventListener(
+                    "error",
+                    () => {
+
+                        const fallback =
+                            document.createElement(
+                                "div"
+                            );
+
+                        fallback.className =
+                            "saved-icon";
+
+                        fallback.textContent =
+                            "🛍️";
+
+                        image.replaceWith(
+                            fallback
+                        );
+
+                    },
+                    {
+                        once: true
+                    }
+                );
+
+            }
 
             item
                 .querySelector(
@@ -2316,7 +2910,6 @@ function renderSavedProducts() {
                     }
                 );
 
-
             item
                 .querySelector(
                     ".saved-remove"
@@ -2331,7 +2924,6 @@ function renderSavedProducts() {
 
                     }
                 );
-
 
             container.appendChild(
                 item
@@ -2513,19 +3105,250 @@ function updateNotificationState() {
 
     }
 
-
     const dot =
         document.getElementById(
             "notificationDot"
         );
 
-
     if (dot) {
 
+        const unreadCount =
+            Array.isArray(
+                notificationData
+            )
+                ? notificationData.filter(
+                    notification =>
+                        !notification.is_read
+                ).length
+                : 0;
+
         dot.style.display =
-            notificationsEnabled
+            notificationsEnabled &&
+            unreadCount > 0
                 ? "block"
                 : "none";
+
+    }
+
+}
+
+
+async function saveNotificationSetting() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/notification-settings",
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                        "Accept":
+                            "application/json"
+                    },
+                    credentials:
+                        "include",
+                    body:
+                        JSON.stringify({
+                            enabled:
+                                notificationsEnabled
+                        })
+                }
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Notification settings API returned ${response.status}`
+            );
+
+        }
+
+        const data =
+            await response.json();
+
+        if (!data.success) {
+
+            throw new Error(
+                data.message ||
+                "Unable to save notification setting."
+            );
+
+        }
+
+        localStorage.setItem(
+            "trustcart-notifications",
+            String(
+                notificationsEnabled
+            )
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Notification setting save failed:",
+            error
+        );
+
+        localStorage.setItem(
+            "trustcart-notifications",
+            String(
+                notificationsEnabled
+            )
+        );
+
+    }
+
+}
+
+
+function showNotifications() {
+
+    if (!notificationsEnabled) {
+
+        alert(
+            "Notifications are currently disabled."
+        );
+
+        return;
+
+    }
+
+    const notifications =
+        Array.isArray(
+            notificationData
+        )
+            ? notificationData
+            : [];
+
+    const unread =
+        notifications.filter(
+            notification =>
+                !notification.is_read
+        );
+
+    if (notifications.length === 0) {
+
+        alert(
+            "You have no notifications."
+        );
+
+        return;
+
+    }
+
+    const messages =
+        notifications
+            .slice(0, 5)
+            .map(
+                notification => {
+
+                    const prefix =
+                        notification.is_read
+                            ? ""
+                            : "🔴 ";
+
+                    return (
+                        prefix +
+                        (
+                            notification.title ||
+                            "Notification"
+                        ) +
+                        "\n" +
+                        (
+                            notification.message ||
+                            ""
+                        )
+                    );
+
+                }
+            )
+            .join("\n\n");
+
+    alert(
+        messages
+    );
+
+    if (unread.length > 0) {
+
+        markNotificationsRead();
+
+    }
+
+}
+
+
+async function markNotificationsRead() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/notifications/read",
+                {
+                    method: "POST",
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    },
+                    credentials:
+                        "include"
+                }
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Notifications read API returned ${response.status}`
+            );
+
+        }
+
+        const data =
+            await response.json();
+
+        if (!data.success) {
+
+            throw new Error(
+                data.message ||
+                "Unable to mark notifications as read."
+            );
+
+        }
+
+        if (
+            Array.isArray(
+                notificationData
+            )
+        ) {
+
+            notificationData =
+                notificationData.map(
+                    notification => ({
+                        ...notification,
+                        is_read: true
+                    })
+                );
+
+        }
+
+        localStorage.setItem(
+            "trustcart-notification-data",
+            JSON.stringify(
+                notificationData
+            )
+        );
+
+        updateNotificationState();
+
+    } catch (error) {
+
+        console.error(
+            "Unable to mark notifications as read:",
+            error
+        );
 
     }
 
@@ -2536,19 +3359,14 @@ if (notificationSwitch) {
 
     notificationSwitch.addEventListener(
         "click",
-        () => {
+        async () => {
 
             notificationsEnabled =
                 !notificationsEnabled;
 
-
-            localStorage.setItem(
-                "trustcart-notifications",
-                notificationsEnabled
-            );
-
-
             updateNotificationState();
+
+            await saveNotificationSetting();
 
         }
     );
@@ -2562,21 +3380,7 @@ if (notificationBtn) {
         "click",
         () => {
 
-            if (
-                notificationsEnabled
-            ) {
-
-                alert(
-                    "You have no new notifications."
-                );
-
-            } else {
-
-                alert(
-                    "Notifications are currently disabled."
-                );
-
-            }
+            showNotifications();
 
         }
     );
@@ -2618,20 +3422,403 @@ if (accountBtn) {
 }
 
 
+/* ============================================================
+   EDIT PROFILE
+============================================================ */
+
+const editProfileModal =
+    document.getElementById(
+        "editProfileModal"
+    );
+
+const editProfileOverlay =
+    document.getElementById(
+        "editProfileOverlay"
+    );
+
+const editProfileForm =
+    document.getElementById(
+        "editProfileForm"
+    );
+
+const editProfileName =
+    document.getElementById(
+        "editProfileName"
+    );
+
+const editProfileEmail =
+    document.getElementById(
+        "editProfileEmail"
+    );
+
+const editProfileMessage =
+    document.getElementById(
+        "editProfileMessage"
+    );
+
+const closeEditProfileBtn =
+    document.getElementById(
+        "closeEditProfileBtn"
+    );
+
+const cancelEditProfileBtn =
+    document.getElementById(
+        "cancelEditProfileBtn"
+    );
+
+const saveProfileBtn =
+    document.getElementById(
+        "saveProfileBtn"
+    );
+
+
+function openEditProfile() {
+
+    if (!editProfileModal) {
+        return;
+    }
+
+    const cachedUser =
+        localStorage.getItem(
+            "trustcart-user"
+        );
+
+    if (cachedUser) {
+
+        try {
+
+            const user =
+                JSON.parse(
+                    cachedUser
+                );
+
+            if (editProfileName) {
+                editProfileName.value =
+                    user.name || "";
+            }
+
+            if (editProfileEmail) {
+                editProfileEmail.value =
+                    user.email || "";
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "Unable to read cached profile:",
+                error
+            );
+
+        }
+
+    }
+
+    if (editProfileMessage) {
+        editProfileMessage.textContent = "";
+    }
+
+    editProfileModal.classList.add(
+        "active"
+    );
+
+    editProfileModal.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+    document.body.style.overflow =
+        "hidden";
+
+    if (editProfileName) {
+        editProfileName.focus();
+    }
+
+    loadProfileForEditing();
+
+}
+
+
+function closeEditProfile() {
+
+    if (!editProfileModal) {
+        return;
+    }
+
+    editProfileModal.classList.remove(
+        "active"
+    );
+
+    editProfileModal.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+    document.body.style.overflow =
+        "";
+
+}
+
+
+async function loadProfileForEditing() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/profile",
+                {
+                    method: "GET",
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    },
+                    credentials:
+                        "include"
+                }
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                `Profile API returned ${response.status}`
+            );
+        }
+
+        const data =
+            await response.json();
+
+        if (
+            !data.success ||
+            !data.user
+        ) {
+            throw new Error(
+                data.message ||
+                "Unable to load profile."
+            );
+        }
+
+        if (editProfileName) {
+            editProfileName.value =
+                data.user.name || "";
+        }
+
+        if (editProfileEmail) {
+            editProfileEmail.value =
+                data.user.email || "";
+        }
+
+        localStorage.setItem(
+            "trustcart-user",
+            JSON.stringify(
+                data.user
+            )
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Profile loading error:",
+            error
+        );
+
+    }
+
+}
+
+
+async function saveProfileChanges(
+    event
+) {
+
+    event.preventDefault();
+
+    if (
+        !editProfileName ||
+        !saveProfileBtn
+    ) {
+        return;
+    }
+
+    const name =
+        editProfileName.value.trim();
+
+    if (!name) {
+
+        if (editProfileMessage) {
+            editProfileMessage.textContent =
+                "Please enter your full name.";
+        }
+
+        editProfileName.focus();
+
+        return;
+    }
+
+    saveProfileBtn.disabled = true;
+
+    saveProfileBtn.textContent =
+        "Saving...";
+
+    if (editProfileMessage) {
+        editProfileMessage.textContent =
+            "";
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/profile",
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+                        "Accept":
+                            "application/json"
+                    },
+                    credentials:
+                        "include",
+                    body:
+                        JSON.stringify({
+                            name: name
+                        })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.success) {
+
+            throw new Error(
+                data.message ||
+                "Unable to update profile."
+            );
+
+        }
+
+        const user =
+            data.user || {
+                name: name,
+                email:
+                    editProfileEmail
+                        ? editProfileEmail.value
+                        : ""
+            };
+
+        localStorage.setItem(
+            "trustcart-user",
+            JSON.stringify(
+                user
+            )
+        );
+
+        updateUserUI(user);
+
+        if (editProfileMessage) {
+            editProfileMessage.textContent =
+                "Profile updated successfully.";
+        }
+
+        setTimeout(
+            () => {
+                closeEditProfile();
+            },
+            700
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Profile update error:",
+            error
+        );
+
+        if (editProfileMessage) {
+            editProfileMessage.textContent =
+                error.message ||
+                "Unable to update profile.";
+        }
+
+    } finally {
+
+        saveProfileBtn.disabled =
+            false;
+
+        saveProfileBtn.textContent =
+            "Save Changes";
+
+    }
+
+}
+
+
 if (editProfileBtn) {
 
     editProfileBtn.addEventListener(
         "click",
-        () => {
-
-            alert(
-                "Profile editing will be connected to the account API."
-            );
-
-        }
+        openEditProfile
     );
 
 }
+
+
+if (closeEditProfileBtn) {
+
+    closeEditProfileBtn.addEventListener(
+        "click",
+        closeEditProfile
+    );
+
+}
+
+
+if (cancelEditProfileBtn) {
+
+    cancelEditProfileBtn.addEventListener(
+        "click",
+        closeEditProfile
+    );
+
+}
+
+
+if (editProfileOverlay) {
+
+    editProfileOverlay.addEventListener(
+        "click",
+        closeEditProfile
+    );
+
+}
+
+
+if (editProfileForm) {
+
+    editProfileForm.addEventListener(
+        "submit",
+        saveProfileChanges
+    );
+
+}
+
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Escape" &&
+            editProfileModal &&
+            editProfileModal.classList.contains(
+                "active"
+            )
+        ) {
+            closeEditProfile();
+        }
+
+    }
+);
 
 
 /* ============================================================
@@ -2690,15 +3877,9 @@ async function initializeDashboard() {
 
     await loadCurrentUser();
 
+    await loadDashboardState();
+
     handleHash();
-
-    renderHistory();
-
-    renderSavedProducts();
-
-    updateNotificationState();
-
-    updateStats();
 
     await loadProducts();
 

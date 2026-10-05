@@ -3,6 +3,27 @@
 
 <head>
 
+<script>
+(function () {
+    const theme = localStorage.getItem("trustcart-theme");
+
+    if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.setAttribute(
+            "data-theme",
+            "dark"
+        );
+    } else {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.setAttribute(
+            "data-theme",
+            "light"
+        );
+    }
+})();
+</script>
+
+
     <meta charset="UTF-8">
 
     <meta
@@ -1165,6 +1186,138 @@
     </a>
 
 </nav>
+
+
+
+<!-- =========================================================
+     EDIT PROFILE MODAL
+========================================================== -->
+
+<div
+    class="profile-modal"
+    id="editProfileModal"
+    aria-hidden="true"
+>
+
+    <div
+        class="profile-modal-overlay"
+        id="editProfileOverlay"
+    ></div>
+
+
+    <div
+        class="profile-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editProfileTitle"
+    >
+
+        <div class="profile-modal-header">
+
+            <div>
+                <span class="section-badge">
+                    Account
+                </span>
+
+                <h2 id="editProfileTitle">
+                    Edit Profile
+                </h2>
+
+                <p>
+                    Update your account information.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="profile-modal-close"
+                id="closeEditProfileBtn"
+                aria-label="Close"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <form
+            id="editProfileForm"
+            class="profile-modal-form"
+        >
+
+            <div class="profile-form-group">
+
+                <label for="editProfileName">
+                    Full Name
+                </label>
+
+                <input
+                    type="text"
+                    id="editProfileName"
+                    name="name"
+                    placeholder="Enter your full name"
+                    maxlength="100"
+                    autocomplete="name"
+                    required
+                >
+
+            </div>
+
+
+            <div class="profile-form-group">
+
+                <label for="editProfileEmail">
+                    Email Address
+                </label>
+
+                <input
+                    type="email"
+                    id="editProfileEmail"
+                    name="email"
+                    readonly
+                    autocomplete="email"
+                >
+
+                <small>
+                    Email is managed by your account provider.
+                </small>
+
+            </div>
+
+
+            <div
+                class="profile-form-message"
+                id="editProfileMessage"
+                role="status"
+                aria-live="polite"
+            ></div>
+
+
+            <div class="profile-modal-actions">
+
+                <button
+                    type="button"
+                    class="secondary-btn"
+                    id="cancelEditProfileBtn"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="submit"
+                    class="primary-btn"
+                    id="saveProfileBtn"
+                >
+                    Save Changes
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
 
 
 <script src="../JS/dashboard.js"></script>

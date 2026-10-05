@@ -364,9 +364,7 @@ class TrustAnalyzer:
 
             "flipkart": 90,
 
-            "croma": 85,
-
-            "reliance digital": 85
+            "snapdeal": 85
         }
 
 
