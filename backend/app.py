@@ -3600,9 +3600,14 @@ def facebook_callback():
         )
 
         if not token_response.ok:
+            try:
+                error_data = token_response.json()
+            except Exception:
+                error_data = {"raw": token_response.text[:1000]}
+
             print(
-                "Facebook token error:",
-                token_response.text
+                "FACEBOOK TOKEN ERROR:",
+                error_data
             )
 
             return oauth_error(
