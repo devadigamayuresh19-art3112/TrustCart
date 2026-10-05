@@ -638,8 +638,35 @@ def save_comparison_prices(
 def home():
 
     return send_from_directory(
+        os.path.join(FRONTEND_DIR, "3d"),
+        "index.html"
+    )
+
+
+@app.route("/app")
+def app_landing():
+
+    return send_from_directory(
         os.path.join(FRONTEND_DIR, "Pages"),
         "index.html"
+    )
+
+
+@app.route("/_next/<path:path>")
+def next_static(path):
+
+    return send_from_directory(
+        os.path.join(FRONTEND_DIR, "3d", "_next"),
+        path
+    )
+
+
+@app.route("/3d/<path:path>")
+def three_d_asset(path):
+
+    return send_from_directory(
+        os.path.join(FRONTEND_DIR, "3d"),
+        path
     )
 
 

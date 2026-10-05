@@ -48,7 +48,7 @@ export default function IntroPage() {
     setScanning(true);
 
     window.setTimeout(() => {
-      window.location.href = "http://127.0.0.1:5000/";
+      window.location.href = "/app";
     }, reduceMotion ? 100 : 1150);
   };
 
