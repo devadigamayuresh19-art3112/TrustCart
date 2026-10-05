@@ -26,10 +26,14 @@ try:
     from .fetchers.generic import GenericProductFetcher
     from .processors.canonical import CanonicalProductGenerator
     from .pipeline.comparison_pipeline import ComparisonPipeline
+    from .comparison.price_comparator import PriceComparator
+    from .trust.trust_analyzer import TrustAnalyzer
 except ImportError:  # supports `python backend/app.py`
     from fetchers.generic import GenericProductFetcher
     from processors.canonical import CanonicalProductGenerator
     from pipeline.comparison_pipeline import ComparisonPipeline
+    from comparison.price_comparator import PriceComparator
+    from trust.trust_analyzer import TrustAnalyzer
 
 
 # ============================================================
@@ -2382,6 +2386,44 @@ def analyze_product():
             )
         )
 
+        # ----------------------------------------------------
+        # TRUSTCART PRODUCT ANALYSIS
+        # Reuse the same price + trust analysis used by
+        # the main comparison pipeline.
+        # ----------------------------------------------------
+
+        # Ensure the analysis knows which marketplace
+        # the source product came from.
+        if not product.get("marketplace"):
+            hostname = urlparse(url).netloc.lower()
+
+            if "amazon." in hostname:
+                product["marketplace"] = "Amazon"
+            elif "flipkart." in hostname:
+                product["marketplace"] = "Flipkart"
+            elif "snapdeal." in hostname:
+                product["marketplace"] = "Snapdeal"
+
+        price_comparator = PriceComparator()
+
+        price_result = price_comparator.compare(
+            [product]
+        )
+
+        trust_analyzer = TrustAnalyzer()
+
+        trust_result = trust_analyzer.analyze(
+            price_result.get(
+                "products",
+                []
+            )
+        )
+
+        analysis = None
+
+        if trust_result.get("products"):
+            analysis = trust_result["products"][0]
+
         return jsonify({
             "success": True,
             "message":
@@ -2391,7 +2433,13 @@ def analyze_product():
             "product":
                 product,
             "canonical":
-                canonical
+                canonical,
+            "price_comparison":
+                price_result,
+            "trust_analysis":
+                trust_result,
+            "analysis":
+                analysis
         })
 
     except requests.exceptions.Timeout:

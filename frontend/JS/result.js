@@ -1292,76 +1292,13 @@ function renderSellerRows(prices) {
    TEMPORARY FAKE DATA
 ========================================================= */
 
-function generateFakeReviewData(item) {
-
-    const seed =
-        Array.from(
-            String(item?.seller || "Marketplace")
-        ).reduce(
-            (sum, char) =>
-                sum + char.charCodeAt(0),
-            0
-        );
-
-    const positive =
-        78 + (seed % 15);
-
-    const neutral =
-        9 + (seed % 6);
-
-    const negative =
-        100 - positive - neutral;
-
-    const rating =
-        getRating(item) ||
-        Number(
-            (4.1 + (seed % 8) / 10)
-                .toFixed(1)
-        );
-
-    const reviews =
-        getReviews(item) ||
-        (1200 + (seed % 7000));
-
-    return {
-        positive,
-        neutral,
-        negative,
-        rating: Math.min(5, rating),
-        reviews,
-
-        summary:
-            positive >= 88
-                ? "Most sampled reviews appear positive."
-                : "Reviews are mostly positive with a few mixed signals.",
-
-        pros: [
-            "Good overall customer sentiment",
-            "Product quality frequently mentioned",
-            "Value for money mentioned by buyers"
-        ],
-
-        cons: [
-            "Some buyers mention delivery delays",
-            "A small number of mixed reviews",
-            "Individual seller experiences may vary"
-        ]
-    };
-}
-
-
-function openReviewAnalysis(item) {
+async function openReviewAnalysis(item) {
 
     const productTitle =
         currentProduct?.name ||
         currentProduct?.title ||
+        item?.name ||
         "Product";
-
-    const data =
-        generateFakeReviewData(item);
-
-    const seller =
-        cleanSellerName(item?.seller);
 
     const productUrl =
         isSafeUrl(item?.product_url)
@@ -1377,605 +1314,968 @@ function openReviewAnalysis(item) {
     if (!reviewWindow) {
 
         showToast(
-            "Please allow pop-ups to open review analysis."
+            "Please allow pop-ups to open product analysis."
         );
 
         return;
     }
 
-    const safeTitle =
-        escapeHtml(productTitle);
-
-    const safeSeller =
-        escapeHtml(seller);
-
+    /*
+     * Open the window immediately so browser popup blockers
+     * do not block it while the API request is running.
+     */
     reviewWindow.document.write(`
-<!DOCTYPE html>
-
-<html lang="en">
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
-
-<title>
-TrustCart | Review Analysis
-</title>
-
-<style>
-
-:root {
-    --green: #18583d;
-    --green-dark: #0d3d29;
-    --green-light: #61b487;
-    --green-soft: #e8f5ee;
-    --green-pale: #f5faf7;
-    --text: #17231e;
-    --muted: #718078;
-    --border: rgba(24,88,61,.11);
-}
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-
-    font-family:
-        Inter,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-
-    color: var(--text);
-
-    background:
-        radial-gradient(
-            circle at 10% 0%,
-            rgba(97,180,135,.14),
-            transparent 30%
-        ),
-        #f4f8f6;
-}
-
-.page {
-    width: min(1080px, calc(100% - 36px));
-
-    margin: 0 auto;
-
-    padding: 36px 0 70px;
-}
-
-.top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    gap: 20px;
-
-    margin-bottom: 28px;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-
-    gap: 10px;
-
-    color: var(--green-dark);
-
-    font-weight: 900;
-    font-size: 18px;
-}
-
-.logo-mark {
-    width: 38px;
-    height: 38px;
-
-    display: grid;
-    place-items: center;
-
-    border-radius: 11px;
-
-    background: var(--green);
-    color: white;
-}
-
-.back {
-    padding: 9px 13px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: white;
-
-    color: var(--muted);
-
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.hero {
-    padding: 32px;
-
-    background: white;
-
-    border: 1px solid var(--border);
-    border-radius: 22px;
-
-    box-shadow:
-        0 15px 40px rgba(16,55,40,.07);
-}
-
-.eyebrow {
-    color: var(--green);
-
-    font-size: 9px;
-    font-weight: 900;
-
-    letter-spacing: .14em;
-}
-
-h1 {
-    max-width: 760px;
-
-    margin: 8px 0 5px;
-
-    color: var(--green-dark);
-
-    font-size: clamp(25px, 4vw, 38px);
-
-    line-height: 1.12;
-}
-
-.platform {
-    color: var(--muted);
-
-    font-size: 12px;
-}
-
-.grid {
-    display: grid;
-
-    grid-template-columns:
-        1.2fr
-        .8fr;
-
-    gap: 18px;
-
-    margin-top: 20px;
-}
-
-.card {
-    padding: 24px;
-
-    background: white;
-
-    border: 1px solid var(--border);
-    border-radius: 18px;
-
-    box-shadow:
-        0 5px 20px rgba(16,55,40,.05);
-}
-
-.card h2 {
-    margin: 0 0 18px;
-
-    color: var(--green-dark);
-
-    font-size: 17px;
-}
-
-.score {
-    display: flex;
-    align-items: center;
-
-    gap: 20px;
-}
-
-.circle {
-    width: 100px;
-    height: 100px;
-
-    display: grid;
-    place-items: center;
-
-    border: 8px solid #dceee4;
-    border-radius: 50%;
-
-    color: var(--green-dark);
-
-    font-size: 24px;
-    font-weight: 900;
-}
-
-.score small {
-    display: block;
-
-    margin-top: 4px;
-
-    color: var(--muted);
-
-    font-size: 11px;
-}
-
-.summary {
-    margin-top: 18px;
-
-    padding: 13px 15px;
-
-    border-radius: 12px;
-
-    background: var(--green-pale);
-
-    color: var(--text);
-
-    font-size: 12px;
-    line-height: 1.6;
-}
-
-.bar {
-    margin-bottom: 18px;
-}
-
-.bar-head {
-    display: flex;
-    justify-content: space-between;
-
-    margin-bottom: 7px;
-
-    font-size: 11px;
-    font-weight: 700;
-}
-
-.track {
-    height: 9px;
-
-    overflow: hidden;
-
-    border-radius: 999px;
-
-    background: #edf2ef;
-}
-
-.fill {
-    height: 100%;
-
-    border-radius: inherit;
-
-    background:
-        linear-gradient(
-            90deg,
-            var(--green),
-            var(--green-light)
-        );
-}
-
-.columns {
-    display: grid;
-
-    grid-template-columns:
-        1fr
-        1fr;
-
-    gap: 18px;
-
-    margin-top: 18px;
-}
-
-.list {
-    padding: 18px;
-
-    border-radius: 14px;
-
-    background: var(--green-pale);
-}
-
-.list h3 {
-    margin: 0 0 10px;
-
-    color: var(--green-dark);
-
-    font-size: 13px;
-}
-
-.list p {
-    margin: 7px 0;
-
-    color: var(--muted);
-
-    font-size: 11px;
-    line-height: 1.55;
-}
-
-.notice {
-    margin-top: 18px;
-
-    padding: 18px;
-
-    border-radius: 14px;
-
-    background: #fff9eb;
-
-    color: #765d20;
-
-    font-size: 11px;
-    line-height: 1.6;
-}
-
-.buy {
-    display: inline-flex;
-
-    margin-top: 20px;
-
-    padding: 11px 17px;
-
-    border-radius: 11px;
-
-    background: var(--green);
-    color: white;
-
-    font-size: 12px;
-    font-weight: 800;
-}
-
-@media(max-width:700px) {
-
-    .page {
-        width: min(
-            calc(100% - 24px),
-            1080px
-        );
-
-        padding-top: 20px;
-    }
-
-    .hero {
-        padding: 23px;
-    }
-
-    .grid,
-    .columns {
-        grid-template-columns: 1fr;
-    }
-
-    .top {
-        align-items: flex-start;
-    }
-}
-
-</style>
-
-</head>
-
-<body>
-
-<div class="page">
-
-    <div class="top">
-
-        <div class="logo">
-            <div class="logo-mark">T</div>
-            TrustCart
-        </div>
-
-        <button
-            class="back"
-            onclick="window.close()"
-        >
-            ← Back
-        </button>
-
-    </div>
-
-
-    <section class="hero">
-
-        <span class="eyebrow">
-            REVIEW INTELLIGENCE
-        </span>
-
-        <h1>
-            ${safeTitle}
-        </h1>
-
-        <div class="platform">
-            ${safeSeller} · Review analysis
-        </div>
-
-    </section>
-
-
-    <div class="grid">
-
-
-        <section class="card">
-
-            <h2>
-                Overall Sentiment
-            </h2>
-
-            <div class="score">
-
-                <div class="circle">
-                    ${data.rating.toFixed(1)}
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta
+                name="viewport"
+                content="width=device-width, initial-scale=1.0"
+            >
+            <title>TrustCart | Product Analysis</title>
+
+            <style>
+                :root {
+                    --green: #18583d;
+                    --green-dark: #0d3d29;
+                    --green-light: #61b487;
+                    --green-soft: #e8f5ee;
+                    --green-pale: #f5faf7;
+                    --text: #17231e;
+                    --muted: #718078;
+                    --border: rgba(24,88,61,.11);
+                    --page-bg: #f4f8f6;
+                    --surface: #ffffff;
+                    --track: #edf2ef;
+                    --notice-bg: #fff9eb;
+                    --notice-text: #765d20;
+                }
+
+                html.dark {
+                    --green: #61b487;
+                    --green-dark: #b9e6cb;
+                    --green-light: #86d6a9;
+                    --green-soft: #17352a;
+                    --green-pale: #12231c;
+                    --text: #edf7f1;
+                    --muted: #9bb2a6;
+                    --border: rgba(97,180,135,.18);
+                    --page-bg: #0b1410;
+                    --surface: #111d17;
+                    --track: #22352c;
+                    --notice-bg: #302817;
+                    --notice-text: #e5c978;
+                }
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                body {
+                    margin: 0;
+                    min-height: 100vh;
+                    font-family:
+                        Inter,
+                        system-ui,
+                        -apple-system,
+                        BlinkMacSystemFont,
+                        "Segoe UI",
+                        sans-serif;
+                    color: var(--text);
+                    background:
+                        radial-gradient(
+                            circle at 10% 0%,
+                            rgba(97,180,135,.14),
+                            transparent 30%
+                        ),
+                        var(--page-bg);
+                }
+
+                .page {
+                    width: min(1080px, calc(100% - 36px));
+                    margin: 0 auto;
+                    padding: 36px 0 70px;
+                }
+
+                .top {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 20px;
+                    margin-bottom: 28px;
+                }
+
+                .logo {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    color: var(--green-dark);
+                    font-weight: 900;
+                    font-size: 18px;
+                }
+
+                .logo-mark {
+                    width: 38px;
+                    height: 38px;
+                    display: grid;
+                    place-items: center;
+                    border-radius: 11px;
+                    background: var(--green);
+                    color: white;
+                }
+
+                .top-actions {
+                    display: flex;
+                    align-items: center;
+                    gap: 9px;
+                }
+
+                .theme-toggle,
+                .back {
+                    min-width: 38px;
+                    height: 38px;
+                    display: grid;
+                    place-items: center;
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    background: var(--surface);
+                    color: var(--text);
+                    cursor: pointer;
+                    font-size: 15px;
+                    font-weight: 800;
+                }
+
+                .back {
+                    padding: 0 14px;
+                }
+
+                .theme-toggle:hover,
+                .back:hover {
+                    border-color: var(--green-light);
+                }
+
+                .hero {
+                    display: grid;
+                    grid-template-columns: 220px 1fr;
+                    gap: 30px;
+                    align-items: center;
+                    padding: 28px;
+                    border: 1px solid var(--border);
+                    border-radius: 20px;
+                    background: var(--surface);
+                    box-shadow: 0 14px 45px rgba(24,88,61,.08);
+                }
+
+                .product-image-wrap {
+                    width: 100%;
+                    height: 220px;
+                    display: grid;
+                    place-items: center;
+                    padding: 15px;
+                    border-radius: 16px;
+                    background: var(--green-pale);
+                    border: 1px solid var(--border);
+                }
+
+                .product-image {
+                    max-width: 100%;
+                    max-height: 190px;
+                    object-fit: contain;
+                }
+
+                .eyebrow {
+                    margin-bottom: 8px;
+                    color: var(--green);
+                    font-size: 13px;
+                    font-weight: 900;
+                    text-transform: uppercase;
+                    letter-spacing: .08em;
+                }
+
+                h1 {
+                    margin: 0 0 12px;
+                    font-size: clamp(25px, 4vw, 38px);
+                    line-height: 1.12;
+                }
+
+                .marketplace {
+                    display: inline-flex;
+                    padding: 7px 11px;
+                    border-radius: 999px;
+                    background: var(--green-soft);
+                    color: var(--green-dark);
+                    font-size: 13px;
+                    font-weight: 800;
+                }
+
+                .section {
+                    margin-top: 22px;
+                    padding: 24px;
+                    border: 1px solid var(--border);
+                    border-radius: 18px;
+                    background: var(--surface);
+                }
+
+                .section-title {
+                    margin: 0 0 18px;
+                    font-size: 18px;
+                }
+
+                .metrics {
+                    display: grid;
+                    grid-template-columns:
+                        repeat(4, minmax(0, 1fr));
+                    gap: 14px;
+                }
+
+                .metric {
+                    padding: 18px;
+                    border-radius: 14px;
+                    background: var(--green-pale);
+                    border: 1px solid var(--border);
+                }
+
+                .metric-label {
+                    color: var(--muted);
+                    font-size: 12px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    letter-spacing: .05em;
+                }
+
+                .metric-value {
+                    margin-top: 7px;
+                    font-size: 24px;
+                    font-weight: 900;
+                }
+
+                .trust-card {
+                    display: grid;
+                    grid-template-columns: 190px 1fr;
+                    gap: 26px;
+                    align-items: center;
+                }
+
+                .trust-score {
+                    width: 170px;
+                    height: 170px;
+                    margin: auto;
+                    display: grid;
+                    place-items: center;
+                    text-align: center;
+                    border-radius: 50%;
+                    border: 12px solid var(--green-soft);
+                    background: var(--surface);
+                }
+
+                .trust-number {
+                    font-size: 42px;
+                    font-weight: 950;
+                    color: var(--green);
+                    line-height: 1;
+                }
+
+                .trust-label {
+                    margin-top: 5px;
+                    color: var(--muted);
+                    font-size: 12px;
+                    font-weight: 800;
+                }
+
+                .trust-level {
+                    margin-bottom: 18px;
+                    font-size: 22px;
+                    font-weight: 900;
+                    color: var(--green);
+                }
+
+                .score-row {
+                    margin: 13px 0;
+                }
+
+                .score-head {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 12px;
+                    margin-bottom: 6px;
+                    font-size: 13px;
+                    font-weight: 800;
+                }
+
+                .score-track {
+                    height: 9px;
+                    overflow: hidden;
+                    border-radius: 999px;
+                    background: var(--track);
+                }
+
+                .score-fill {
+                    height: 100%;
+                    border-radius: inherit;
+                    background: var(--green-light);
+                }
+
+                .price-box {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 20px;
+                    padding: 20px;
+                    border-radius: 14px;
+                    background: var(--green-soft);
+                }
+
+                .price {
+                    color: var(--green-dark);
+                    font-size: 32px;
+                    font-weight: 950;
+                }
+
+                .buy-button {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 44px;
+                    padding: 0 18px;
+                    border: 0;
+                    border-radius: 10px;
+                    background: var(--green);
+                    color: white;
+                    text-decoration: none;
+                    font-weight: 900;
+                }
+
+                .buy-button:hover {
+                    background: var(--green-dark);
+                }
+
+                .note {
+                    margin-top: 14px;
+                    color: var(--muted);
+                    font-size: 13px;
+                    line-height: 1.6;
+                }
+
+                .error {
+                    padding: 30px;
+                    border: 1px solid var(--border);
+                    border-radius: 16px;
+                    background: var(--surface);
+                    text-align: center;
+                }
+
+                @media (max-width: 760px) {
+                    .hero,
+                    .trust-card {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .product-image-wrap {
+                        height: 190px;
+                    }
+
+                    .metrics {
+                        grid-template-columns:
+                            repeat(2, minmax(0, 1fr));
+                    }
+
+                    .price-box {
+                        align-items: flex-start;
+                        flex-direction: column;
+                    }
+                }
+
+                @media (max-width: 460px) {
+                    .metrics {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .page {
+                        width: min(100% - 22px, 1080px);
+                        padding-top: 18px;
+                    }
+                }
+            </style>
+        </head>
+
+        <body>
+            <main class="page">
+
+                <header class="top">
+                    <div class="logo">
+                        <div class="logo-mark">T</div>
+                        <span>TrustCart</span>
+                    </div>
+
+                    <div class="top-actions">
+                        <button
+                            class="theme-toggle"
+                            id="reviewThemeToggle"
+                            type="button"
+                            aria-label="Toggle dark mode"
+                        >☾</button>
+
+                        <button
+                            class="back"
+                            type="button"
+                            onclick="window.close()"
+                        >← Back</button>
+                    </div>
+                </header>
+
+                <div id="analysisRoot">
+                    <div class="section">
+                        Loading real product analysis...
+                    </div>
                 </div>
 
-                <div>
+            </main>
 
-                    <strong>
-                        Mostly positive
-                    </strong>
+            <script>
+                const productUrl =
+                    ${JSON.stringify(productUrl)};
 
-                    <small>
-                        Based on a simulated sample
-                    </small>
+                const fallbackTitle =
+                    ${JSON.stringify(productTitle)};
 
-                </div>
+                function escapeHtml(value) {
+                    return String(value ?? "")
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+                }
 
-            </div>
+                function formatNumber(value) {
+                    if (
+                        value === null ||
+                        value === undefined ||
+                        value === "" ||
+                        Number.isNaN(Number(value))
+                    ) {
+                        return "—";
+                    }
 
-            <div class="summary">
-                ${escapeHtml(data.summary)}
-            </div>
+                    return Number(value).toLocaleString("en-IN");
+                }
 
-        </section>
+                function formatPrice(value) {
+                    if (
+                        value === null ||
+                        value === undefined ||
+                        value === "" ||
+                        Number.isNaN(Number(value))
+                    ) {
+                        return "Price unavailable";
+                    }
 
+                    return "₹" +
+                        Number(value).toLocaleString(
+                            "en-IN",
+                            {
+                                maximumFractionDigits: 2
+                            }
+                        );
+                }
 
-        <section class="card">
+                function scorePercent(value) {
+                    const number = Number(value);
 
-            <h2>
-                Review Distribution
-            </h2>
+                    if (!Number.isFinite(number)) {
+                        return 0;
+                    }
 
-            <div class="bar">
+                    return Math.max(
+                        0,
+                        Math.min(100, number)
+                    );
+                }
 
-                <div class="bar-head">
-                    <span>Positive</span>
-                    <span>${data.positive}%</span>
-                </div>
+                function applyReviewTheme(theme) {
+                    const isDark =
+                        theme === "dark";
 
-                <div class="track">
-                    <div
-                        class="fill"
-                        style="width:${data.positive}%"
-                    ></div>
-                </div>
+                    document.documentElement
+                        .classList
+                        .toggle(
+                            "dark",
+                            isDark
+                        );
 
-            </div>
+                    const toggle =
+                        document.getElementById(
+                            "reviewThemeToggle"
+                        );
 
+                    if (toggle) {
+                        toggle.textContent =
+                            isDark ? "☀" : "☾";
 
-            <div class="bar">
+                        toggle.setAttribute(
+                            "aria-label",
+                            isDark
+                                ? "Switch to light mode"
+                                : "Switch to dark mode"
+                        );
+                    }
+                }
 
-                <div class="bar-head">
-                    <span>Neutral</span>
-                    <span>${data.neutral}%</span>
-                </div>
+                function initReviewTheme() {
+                    applyReviewTheme(
+                        localStorage.getItem(
+                            "trustcart-theme"
+                        ) || "light"
+                    );
 
-                <div class="track">
-                    <div
-                        class="fill"
-                        style="width:${data.neutral}%"
-                    ></div>
-                </div>
+                    const toggle =
+                        document.getElementById(
+                            "reviewThemeToggle"
+                        );
 
-            </div>
+                    if (toggle) {
+                        toggle.addEventListener(
+                            "click",
+                            function () {
+                                const isDark =
+                                    document.documentElement
+                                        .classList
+                                        .contains("dark");
 
+                                const next =
+                                    isDark
+                                        ? "light"
+                                        : "dark";
 
-            <div class="bar">
+                                localStorage.setItem(
+                                    "trustcart-theme",
+                                    next
+                                );
 
-                <div class="bar-head">
-                    <span>Negative</span>
-                    <span>${data.negative}%</span>
-                </div>
+                                applyReviewTheme(
+                                    next
+                                );
+                            }
+                        );
+                    }
 
-                <div class="track">
-                    <div
-                        class="fill"
-                        style="width:${data.negative}%"
-                    ></div>
-                </div>
+                    window.addEventListener(
+                        "storage",
+                        function (event) {
+                            if (
+                                event.key ===
+                                "trustcart-theme"
+                            ) {
+                                applyReviewTheme(
+                                    event.newValue ===
+                                    "dark"
+                                        ? "dark"
+                                        : "light"
+                                );
+                            }
+                        }
+                    );
+                }
 
-            </div>
+                function renderAnalysis(data) {
 
-        </section>
+                    const product =
+                        data.product || {};
 
-    </div>
+                    const analysis =
+                        data.analysis || {};
 
+                    const canonical =
+                        data.canonical || {};
 
-    <section class="card" style="margin-top:18px">
+                    const name =
+                        product.name ||
+                        product.title ||
+                        canonical.product_name ||
+                        fallbackTitle ||
+                        "Product";
 
-        <h2>
-            Review Signals
-        </h2>
+                    const image =
+                        product.image_url ||
+                        product.imageUrl ||
+                        product.image ||
+                        canonical.image_url ||
+                        "";
 
-        <div class="columns">
+                    const marketplace =
+                        analysis.marketplace ||
+                        product.marketplace ||
+                        "Marketplace";
 
-            <div class="list">
+                    const price =
+                        analysis.price ??
+                        product.price;
 
-                <h3>
-                    Positive signals
-                </h3>
+                    const rating =
+                        analysis.rating ??
+                        product.rating;
 
-                ${data.pros.map(
-                    (item) =>
-                        `<p>✓ ${escapeHtml(item)}</p>`
-                ).join("")}
+                    const reviews =
+                        analysis.review_count ??
+                        product.review_count;
 
-            </div>
+                    const trustScore =
+                        Number(
+                            analysis.trust_score
+                        );
 
+                    const trustLevel =
+                        analysis.trust_level ||
+                        "Unavailable";
 
-            <div class="list">
+                    const ratingScore =
+                        Number(
+                            analysis.rating_score
+                        );
 
-                <h3>
-                    Things to check
-                </h3>
+                    const reviewScore =
+                        Number(
+                            analysis.review_score
+                        );
 
-                ${data.cons.map(
-                    (item) =>
-                        `<p>• ${escapeHtml(item)}</p>`
-                ).join("")}
+                    const priceScore =
+                        Number(
+                            analysis.price_score
+                        );
 
-            </div>
+                    const sellerScore =
+                        Number(
+                            analysis.seller_score
+                        );
 
-        </div>
+                    const safeUrl =
+                        /^https?:\\/\\//i.test(
+                            product.product_url ||
+                            productUrl
+                        )
+                            ? (
+                                product.product_url ||
+                                productUrl
+                            )
+                            : "#";
 
+                    const imageHtml =
+                        image
+                            ? \`
+                                <img
+                                    class="product-image"
+                                    src="\${escapeHtml(image)}"
+                                    alt="\${escapeHtml(name)}"
+                                    onerror="this.style.display='none'"
+                                >
+                              \`
+                            : \`
+                                <div>
+                                    Product image unavailable
+                                </div>
+                              \`;
 
-        <div class="notice">
+                    const scores = [
+                        [
+                            "Rating Score",
+                            ratingScore
+                        ],
+                        [
+                            "Review Score",
+                            reviewScore
+                        ],
+                        [
+                            "Price Score",
+                            priceScore
+                        ],
+                        [
+                            "Seller Score",
+                            sellerScore
+                        ]
+                    ];
 
-            <strong>
-                Demo analysis
-            </strong>
+                    const scoreRows =
+                        scores.map(
+                            ([label, value]) => \`
+                                <div class="score-row">
+                                    <div class="score-head">
+                                        <span>
+                                            \${escapeHtml(label)}
+                                        </span>
+                                        <span>
+                                            \${Number.isFinite(value)
+                                                ? value
+                                                : "—"}
+                                        </span>
+                                    </div>
 
-            <br>
+                                    <div class="score-track">
+                                        <div
+                                            class="score-fill"
+                                            style="width:\${scorePercent(value)}%"
+                                        ></div>
+                                    </div>
+                                </div>
+                            \`
+                        ).join("");
 
-            This review analysis is currently a
-            prototype using simulated data.
-            Real review scraping and AI sentiment
-            analysis can be connected here later.
+                    document.getElementById(
+                        "analysisRoot"
+                    ).innerHTML = \`
 
-        </div>
+                        <section class="hero">
 
+                            <div class="product-image-wrap">
+                                \${imageHtml}
+                            </div>
 
-        ${
-            productUrl !== "#"
-                ? `
-                    <a
-                        class="buy"
-                        href="${escapeAttribute(productUrl)}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        Open ${safeSeller} ↗
-                    </a>
-                  `
-                : ""
-        }
+                            <div>
+                                <div class="eyebrow">
+                                    Product Analysis
+                                </div>
 
-    </section>
+                                <h1>
+                                    \${escapeHtml(name)}
+                                </h1>
 
-</div>
+                                <span class="marketplace">
+                                    \${escapeHtml(marketplace)}
+                                </span>
+                            </div>
 
-</body>
+                        </section>
 
-</html>
+                        <section class="section">
+
+                            <h2 class="section-title">
+                                Product Overview
+                            </h2>
+
+                            <div class="metrics">
+
+                                <div class="metric">
+                                    <div class="metric-label">
+                                        Price
+                                    </div>
+                                    <div class="metric-value">
+                                        \${escapeHtml(
+                                            formatPrice(price)
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <div class="metric-label">
+                                        Rating
+                                    </div>
+                                    <div class="metric-value">
+                                        \${escapeHtml(
+                                            rating ?? "—"
+                                        )} ★
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <div class="metric-label">
+                                        Reviews
+                                    </div>
+                                    <div class="metric-value">
+                                        \${escapeHtml(
+                                            formatNumber(reviews)
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div class="metric">
+                                    <div class="metric-label">
+                                        Marketplace
+                                    </div>
+                                    <div class="metric-value">
+                                        \${escapeHtml(
+                                            marketplace
+                                        )}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </section>
+
+                        <section class="section">
+
+                            <h2 class="section-title">
+                                Trust Analysis
+                            </h2>
+
+                            <div class="trust-card">
+
+                                <div class="trust-score">
+                                    <div>
+                                        <div class="trust-number">
+                                            \${Number.isFinite(
+                                                trustScore
+                                            )
+                                                ? trustScore
+                                                : "—"}
+                                        </div>
+
+                                        <div class="trust-label">
+                                            Trust Score
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+
+                                    <div class="trust-level">
+                                        \${escapeHtml(
+                                            trustLevel
+                                        )}
+                                    </div>
+
+                                    \${scoreRows}
+
+                                </div>
+
+                            </div>
+
+                        </section>
+
+                        <section class="section">
+
+                            <h2 class="section-title">
+                                Price & Marketplace
+                            </h2>
+
+                            <div class="price-box">
+
+                                <div>
+                                    <div
+                                        style="
+                                            color:var(--muted);
+                                            font-size:13px;
+                                            font-weight:800;
+                                        "
+                                    >
+                                        Listed price
+                                    </div>
+
+                                    <div class="price">
+                                        \${escapeHtml(
+                                            formatPrice(price)
+                                        )}
+                                    </div>
+                                </div>
+
+                                <a
+                                    class="buy-button"
+                                    href="\${escapeHtml(safeUrl)}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    View on \${escapeHtml(
+                                        marketplace
+                                    )}
+                                </a>
+
+                            </div>
+
+                            <div class="note">
+                                Trust Score is calculated by
+                                TrustCart using rating, review
+                                count, price and marketplace
+                                trust signals.
+                            </div>
+
+                        </section>
+                    \`;
+                }
+
+                async function loadAnalysis() {
+
+                    if (
+                        !productUrl ||
+                        productUrl === "#"
+                    ) {
+                        document.getElementById(
+                            "analysisRoot"
+                        ).innerHTML = \`
+                            <div class="error">
+                                Product URL is unavailable.
+                            </div>
+                        \`;
+
+                        return;
+                    }
+
+                    try {
+
+                        const response =
+                            await fetch(
+                                "/api/products/analyze",
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type":
+                                            "application/json",
+                                        "Accept":
+                                            "application/json"
+                                    },
+                                    credentials: "include",
+                                    body: JSON.stringify({
+                                        url: productUrl
+                                    })
+                                }
+                            );
+
+                        const data =
+                            await response.json();
+
+                        if (!response.ok ||
+                            !data.success) {
+
+                            throw new Error(
+                                data.message ||
+                                "Unable to analyze this product."
+                            );
+                        }
+
+                        renderAnalysis(data);
+
+                    } catch (error) {
+
+                        console.error(
+                            "TrustCart product analysis error:",
+                            error
+                        );
+
+                        document.getElementById(
+                            "analysisRoot"
+                        ).innerHTML = \`
+                            <div class="error">
+                                <h2>
+                                    Product analysis unavailable
+                                </h2>
+
+                                <p>
+                                    \${escapeHtml(
+                                        error?.message ||
+                                        "Unable to load product analysis."
+                                    )}
+                                </p>
+                            </div>
+                        \`;
+                    }
+                }
+
+                initReviewTheme();
+                loadAnalysis();
+            <\/script>
+        </body>
+        </html>
     `);
-
-    reviewWindow.document.close();
 }
-
-
-/* =========================================================
-   COMPARISON DISPLAY
-========================================================= */
 
 function displayComparisonData(product, prices) {
 
@@ -2097,6 +2397,48 @@ async function loadComparison() {
                 storedResult.product ||
                 storedResult.source_product ||
                 storedResult;
+
+            if (currentProductId) {
+
+                const response =
+                    await fetch(
+                        `/api/products/${encodeURIComponent(currentProductId)}/prices`,
+                        {
+                            credentials: "include"
+                        }
+                    );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to load current prices (${response.status})`
+                    );
+                }
+
+                const data =
+                    await response.json();
+
+                currentComparison = {
+                    ...storedResult,
+                    prices: data.prices || []
+                };
+
+                const rawPrices =
+                    extractPriceItems(data);
+
+                const prices =
+                    deduplicatePrices(
+                        rawPrices
+                    );
+
+                displayComparisonData(
+                    product,
+                    prices
+                );
+
+                showResults();
+
+                return;
+            }
 
             const rawPrices =
                 extractPriceItems(
