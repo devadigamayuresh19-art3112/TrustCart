@@ -127,8 +127,22 @@ class GenericProductFetcher(BaseProductFetcher):
                     browser_product = self._fetch_with_browser(
                         self._canonicalize_url(response.url or normalized_url)
                     )
-                    if self._is_usable_product(browser_product):
-                        return browser_product
+                    if self._is_amazon_url(url):
+                        if self._is_usable_product(browser_product):
+                            return browser_product
+
+                        if self._is_usable_amazon_identity(
+                            browser_product,
+                            url
+                        ):
+                            print(
+                                "Amazon browser identity is valid; "
+                                "preserving it despite missing price."
+                            )
+                            return browser_product
+                    else:
+                        if self._is_usable_product(browser_product):
+                            return browser_product
                 except Exception as browser_error:
                     print(
                         "Browser fallback after incomplete HTTP page failed:",
@@ -385,6 +399,29 @@ class GenericProductFetcher(BaseProductFetcher):
         # ----------------------------------------------------
 
         # Product name
+        # Amazon can expose #productTitle twice:
+        # once as the visible title and once as a hidden input.
+        # Always prefer the visible product-title element.
+        if self._is_amazon_url(url):
+
+            amazon_title = soup.select_one(
+                "#productTitle:not(input), "
+                "h1#title, "
+                "h1.a-size-large.product-title-word-break"
+            )
+
+            if amazon_title:
+
+                amazon_name = amazon_title.get_text(
+                    " ",
+                    strip=True
+                )
+
+                if amazon_name:
+                    product["name"] = self._clean(
+                        amazon_name
+                    )
+
         if not product["name"]:
 
             element = soup.select_one(
@@ -402,6 +439,16 @@ class GenericProductFetcher(BaseProductFetcher):
                         strip=True
                     )
                 )
+
+        # Amazon document titles can contain marketplace suffixes.
+        if self._is_amazon_url(url) and product["name"]:
+
+            product["name"] = re.sub(
+                r"\s*:\s*Amazon(?:\.in|\.com(?:\.au|\.mx)?)?\s*:.*$",
+                "",
+                str(product["name"]),
+                flags=re.I
+            ).strip()
 
         # Brand
         if not product["brand"]:
@@ -464,31 +511,43 @@ class GenericProductFetcher(BaseProductFetcher):
         # Price
         # Prefer the visible current selling price over JSON-LD/meta
         # because structured data may describe a different offer.
-        price_element = soup.select_one(
-            ".priceToPay .a-offscreen, "
-            "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen, "
-            "#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen, "
-            "#priceblock_ourprice, "
-            "#priceblock_dealprice, "
-            "#priceblock_saleprice, "
-            "#corePriceDisplay_desktop_feature_div .a-price:not(.a-text-price) .a-offscreen, "
-            ".a-price:not(.a-text-price) .a-offscreen"
-        )
+        if self._is_amazon_url(url):
 
-        if price_element:
+            # Current Amazon pages may omit the old #corePrice / .priceToPay
+            # containers entirely. The visible product price is still exposed
+            # as an .a-price element. Prefer one that belongs to the main
+            # product section and reject recommendation/carousel containers.
+            amazon_price = self._extract_amazon_price(soup)
 
-            price_text = price_element.get_text(
-                " ",
-                strip=True
+            if amazon_price is not None and amazon_price > 0:
+                product["price"] = amazon_price
+
+        else:
+
+            price_element = soup.select_one(
+                ".priceToPay .a-offscreen, "
+                "#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen, "
+                "#corePrice_feature_div .a-price:not(.a-text-price) .a-offscreen, "
+                "#priceblock_ourprice, "
+                "#priceblock_dealprice, "
+                "#priceblock_saleprice, "
+                "#corePriceDisplay_desktop_feature_div .a-price:not(.a-text-price) .a-offscreen, "
+                ".a-price:not(.a-text-price) .a-offscreen"
             )
 
-            price = self._number(
-                price_text
-            )
+            if price_element:
 
-            if price is not None:
+                price_text = price_element.get_text(
+                    " ",
+                    strip=True
+                )
 
-                product["price"] = price
+                price = self._number(
+                    price_text
+                )
+
+                if price is not None:
+                    product["price"] = price
 
         # Rating
         if product["rating"] is None:
@@ -611,6 +670,35 @@ class GenericProductFetcher(BaseProductFetcher):
         price = product.get("price")
 
         return bool(name and price and float(price) > 0)
+
+    def _is_usable_amazon_identity(self, product, url=None):
+        """Accept a valid Amazon product identity even when price is missing."""
+        if not isinstance(product, dict):
+            return False
+
+        if url is not None and not self._is_amazon_url(url):
+            return False
+
+        name = str(product.get("name") or "").strip()
+        if not name:
+            return False
+
+        lowered = name.lower()
+
+        blocked_markers = (
+            "access denied",
+            "page not found",
+            "something went wrong",
+            "captcha",
+            "robot check",
+            "just a moment",
+            "buy products online at best price in india",
+        )
+
+        if any(marker in lowered for marker in blocked_markers):
+            return False
+
+        return True
 
     def _needs_browser_fallback(self, product, url):
 
@@ -1078,7 +1166,12 @@ class GenericProductFetcher(BaseProductFetcher):
         return None
 
     def _extract_amazon_price(self, soup):
-        """Find the main selling price on Amazon, avoiding MRP, discounts, EMI, and carousels."""
+        """Find Amazon's current selling price while avoiding MRP/recommendations."""
+
+        # ----------------------------------------------------
+        # 1. Known Amazon price containers
+        # ----------------------------------------------------
+
         price_selectors = [
             ".priceToPay",
             "#corePriceDisplay_desktop_feature_div .priceToPay",
@@ -1092,27 +1185,108 @@ class GenericProductFetcher(BaseProductFetcher):
         ]
 
         for selector in price_selectors:
+
             for element in soup.select(selector):
+
                 if self._is_amazon_unrelated_or_mrp_price(element):
                     continue
+
                 price = self._parse_amazon_price_element(element)
+
                 if price is not None and price > 0:
                     return price
 
-        # Embedded twister / buying options data
-        twister_element = soup.select_one(
-            ".twister-plus-buying-options-price-data, [id*='twister-plus-buying-options-price-data']"
+        # ----------------------------------------------------
+        # 2. Modern Amazon HTML fallback
+        #
+        # Some Amazon variants remove the normal .a-price
+        # selector from the parsed DOM while the price markup
+        # is still present in the raw HTML.
+        # ----------------------------------------------------
+
+        raw_html = str(soup)
+
+        price_markup = re.search(
+            r'<span[^>]*class=["\'][^"\']*\ba-price\b[^"\']*["\'][^>]*>'
+            r'\s*<span[^>]*class=["\'][^"\']*\ba-offscreen\b[^"\']*["\'][^>]*>'
+            r'\s*₹\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+            raw_html,
+            flags=re.I | re.S
         )
-        if twister_element and twister_element.string:
+
+        if price_markup:
+
+            value = self._number(
+                price_markup.group(1)
+            )
+
+            if value is not None and value > 0:
+                return value
+
+        # ----------------------------------------------------
+        # 3. HTML fallback without relying on class parsing
+        #
+        # Search only the portion beginning at the product
+        # title. This prevents navigation prices such as
+        # "Under ₹500" from becoming the product price.
+        # ----------------------------------------------------
+
+        title_match = re.search(
+            r'id=["\']productTitle["\']',
+            raw_html,
+            flags=re.I
+        )
+
+        if title_match:
+
+            product_html = raw_html[
+                title_match.start():
+            ]
+
+            price_matches = re.findall(
+                r'₹\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+                product_html,
+                flags=re.I
+            )
+
+            for raw_value in price_matches:
+
+                value = self._number(raw_value)
+
+                if value is not None and value > 0:
+                    return value
+
+        # ----------------------------------------------------
+        # 4. Embedded buying-options data
+        # ----------------------------------------------------
+
+        for script in soup.find_all("script"):
+
+            script_text = script.string or script.get_text(
+                " ",
+                strip=False
+            )
+
+            if not script_text:
+                continue
+
             match = re.search(
                 r'"priceAmount"\s*:\s*([0-9]+(?:\.[0-9]+)?)',
-                twister_element.string
+                script_text,
+                flags=re.I
             )
+
             if match:
+
                 try:
-                    val = float(match.group(1))
-                    if val > 0:
-                        return val
+
+                    value = float(
+                        match.group(1)
+                    )
+
+                    if value > 0:
+                        return value
+
                 except ValueError:
                     pass
 
