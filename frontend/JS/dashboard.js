@@ -1124,9 +1124,49 @@ function displayRecentProducts(
                         "click",
                         () => {
 
-                            openComparison(
-                                product
+                            if (
+                                button.disabled
+                            ) {
+                                return;
+                            }
+
+                            button.disabled =
+                                true;
+
+                            button.dataset.originalText =
+                                button.innerHTML;
+
+                            button.innerHTML = `
+                                <span class="button-spinner"></span>
+                                Comparing...
+                            `;
+
+                            button.classList.add(
+                                "loading"
                             );
+
+                            try {
+
+                                openComparison(
+                                    product
+                                );
+
+                            } catch (error) {
+
+                                button.disabled =
+                                    false;
+
+                                button.classList.remove(
+                                    "loading"
+                                );
+
+                                button.innerHTML =
+                                    button.dataset.originalText ||
+                                    "Compare →";
+
+                                throw error;
+
+                            }
 
                         }
                     );
@@ -2457,13 +2497,58 @@ function renderHistory() {
                     "click",
                     () => {
 
+                        const historyCompareBtn =
+                            item.querySelector(
+                                ".history-open-btn"
+                            );
+
                         if (
                             product.source_url
                         ) {
 
-                            openComparison(
-                                product
+                            if (
+                                historyCompareBtn.disabled
+                            ) {
+                                return;
+                            }
+
+                            historyCompareBtn.disabled =
+                                true;
+
+                            historyCompareBtn.dataset.originalText =
+                                historyCompareBtn.innerHTML;
+
+                            historyCompareBtn.innerHTML = `
+                                <span class="button-spinner"></span>
+                                Comparing...
+                            `;
+
+                            historyCompareBtn.classList.add(
+                                "loading"
                             );
+
+                            try {
+
+                                openComparison(
+                                    product
+                                );
+
+                            } catch (error) {
+
+                                historyCompareBtn.disabled =
+                                    false;
+
+                                historyCompareBtn.classList.remove(
+                                    "loading"
+                                );
+
+                                historyCompareBtn.innerHTML =
+                                    historyCompareBtn.dataset.originalText ||
+                                    "Compare →";
+
+                                throw error;
+
+                            }
 
                         } else {
 

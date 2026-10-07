@@ -3974,3 +3974,31 @@ body.dark .mobile-nav {
     }
 }
 
+
+/* History Compare loading state */
+.history-open-btn.loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    cursor: wait;
+    opacity: 0.75;
+}
+
+.history-open-btn:disabled {
+    cursor: wait;
+}
+
+/* Available Products Compare loading state */
+.product-compare-btn.loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    cursor: wait;
+    opacity: 0.75;
+}
+
+.product-compare-btn:disabled {
+    cursor: wait;
+}
