@@ -1292,989 +1292,2449 @@ function renderSellerRows(prices) {
    TEMPORARY FAKE DATA
 ========================================================= */
 
+
 async function openReviewAnalysis(item) {
+
+    /*
+     * TRUSTCART REVIEW ANALYSIS
+     *
+     * Opens the analysis view in the SAME TAB.
+     * The comparison page remains alive underneath,
+     * so returning to the comparison is instant.
+     */
 
     const productTitle =
         currentProduct?.name ||
         currentProduct?.title ||
         item?.name ||
+        item?.title ||
         "Product";
 
     const productUrl =
         isSafeUrl(item?.product_url)
             ? item.product_url
-            : "#";
+            : "";
 
-    const reviewWindow =
-        window.open(
-            "",
-            "_blank"
-        );
+    /*
+     * Remove an already-open analysis view.
+     */
+    const existing =
+        document.getElementById("trustcartAnalyzeView");
 
-    if (!reviewWindow) {
-
-        showToast(
-            "Please allow pop-ups to open product analysis."
-        );
-
-        return;
+    if (existing) {
+        existing.remove();
     }
 
     /*
-     * Open the window immediately so browser popup blockers
-     * do not block it while the API request is running.
+     * Keep browser history useful.
      */
-    reviewWindow.document.write(`
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta
-                name="viewport"
-                content="width=device-width, initial-scale=1.0"
-            >
-            <title>TrustCart | Product Analysis</title>
+    history.pushState(
+        {
+            trustcartAnalyze: true
+        },
+        "",
+        window.location.href
+    );
 
-            <style>
-                :root {
-                    --green: #18583d;
-                    --green-dark: #0d3d29;
-                    --green-light: #61b487;
-                    --green-soft: #e8f5ee;
-                    --green-pale: #f5faf7;
-                    --text: #17231e;
-                    --muted: #718078;
-                    --border: rgba(24,88,61,.11);
-                    --page-bg: #f4f8f6;
-                    --surface: #ffffff;
-                    --track: #edf2ef;
-                    --notice-bg: #fff9eb;
-                    --notice-text: #765d20;
+    /*
+     * ---------------------------------------------------------
+     * ANALYSIS VIEW
+     * ---------------------------------------------------------
+     */
+
+    const analysisView =
+        document.createElement("div");
+
+    analysisView.id =
+        "trustcartAnalyzeView";
+
+    analysisView.innerHTML = `
+        <div class="tc-floating-orb tc-orb-one"></div>
+        <div class="tc-floating-orb tc-orb-two"></div>
+
+
+        <style>
+
+            #trustcartAnalyzeView {
+                position: fixed;
+                inset: 0;
+                z-index: 999999;
+                overflow-y: auto;
+
+                --tc-green: #18583d;
+                --tc-green-dark: #0d3d29;
+                --tc-green-light: #61b487;
+
+                --tc-bg: #f5f8f6;
+                --tc-card: #ffffff;
+                --tc-text: #173126;
+                --tc-muted: #6b7c73;
+                --tc-border: #dce8e1;
+                --tc-track: #e6eee9;
+
+                background:
+                    linear-gradient(
+                        180deg,
+                        #f5f8f6 0%,
+                        #edf5f0 100%
+                    );
+
+                color: var(--tc-text);
+
+                font-family:
+                    Inter,
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+            }
+
+            #trustcartAnalyzeView.tc-dark {
+                --tc-bg: #0c1712;
+                --tc-card: #14231b;
+                --tc-text: #edf7f1;
+                --tc-muted: #9aafa4;
+                --tc-border: #294236;
+                --tc-track: #253a2e;
+
+                background:
+                    linear-gradient(
+                        180deg,
+                        #0c1712 0%,
+                        #102018 100%
+                    );
+            }
+
+            #trustcartAnalyzeView * {
+                box-sizing: border-box;
+            }
+
+            .tc-analysis-shell {
+                width: min(1120px, calc(100% - 32px));
+                margin: 0 auto;
+                padding: 24px 0 60px;
+            }
+
+            .tc-analysis-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+
+                padding: 12px 0 24px;
+            }
+
+            .tc-analysis-brand {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+
+                font-size: 20px;
+                font-weight: 800;
+                color: var(--tc-text);
+            }
+
+            .tc-analysis-logo {
+                width: 38px;
+                height: 38px;
+
+                display: grid;
+                place-items: center;
+
+                border-radius: 11px;
+
+                background:
+                    linear-gradient(
+                        135deg,
+                        var(--tc-green),
+                        var(--tc-green-light)
+                    );
+
+                color: white;
+                font-weight: 900;
+            }
+
+            .tc-analysis-actions {
+                display: flex;
+                gap: 10px;
+            }
+
+            .tc-analysis-action {
+                border: 1px solid var(--tc-border);
+                background: var(--tc-card);
+                color: var(--tc-text);
+
+                padding: 10px 15px;
+                border-radius: 10px;
+
+                cursor: pointer;
+
+                font-weight: 700;
+
+                transition:
+                    transform .18s ease,
+                    border-color .18s ease;
+            }
+
+            .tc-analysis-action:hover {
+                transform: translateY(-1px);
+                border-color: var(--tc-green-light);
+            }
+
+            .tc-analysis-primary {
+                background: var(--tc-green);
+                color: white;
+                border-color: var(--tc-green);
+            }
+
+            .tc-analysis-loading {
+                min-height: 70vh;
+
+                display: grid;
+                place-items: center;
+            }
+
+            .tc-analysis-loader {
+                text-align: center;
+            }
+
+            .tc-spinner {
+                width: 42px;
+                height: 42px;
+
+                margin: 0 auto 14px;
+
+                border: 4px solid var(--tc-track);
+                border-top-color: var(--tc-green);
+
+                border-radius: 50%;
+
+                animation:
+                    tcSpin .8s linear infinite;
+            }
+
+            @keyframes tcSpin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .tc-hero {
+                display: grid;
+                grid-template-columns: 230px 1fr;
+                gap: 28px;
+
+                padding: 28px;
+
+                background: var(--tc-card);
+
+                border: 1px solid var(--tc-border);
+                border-radius: 22px;
+
+                box-shadow:
+                    0 16px 45px rgba(20, 70, 45, .08);
+            }
+
+            .tc-product-image-wrap {
+                min-height: 230px;
+
+                display: grid;
+                place-items: center;
+
+                padding: 18px;
+
+                border-radius: 18px;
+
+                background:
+                    linear-gradient(
+                        135deg,
+                        #f1f7f3,
+                        #e5f0e9
+                    );
+            }
+
+            .tc-dark .tc-product-image-wrap {
+                background:
+                    linear-gradient(
+                        135deg,
+                        #1a2b22,
+                        #20382b
+                    );
+            }
+
+            .tc-product-image {
+                width: 100%;
+                height: 200px;
+
+                object-fit: contain;
+
+                border-radius: 12px;
+            }
+
+            .tc-no-image {
+                font-size: 58px;
+                opacity: .25;
+            }
+
+            .tc-eyebrow {
+                margin: 5px 0 8px;
+
+                color: var(--tc-green-light);
+
+                font-size: 13px;
+                font-weight: 800;
+
+                text-transform: uppercase;
+                letter-spacing: .08em;
+            }
+
+            .tc-hero h1 {
+                margin: 0 0 12px;
+
+                font-size: clamp(25px, 4vw, 38px);
+                line-height: 1.15;
+            }
+
+            .tc-marketplace {
+                display: inline-flex;
+                align-items: center;
+
+                padding: 7px 11px;
+
+                border-radius: 999px;
+
+                background: rgba(97, 180, 135, .13);
+                color: var(--tc-green);
+
+                font-size: 13px;
+                font-weight: 800;
+            }
+
+            .tc-dark .tc-marketplace {
+                color: #91d6b0;
+            }
+
+            .tc-hero-price {
+                margin-top: 24px;
+
+                font-size: 30px;
+                font-weight: 900;
+            }
+
+            .tc-section {
+                margin-top: 22px;
+            }
+
+            .tc-section-title {
+                margin: 0 0 13px;
+
+                font-size: 19px;
+                font-weight: 850;
+            }
+
+            .tc-metrics {
+                display: grid;
+                grid-template-columns:
+                    repeat(4, minmax(0, 1fr));
+
+                gap: 14px;
+            }
+
+            .tc-metric {
+                padding: 19px;
+
+                background: var(--tc-card);
+
+                border: 1px solid var(--tc-border);
+                border-radius: 16px;
+            }
+
+            .tc-metric-label {
+                color: var(--tc-muted);
+
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .tc-metric-value {
+                margin-top: 8px;
+
+                font-size: 22px;
+                font-weight: 850;
+
+                word-break: break-word;
+            }
+
+            .tc-trust-grid {
+                display: grid;
+                grid-template-columns: 260px 1fr;
+
+                gap: 20px;
+            }
+
+            .tc-trust-score-card,
+            .tc-breakdown-card,
+            .tc-review-card,
+            .tc-price-card {
+                background: var(--tc-card);
+
+                border: 1px solid var(--tc-border);
+                border-radius: 18px;
+
+                padding: 22px;
+            }
+
+            .tc-trust-score-card {
+                display: grid;
+                place-items: center;
+                text-align: center;
+            }
+
+            .tc-score-circle {
+                width: 155px;
+                height: 155px;
+
+                display: grid;
+                place-items: center;
+
+                border-radius: 50%;
+
+                background:
+                    conic-gradient(
+                        var(--tc-green) var(--tc-score, 0%),
+                        var(--tc-track) 0
+                    );
+
+                position: relative;
+            }
+
+            .tc-score-circle::after {
+                content: "";
+
+                position: absolute;
+                inset: 11px;
+
+                border-radius: 50%;
+
+                background: var(--tc-card);
+            }
+
+            .tc-score-content {
+                position: relative;
+                z-index: 1;
+
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .tc-score-number {
+                font-size: 34px;
+                font-weight: 900;
+            }
+
+            .tc-score-label {
+                color: var(--tc-muted);
+
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .tc-trust-level {
+                margin-top: 14px;
+
+                color: var(--tc-green-light);
+
+                font-weight: 850;
+            }
+
+            .tc-score-row {
+                margin-bottom: 19px;
+            }
+
+            .tc-score-row:last-child {
+                margin-bottom: 0;
+            }
+
+            .tc-score-head {
+                display: flex;
+                justify-content: space-between;
+
+                margin-bottom: 7px;
+
+                font-size: 14px;
+                font-weight: 750;
+            }
+
+            .tc-score-track {
+                height: 9px;
+
+                overflow: hidden;
+
+                border-radius: 999px;
+
+                background: var(--tc-track);
+            }
+
+            .tc-score-fill {
+                height: 100%;
+
+                border-radius: inherit;
+
+                background:
+                    linear-gradient(
+                        90deg,
+                        var(--tc-green-dark),
+                        var(--tc-green-light)
+                    );
+
+                transition: width .5s ease;
+            }
+
+            .tc-review-grid {
+                display: grid;
+                grid-template-columns:
+                    repeat(3, minmax(0, 1fr));
+
+                gap: 14px;
+            }
+
+            .tc-review-card h3 {
+                margin: 0 0 8px;
+
+                font-size: 15px;
+            }
+
+            .tc-review-card p {
+                margin: 0;
+
+                color: var(--tc-muted);
+
+                font-size: 13px;
+                line-height: 1.55;
+            }
+
+            .tc-review-value {
+                margin-bottom: 8px;
+
+                font-size: 25px;
+                font-weight: 900;
+            }
+
+            .tc-price-card {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+
+                gap: 20px;
+            }
+
+            .tc-price-info {
+                min-width: 0;
+            }
+
+            .tc-price-main {
+                font-size: 31px;
+                font-weight: 900;
+            }
+
+            .tc-price-sub {
+                margin-top: 5px;
+
+                color: var(--tc-muted);
+
+                font-size: 13px;
+            }
+
+            .tc-error {
+                margin-top: 30px;
+
+                padding: 30px;
+
+                text-align: center;
+
+                background: var(--tc-card);
+
+                border: 1px solid var(--tc-border);
+                border-radius: 18px;
+            }
+
+            .tc-error h2 {
+                margin-top: 0;
+            }
+
+            .tc-error p {
+                color: var(--tc-muted);
+            }
+
+            /* =================================================
+               TRUSTCART ANALYZE - VISUAL ENHANCEMENTS
+            ================================================= */
+
+            .tc-floating-orb {
+                position: fixed;
+                width: 180px;
+                height: 180px;
+                border-radius: 50%;
+                pointer-events: none;
+                opacity: .18;
+                filter: blur(2px);
+                background: var(--tc-green-light);
+                animation: tcFloat 7s ease-in-out infinite;
+            }
+
+            .tc-orb-one {
+                top: 12%;
+                right: -70px;
+            }
+
+            .tc-orb-two {
+                bottom: 8%;
+                left: -90px;
+                width: 220px;
+                height: 220px;
+                animation-delay: -3s;
+            }
+
+            @keyframes tcFloat {
+                0%, 100% {
+                    transform: translateY(0) scale(1);
                 }
 
-                html.dark {
-                    --green: #61b487;
-                    --green-dark: #b9e6cb;
-                    --green-light: #86d6a9;
-                    --green-soft: #17352a;
-                    --green-pale: #12231c;
-                    --text: #edf7f1;
-                    --muted: #9bb2a6;
-                    --border: rgba(97,180,135,.18);
-                    --page-bg: #0b1410;
-                    --surface: #111d17;
-                    --track: #22352c;
-                    --notice-bg: #302817;
-                    --notice-text: #e5c978;
+                50% {
+                    transform: translateY(-25px) scale(1.05);
+                }
+            }
+
+            .tc-hero {
+                position: relative;
+                overflow: hidden;
+                animation: tcReveal .5s ease both;
+            }
+
+            .tc-hero::after {
+                content: "";
+                position: absolute;
+                width: 240px;
+                height: 240px;
+                right: -110px;
+                top: -110px;
+                border-radius: 50%;
+                background: var(--tc-green-light);
+                opacity: .08;
+            }
+
+            .tc-product-image {
+                animation: tcProductFloat 4s ease-in-out infinite;
+            }
+
+            @keyframes tcProductFloat {
+                0%, 100% {
+                    transform: translateY(0);
                 }
 
-                * {
-                    box-sizing: border-box;
+                50% {
+                    transform: translateY(-8px);
+                }
+            }
+
+            .tc-metric,
+            .tc-trust-score-card,
+            .tc-breakdown-card,
+            .tc-review-card,
+            .tc-price-card,
+            .tc-verdict-card,
+            .tc-check-card,
+            .tc-method-card {
+                transition:
+                    transform .22s ease,
+                    box-shadow .22s ease,
+                    border-color .22s ease;
+            }
+
+            .tc-metric:hover,
+            .tc-review-card:hover,
+            .tc-price-card:hover,
+            .tc-verdict-card:hover,
+            .tc-check-card:hover,
+            .tc-method-card:hover {
+                transform: translateY(-5px);
+                border-color: var(--tc-green-light);
+                box-shadow:
+                    0 14px 35px rgba(24, 88, 61, .12);
+            }
+
+            .tc-verdict-card {
+                padding: 24px;
+                border-radius: 18px;
+                border: 1px solid var(--tc-border);
+                background:
+                    linear-gradient(
+                        135deg,
+                        var(--tc-card),
+                        rgba(97,180,135,.08)
+                    );
+            }
+
+            .tc-verdict-top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+            }
+
+            .tc-verdict-title {
+                font-size: 22px;
+                font-weight: 900;
+            }
+
+            .tc-verdict-badge {
+                padding: 8px 14px;
+                border-radius: 999px;
+                background: rgba(97,180,135,.16);
+                color: var(--tc-green);
+                font-size: 13px;
+                font-weight: 900;
+            }
+
+            .tc-dark .tc-verdict-badge {
+                color: #9be0b8;
+            }
+
+            .tc-verdict-text {
+                margin: 10px 0 0;
+                color: var(--tc-muted);
+                line-height: 1.6;
+            }
+
+            .tc-verdict-confidence {
+                margin-top: 17px;
+                color: var(--tc-green-light);
+                font-size: 13px;
+                font-weight: 850;
+            }
+
+            .tc-intelligence-grid {
+                display: grid;
+                grid-template-columns:
+                    repeat(2, minmax(0, 1fr));
+                gap: 16px;
+            }
+
+            .tc-intelligence-card {
+                padding: 21px;
+                border-radius: 18px;
+                background: var(--tc-card);
+                border: 1px solid var(--tc-border);
+            }
+
+            .tc-intelligence-icon {
+                font-size: 26px;
+                margin-bottom: 9px;
+            }
+
+            .tc-intelligence-card h3 {
+                margin: 0 0 7px;
+                font-size: 17px;
+            }
+
+            .tc-intelligence-card p {
+                margin: 0;
+                color: var(--tc-muted);
+                line-height: 1.55;
+                font-size: 13px;
+            }
+
+            .tc-check-list {
+                display: grid;
+                gap: 10px;
+                margin-top: 14px;
+            }
+
+            .tc-check-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 12px 14px;
+                border-radius: 12px;
+                background: rgba(97,180,135,.08);
+                color: var(--tc-text);
+                font-size: 13px;
+                line-height: 1.4;
+            }
+
+            .tc-check-icon {
+                flex: 0 0 auto;
+                font-weight: 900;
+                color: var(--tc-green-light);
+            }
+
+            .tc-method-card {
+                padding: 22px;
+                border-radius: 18px;
+                background: var(--tc-card);
+                border: 1px solid var(--tc-border);
+            }
+
+            .tc-method-flow {
+                display: grid;
+                grid-template-columns:
+                    repeat(4, 1fr);
+                gap: 10px;
+                margin-top: 17px;
+            }
+
+            .tc-method-step {
+                text-align: center;
+                padding: 15px 10px;
+                border-radius: 13px;
+                background: rgba(97,180,135,.08);
+                font-size: 13px;
+                font-weight: 800;
+            }
+
+            .tc-method-arrow {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--tc-green-light);
+                font-weight: 900;
+            }
+
+            .tc-tools {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-top: 16px;
+            }
+
+            .tc-copy-status {
+                color: var(--tc-green-light);
+                font-size: 12px;
+                font-weight: 750;
+                align-self: center;
+            }
+
+            @keyframes tcReveal {
+                from {
+                    opacity: 0;
+                    transform: translateY(12px);
                 }
 
-                body {
-                    margin: 0;
-                    min-height: 100vh;
-                    font-family:
-                        Inter,
-                        system-ui,
-                        -apple-system,
-                        BlinkMacSystemFont,
-                        "Segoe UI",
-                        sans-serif;
-                    color: var(--text);
-                    background:
-                        radial-gradient(
-                            circle at 10% 0%,
-                            rgba(97,180,135,.14),
-                            transparent 30%
-                        ),
-                        var(--page-bg);
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .tc-analysis-shell > .tc-section {
+                animation: tcReveal .5s ease both;
+            }
+
+            .tc-analysis-shell > .tc-section:nth-of-type(2) {
+                animation-delay: .05s;
+            }
+
+            .tc-analysis-shell > .tc-section:nth-of-type(3) {
+                animation-delay: .1s;
+            }
+
+            .tc-analysis-shell > .tc-section:nth-of-type(4) {
+                animation-delay: .15s;
+            }
+
+            .tc-analysis-shell > .tc-section:nth-of-type(5) {
+                animation-delay: .2s;
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+
+                #trustcartAnalyzeView *,
+                #trustcartAnalyzeView *::before,
+                #trustcartAnalyzeView *::after {
+                    animation-duration: .01ms !important;
+                    animation-iteration-count: 1 !important;
+                    scroll-behavior: auto !important;
+                    transition-duration: .01ms !important;
+                }
+            }
+
+
+            @media (max-width: 800px) {
+
+                .tc-hero {
+                    grid-template-columns: 1fr;
                 }
 
-                .page {
-                    width: min(1080px, calc(100% - 36px));
-                    margin: 0 auto;
-                    padding: 36px 0 70px;
-                }
-
-                .top {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 20px;
-                    margin-bottom: 28px;
-                }
-
-                .logo {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    color: var(--green-dark);
-                    font-weight: 900;
-                    font-size: 18px;
-                }
-
-                .logo-mark {
-                    width: 38px;
-                    height: 38px;
-                    display: grid;
-                    place-items: center;
-                    border-radius: 11px;
-                    background: var(--green);
-                    color: white;
-                }
-
-                .top-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: 9px;
-                }
-
-                .theme-toggle,
-                .back {
-                    min-width: 38px;
-                    height: 38px;
-                    display: grid;
-                    place-items: center;
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    background: var(--surface);
-                    color: var(--text);
-                    cursor: pointer;
-                    font-size: 15px;
-                    font-weight: 800;
-                }
-
-                .back {
-                    padding: 0 14px;
-                }
-
-                .theme-toggle:hover,
-                .back:hover {
-                    border-color: var(--green-light);
-                }
-
-                .hero {
-                    display: grid;
-                    grid-template-columns: 220px 1fr;
-                    gap: 30px;
-                    align-items: center;
-                    padding: 28px;
-                    border: 1px solid var(--border);
-                    border-radius: 20px;
-                    background: var(--surface);
-                    box-shadow: 0 14px 45px rgba(24,88,61,.08);
-                }
-
-                .product-image-wrap {
-                    width: 100%;
-                    height: 220px;
-                    display: grid;
-                    place-items: center;
-                    padding: 15px;
-                    border-radius: 16px;
-                    background: var(--green-pale);
-                    border: 1px solid var(--border);
-                }
-
-                .product-image {
-                    max-width: 100%;
-                    max-height: 190px;
-                    object-fit: contain;
-                }
-
-                .eyebrow {
-                    margin-bottom: 8px;
-                    color: var(--green);
-                    font-size: 13px;
-                    font-weight: 900;
-                    text-transform: uppercase;
-                    letter-spacing: .08em;
-                }
-
-                h1 {
-                    margin: 0 0 12px;
-                    font-size: clamp(25px, 4vw, 38px);
-                    line-height: 1.12;
-                }
-
-                .marketplace {
-                    display: inline-flex;
-                    padding: 7px 11px;
-                    border-radius: 999px;
-                    background: var(--green-soft);
-                    color: var(--green-dark);
-                    font-size: 13px;
-                    font-weight: 800;
-                }
-
-                .section {
-                    margin-top: 22px;
-                    padding: 24px;
-                    border: 1px solid var(--border);
-                    border-radius: 18px;
-                    background: var(--surface);
-                }
-
-                .section-title {
-                    margin: 0 0 18px;
-                    font-size: 18px;
-                }
-
-                .metrics {
-                    display: grid;
+                .tc-metrics {
                     grid-template-columns:
-                        repeat(4, minmax(0, 1fr));
-                    gap: 14px;
+                        repeat(2, minmax(0, 1fr));
                 }
 
-                .metric {
+                .tc-trust-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .tc-review-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            @media (max-width: 800px) {
+
+                .tc-intelligence-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .tc-method-flow {
+                    grid-template-columns:
+                        repeat(2, 1fr);
+                }
+
+                .tc-verdict-top {
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+
+            }
+
+
+            @media (max-width: 520px) {
+
+                .tc-analysis-shell {
+                    width: min(
+                        100% - 20px,
+                        1120px
+                    );
+
+                    padding-top: 10px;
+                }
+
+                .tc-analysis-header {
+                    align-items: flex-start;
+                }
+
+                .tc-analysis-brand span {
+                    display: none;
+                }
+
+                .tc-hero {
                     padding: 18px;
-                    border-radius: 14px;
-                    background: var(--green-pale);
-                    border: 1px solid var(--border);
                 }
 
-                .metric-label {
-                    color: var(--muted);
-                    font-size: 12px;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    letter-spacing: .05em;
+                .tc-metrics {
+                    grid-template-columns: 1fr;
                 }
 
-                .metric-value {
-                    margin-top: 7px;
-                    font-size: 24px;
-                    font-weight: 900;
+                .tc-price-card {
+                    align-items: stretch;
+                    flex-direction: column;
                 }
 
-                .trust-card {
-                    display: grid;
-                    grid-template-columns: 190px 1fr;
-                    gap: 26px;
-                    align-items: center;
+                .tc-price-card .tc-analysis-action {
+                    width: 100%;
                 }
+            }
 
-                .trust-score {
-                    width: 170px;
-                    height: 170px;
-                    margin: auto;
-                    display: grid;
-                    place-items: center;
-                    text-align: center;
-                    border-radius: 50%;
-                    border: 12px solid var(--green-soft);
-                    background: var(--surface);
-                }
+        </style>
 
-                .trust-number {
-                    font-size: 42px;
-                    font-weight: 950;
-                    color: var(--green);
-                    line-height: 1;
-                }
+        <div class="tc-analysis-shell">
 
-                .trust-label {
-                    margin-top: 5px;
-                    color: var(--muted);
-                    font-size: 12px;
-                    font-weight: 800;
-                }
+            <header class="tc-analysis-header">
 
-                .trust-level {
-                    margin-bottom: 18px;
-                    font-size: 22px;
-                    font-weight: 900;
-                    color: var(--green);
-                }
+                <div class="tc-analysis-brand">
+                    <div class="tc-analysis-logo">T</div>
+                    <span>TrustCart Analysis</span>
+                </div>
 
-                .score-row {
-                    margin: 13px 0;
-                }
+                <div class="tc-analysis-actions">
 
-                .score-head {
-                    display: flex;
-                    justify-content: space-between;
-                    gap: 12px;
-                    margin-bottom: 6px;
-                    font-size: 13px;
-                    font-weight: 800;
-                }
+                    <button
+                        type="button"
+                        class="tc-analysis-action"
+                        id="tcAnalysisTheme"
+                        title="Toggle theme"
+                    >
+                        ☾
+                    </button>
 
-                .score-track {
-                    height: 9px;
-                    overflow: hidden;
-                    border-radius: 999px;
-                    background: var(--track);
-                }
+                    <button
+                        type="button"
+                        class="tc-analysis-action"
+                        id="tcAnalysisBack"
+                    >
+                        ← Back to Comparison
+                    </button>
 
-                .score-fill {
-                    height: 100%;
-                    border-radius: inherit;
-                    background: var(--green-light);
-                }
+                </div>
 
-                .price-box {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 20px;
-                    padding: 20px;
-                    border-radius: 14px;
-                    background: var(--green-soft);
-                }
+            </header>
 
-                .price {
-                    color: var(--green-dark);
-                    font-size: 32px;
-                    font-weight: 950;
-                }
+            <main id="tcAnalysisRoot">
 
-                .buy-button {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    min-height: 44px;
-                    padding: 0 18px;
-                    border: 0;
-                    border-radius: 10px;
-                    background: var(--green);
-                    color: white;
-                    text-decoration: none;
-                    font-weight: 900;
-                }
+                <div class="tc-analysis-loading">
 
-                .buy-button:hover {
-                    background: var(--green-dark);
-                }
+                    <div class="tc-analysis-loader">
 
-                .note {
-                    margin-top: 14px;
-                    color: var(--muted);
-                    font-size: 13px;
-                    line-height: 1.6;
-                }
+                        <div class="tc-spinner"></div>
 
-                .error {
-                    padding: 30px;
-                    border: 1px solid var(--border);
-                    border-radius: 16px;
-                    background: var(--surface);
-                    text-align: center;
-                }
+                        <strong>
+                            Analyzing product data...
+                        </strong>
 
-                @media (max-width: 760px) {
-                    .hero,
-                    .trust-card {
-                        grid-template-columns: 1fr;
-                    }
+                        <p style="
+                            color:var(--tc-muted);
+                            margin-top:7px;
+                        ">
+                            TrustCart is calculating
+                            the available trust signals.
+                        </p>
 
-                    .product-image-wrap {
-                        height: 190px;
-                    }
-
-                    .metrics {
-                        grid-template-columns:
-                            repeat(2, minmax(0, 1fr));
-                    }
-
-                    .price-box {
-                        align-items: flex-start;
-                        flex-direction: column;
-                    }
-                }
-
-                @media (max-width: 460px) {
-                    .metrics {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .page {
-                        width: min(100% - 22px, 1080px);
-                        padding-top: 18px;
-                    }
-                }
-            </style>
-        </head>
-
-        <body>
-            <main class="page">
-
-                <header class="top">
-                    <div class="logo">
-                        <div class="logo-mark">T</div>
-                        <span>TrustCart</span>
                     </div>
 
-                    <div class="top-actions">
-                        <button
-                            class="theme-toggle"
-                            id="reviewThemeToggle"
-                            type="button"
-                            aria-label="Toggle dark mode"
-                        >☾</button>
-
-                        <button
-                            class="back"
-                            type="button"
-                            onclick="window.close()"
-                        >← Back</button>
-                    </div>
-                </header>
-
-                <div id="analysisRoot">
-                    <div class="section">
-                        Loading real product analysis...
-                    </div>
                 </div>
 
             </main>
 
-            <script>
-                const productUrl =
-                    ${JSON.stringify(productUrl)};
+        </div>
+    `;
 
-                const fallbackTitle =
-                    ${JSON.stringify(productTitle)};
+    document.body.appendChild(
+        analysisView
+    );
 
-                function escapeHtml(value) {
-                    return String(value ?? "")
-                        .replace(/&/g, "&amp;")
-                        .replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;")
-                        .replace(/"/g, "&quot;")
-                        .replace(/'/g, "&#039;");
+    /*
+     * ---------------------------------------------------------
+     * THEME
+     * ---------------------------------------------------------
+     */
+
+    const themeButton =
+        document.getElementById(
+            "tcAnalysisTheme"
+        );
+
+    function applyAnalysisTheme() {
+
+        let theme = "light";
+
+        try {
+            theme =
+                localStorage.getItem(
+                    "trustcart_theme"
+                ) || "light";
+        } catch {
+            theme = "light";
+        }
+
+        if (theme === "dark") {
+
+            analysisView.classList.add(
+                "tc-dark"
+            );
+
+            themeButton.textContent = "☀";
+
+        } else {
+
+            analysisView.classList.remove(
+                "tc-dark"
+            );
+
+            themeButton.textContent = "☾";
+        }
+    }
+
+    themeButton.onclick = () => {
+
+        const isDark =
+            analysisView.classList.contains(
+                "tc-dark"
+            );
+
+        const nextTheme =
+            isDark ? "light" : "dark";
+
+        try {
+
+            localStorage.setItem(
+                "trustcart_theme",
+                nextTheme
+            );
+
+        } catch {}
+
+        applyAnalysisTheme();
+    };
+
+    applyAnalysisTheme();
+
+    /*
+     * ---------------------------------------------------------
+     * CLOSE / BACK
+     * ---------------------------------------------------------
+     */
+
+    let closed = false;
+
+    function closeAnalysis() {
+
+        if (closed) {
+            return;
+        }
+
+        closed = true;
+
+        analysisView.remove();
+
+        /*
+         * Return to the state before the
+         * analysis view was opened.
+         */
+        if (
+            window.history.state &&
+            window.history.state.trustcartAnalyze
+        ) {
+            history.back();
+        }
+    }
+
+    document.getElementById(
+        "tcAnalysisBack"
+    ).onclick = closeAnalysis;
+
+    /*
+     * Browser back button.
+     */
+    const handleAnalysisPopState = () => {
+
+        if (!analysisView.isConnected) {
+            return;
+        }
+
+        closed = true;
+
+        analysisView.remove();
+
+        window.removeEventListener(
+            "popstate",
+            handleAnalysisPopState
+        );
+    };
+
+    window.addEventListener(
+        "popstate",
+        handleAnalysisPopState
+    );
+
+    /*
+     * ---------------------------------------------------------
+     * HELPERS
+     * ---------------------------------------------------------
+     */
+
+    function escapeHtml(value) {
+
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function formatNumber(value) {
+
+        const number =
+            Number(value);
+
+        if (!Number.isFinite(number)) {
+            return "—";
+        }
+
+        return number.toLocaleString(
+            "en-IN"
+        );
+    }
+
+    function formatPrice(value) {
+
+        const number =
+            Number(value);
+
+        if (!Number.isFinite(number)) {
+            return "—";
+        }
+
+        return "₹" +
+            number.toLocaleString(
+                "en-IN",
+                {
+                    maximumFractionDigits: 2
                 }
+            );
+    }
 
-                function formatNumber(value) {
-                    if (
-                        value === null ||
-                        value === undefined ||
-                        value === "" ||
-                        Number.isNaN(Number(value))
-                    ) {
-                        return "—";
-                    }
+    function safeScore(value) {
 
-                    return Number(value).toLocaleString("en-IN");
-                }
+        const number =
+            Number(value);
 
-                function formatPrice(value) {
-                    if (
-                        value === null ||
-                        value === undefined ||
-                        value === "" ||
-                        Number.isNaN(Number(value))
-                    ) {
-                        return "Price unavailable";
-                    }
+        if (!Number.isFinite(number)) {
+            return 0;
+        }
 
-                    return "₹" +
-                        Number(value).toLocaleString(
-                            "en-IN",
-                            {
-                                maximumFractionDigits: 2
-                            }
-                        );
-                }
+        return Math.max(
+            0,
+            Math.min(100, number)
+        );
+    }
 
-                function scorePercent(value) {
-                    const number = Number(value);
+    function safeRating(value) {
 
-                    if (!Number.isFinite(number)) {
-                        return 0;
-                    }
+        const number =
+            Number(value);
 
-                    return Math.max(
-                        0,
-                        Math.min(100, number)
-                    );
-                }
+        if (
+            !Number.isFinite(number) ||
+            number < 0
+        ) {
+            return null;
+        }
 
-                function applyReviewTheme(theme) {
-                    const isDark =
-                        theme === "dark";
+        return number;
+    }
 
-                    document.documentElement
-                        .classList
-                        .toggle(
-                            "dark",
-                            isDark
-                        );
+    function getMarketplace(data, product, analysis) {
 
-                    const toggle =
-                        document.getElementById(
-                            "reviewThemeToggle"
-                        );
+        return (
+            analysis.marketplace ||
+            product.marketplace ||
+            data.marketplace ||
+            item.marketplace ||
+            "Marketplace"
+        );
+    }
 
-                    if (toggle) {
-                        toggle.textContent =
-                            isDark ? "☀" : "☾";
+    /*
+     * ---------------------------------------------------------
+     * RENDER
+     * ---------------------------------------------------------
+     */
 
-                        toggle.setAttribute(
-                            "aria-label",
-                            isDark
-                                ? "Switch to light mode"
-                                : "Switch to dark mode"
-                        );
-                    }
-                }
+    function renderAnalysis(data) {
 
-                function initReviewTheme() {
-                    applyReviewTheme(
-                        localStorage.getItem(
-                            "trustcart-theme"
-                        ) || "light"
-                    );
+        const product =
+            data?.product || {};
 
-                    const toggle =
-                        document.getElementById(
-                            "reviewThemeToggle"
-                        );
+        const analysis =
+            data?.analysis || {};
 
-                    if (toggle) {
-                        toggle.addEventListener(
-                            "click",
-                            function () {
-                                const isDark =
-                                    document.documentElement
-                                        .classList
-                                        .contains("dark");
+        const canonical =
+            data?.canonical || {};
 
-                                const next =
-                                    isDark
-                                        ? "light"
-                                        : "dark";
+        const name =
+            product.name ||
+            product.title ||
+            canonical.product_name ||
+            productTitle ||
+            "Product";
 
-                                localStorage.setItem(
-                                    "trustcart-theme",
-                                    next
-                                );
+        const image =
+            product.image_url ||
+            product.imageUrl ||
+            product.image ||
+            canonical.image_url ||
+            "";
 
-                                applyReviewTheme(
-                                    next
-                                );
-                            }
-                        );
-                    }
+        const marketplace =
+            getMarketplace(
+                data,
+                product,
+                analysis
+            );
 
-                    window.addEventListener(
-                        "storage",
-                        function (event) {
-                            if (
-                                event.key ===
-                                "trustcart-theme"
-                            ) {
-                                applyReviewTheme(
-                                    event.newValue ===
-                                    "dark"
-                                        ? "dark"
-                                        : "light"
-                                );
-                            }
-                        }
-                    );
-                }
+        const price =
+            analysis.price ??
+            product.price;
 
-                function renderAnalysis(data) {
+        const rating =
+            safeRating(
+                analysis.rating ??
+                product.rating
+            );
 
-                    const product =
-                        data.product || {};
+        const reviews =
+            analysis.review_count ??
+            product.review_count ??
+            product.reviews;
 
-                    const analysis =
-                        data.analysis || {};
+        const seller =
+            analysis.seller_name ||
+            analysis.seller ||
+            product.seller_name ||
+            product.seller ||
+            item.seller_name ||
+            item.seller ||
+            "Seller information unavailable";
 
-                    const canonical =
-                        data.canonical || {};
+        const trustScore =
+            safeScore(
+                analysis.trust_score
+            );
 
-                    const name =
-                        product.name ||
-                        product.title ||
-                        canonical.product_name ||
-                        fallbackTitle ||
-                        "Product";
+        const trustLevel =
+            analysis.trust_level ||
+            "Unavailable";
 
-                    const image =
-                        product.image_url ||
-                        product.imageUrl ||
-                        product.image ||
-                        canonical.image_url ||
-                        "";
+        const ratingScore =
+            safeScore(
+                analysis.rating_score
+            );
 
-                    const marketplace =
-                        analysis.marketplace ||
-                        product.marketplace ||
-                        "Marketplace";
+        const reviewScore =
+            safeScore(
+                analysis.review_score
+            );
 
-                    const price =
-                        analysis.price ??
-                        product.price;
+        const priceScore =
+            safeScore(
+                analysis.price_score
+            );
 
-                    const rating =
-                        analysis.rating ??
-                        product.rating;
+        const sellerScore =
+            safeScore(
+                analysis.seller_score
+            );
 
-                    const reviews =
-                        analysis.review_count ??
-                        product.review_count;
+        const root =
+            document.getElementById(
+                "tcAnalysisRoot"
+            );
 
-                    const trustScore =
-                        Number(
-                            analysis.trust_score
-                        );
+        if (!root) {
+            return;
+        }
 
-                    const trustLevel =
-                        analysis.trust_level ||
-                        "Unavailable";
+        const safeProductUrl =
+            typeof productUrl === "string" &&
+            /^https?:\/\//i.test(productUrl)
+                ? productUrl
+                : "";
 
-                    const ratingScore =
-                        Number(
-                            analysis.rating_score
-                        );
+        const ratingText =
+            rating !== null
+                ? rating.toFixed(1) + " / 5"
+                : "Unavailable";
 
-                    const reviewScore =
-                        Number(
-                            analysis.review_score
-                        );
+        const reviewCount =
+            Number(reviews);
 
-                    const priceScore =
-                        Number(
-                            analysis.price_score
-                        );
+        const reviewText =
+            Number.isFinite(reviewCount)
+                ? formatNumber(reviewCount)
+                : "Unavailable";
 
-                    const sellerScore =
-                        Number(
-                            analysis.seller_score
-                        );
+        /*
+         * Review insight text is derived only
+         * from actual rating/review data.
+         */
+        let reviewInsight =
+            "Review data is limited.";
 
-                    const safeUrl =
-                        /^https?:\\/\\//i.test(
-                            product.product_url ||
-                            productUrl
-                        )
-                            ? (
-                                product.product_url ||
-                                productUrl
-                            )
-                            : "#";
+        if (
+            rating !== null &&
+            Number.isFinite(reviewCount)
+        ) {
 
-                    const imageHtml =
+            if (
+                rating >= 4.3 &&
+                reviewCount >= 1000
+            ) {
+
+                reviewInsight =
+                    "Strong rating combined with a large review volume.";
+
+            } else if (
+                rating >= 4.0 &&
+                reviewCount >= 100
+            ) {
+
+                reviewInsight =
+                    "Positive rating with a useful review sample.";
+
+            } else if (
+                rating >= 4.0
+            ) {
+
+                reviewInsight =
+                    "The rating is positive, but the review volume is relatively limited.";
+
+            } else {
+
+                reviewInsight =
+                    "Consider checking individual reviews before purchasing.";
+            }
+        }
+
+        const ratingStrength =
+            rating === null
+                ? 0
+                : Math.min(
+                    100,
+                    (rating / 5) * 100
+                );
+
+        const reviewVolumeStrength =
+            !Number.isFinite(reviewCount)
+                ? 0
+                : Math.min(
+                    100,
+                    Math.round(
+                        (
+                            Math.log10(
+                                Math.max(
+                                    1,
+                                    reviewCount
+                                )
+                            ) / 5
+                        ) * 100
+                    )
+                );
+
+        root.innerHTML = `
+
+            <section class="tc-hero">
+
+                <div class="tc-product-image-wrap">
+
+                    ${
                         image
-                            ? \`
+                            ? `
                                 <img
-                                    class="product-image"
-                                    src="\${escapeHtml(image)}"
-                                    alt="\${escapeHtml(name)}"
-                                    onerror="this.style.display='none'"
+                                    class="tc-product-image"
+                                    src="${escapeHtml(image)}"
+                                    alt="${escapeHtml(name)}"
+                                    onerror="
+                                        this.style.display='none';
+                                        this.nextElementSibling.style.display='block';
+                                    "
                                 >
-                              \`
-                            : \`
-                                <div>
-                                    Product image unavailable
+                                <div
+                                    class="tc-no-image"
+                                    style="display:none;"
+                                >
+                                    🛒
                                 </div>
-                              \`;
-
-                    const scores = [
-                        [
-                            "Rating Score",
-                            ratingScore
-                        ],
-                        [
-                            "Review Score",
-                            reviewScore
-                        ],
-                        [
-                            "Price Score",
-                            priceScore
-                        ],
-                        [
-                            "Seller Score",
-                            sellerScore
-                        ]
-                    ];
-
-                    const scoreRows =
-                        scores.map(
-                            ([label, value]) => \`
-                                <div class="score-row">
-                                    <div class="score-head">
-                                        <span>
-                                            \${escapeHtml(label)}
-                                        </span>
-                                        <span>
-                                            \${Number.isFinite(value)
-                                                ? value
-                                                : "—"}
-                                        </span>
-                                    </div>
-
-                                    <div class="score-track">
-                                        <div
-                                            class="score-fill"
-                                            style="width:\${scorePercent(value)}%"
-                                        ></div>
-                                    </div>
+                            `
+                            : `
+                                <div class="tc-no-image">
+                                    🛒
                                 </div>
-                            \`
-                        ).join("");
+                            `
+                    }
 
-                    document.getElementById(
-                        "analysisRoot"
-                    ).innerHTML = \`
+                </div>
 
-                        <section class="hero">
+                <div>
 
-                            <div class="product-image-wrap">
-                                \${imageHtml}
-                            </div>
+                    <div class="tc-eyebrow">
+                        Product Analysis
+                    </div>
 
-                            <div>
-                                <div class="eyebrow">
-                                    Product Analysis
-                                </div>
+                    <h1>
+                        ${escapeHtml(name)}
+                    </h1>
 
-                                <h1>
-                                    \${escapeHtml(name)}
-                                </h1>
+                    <span class="tc-marketplace">
+                        ${escapeHtml(marketplace)}
+                    </span>
 
-                                <span class="marketplace">
-                                    \${escapeHtml(marketplace)}
-                                </span>
-                            </div>
+                    <div class="tc-hero-price">
+                        ${formatPrice(price)}
+                    </div>
 
-                        </section>
+                </div>
 
-                        <section class="section">
+            </section>
 
-                            <h2 class="section-title">
-                                Product Overview
-                            </h2>
+            <section class="tc-section">
 
-                            <div class="metrics">
+                <h2 class="tc-section-title">
+                    Product Overview
+                </h2>
 
-                                <div class="metric">
-                                    <div class="metric-label">
-                                        Price
-                                    </div>
-                                    <div class="metric-value">
-                                        \${escapeHtml(
-                                            formatPrice(price)
-                                        )}
-                                    </div>
-                                </div>
+                <div class="tc-metrics">
 
-                                <div class="metric">
-                                    <div class="metric-label">
-                                        Rating
-                                    </div>
-                                    <div class="metric-value">
-                                        \${escapeHtml(
-                                            rating ?? "—"
-                                        )} ★
-                                    </div>
-                                </div>
+                    <div class="tc-metric">
+                        <div class="tc-metric-label">
+                            Price
+                        </div>
+                        <div class="tc-metric-value">
+                            ${formatPrice(price)}
+                        </div>
+                    </div>
 
-                                <div class="metric">
-                                    <div class="metric-label">
-                                        Reviews
-                                    </div>
-                                    <div class="metric-value">
-                                        \${escapeHtml(
-                                            formatNumber(reviews)
-                                        )}
-                                    </div>
+                    <div class="tc-metric">
+                        <div class="tc-metric-label">
+                            Rating
+                        </div>
+                        <div class="tc-metric-value">
+                            ${escapeHtml(ratingText)}
+                        </div>
+                    </div>
+
+                    <div class="tc-metric">
+                        <div class="tc-metric-label">
+                            Reviews
+                        </div>
+                        <div class="tc-metric-value">
+                            ${escapeHtml(reviewText)}
+                        </div>
+                    </div>
+
+                    <div class="tc-metric">
+                        <div class="tc-metric-label">
+                            Seller
+                        </div>
+                        <div class="tc-metric-value"
+                             style="font-size:17px;">
+                            ${escapeHtml(seller)}
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    Trust Analysis
+                </h2>
+
+                <div class="tc-trust-grid">
+
+                    <div class="tc-trust-score-card">
+
+                        <div
+                            class="tc-score-circle"
+                            style="--tc-score:${trustScore}%;"
+                        >
+
+                            <div class="tc-score-content">
+
+                                <div class="tc-score-number">
+                                    ${Math.round(trustScore)}
                                 </div>
 
-                                <div class="metric">
-                                    <div class="metric-label">
-                                        Marketplace
-                                    </div>
-                                    <div class="metric-value">
-                                        \${escapeHtml(
-                                            marketplace
-                                        )}
-                                    </div>
+                                <div class="tc-score-label">
+                                    Trust Score
                                 </div>
 
                             </div>
 
-                        </section>
+                        </div>
 
-                        <section class="section">
+                        <div class="tc-trust-level">
+                            ${escapeHtml(trustLevel)}
+                        </div>
 
-                            <h2 class="section-title">
-                                Trust Analysis
-                            </h2>
+                    </div>
 
-                            <div class="trust-card">
+                    <div class="tc-breakdown-card">
 
-                                <div class="trust-score">
-                                    <div>
-                                        <div class="trust-number">
-                                            \${Number.isFinite(
-                                                trustScore
-                                            )
-                                                ? trustScore
-                                                : "—"}
-                                        </div>
+                        <div class="tc-score-row">
 
-                                        <div class="trust-label">
-                                            Trust Score
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-
-                                    <div class="trust-level">
-                                        \${escapeHtml(
-                                            trustLevel
-                                        )}
-                                    </div>
-
-                                    \${scoreRows}
-
-                                </div>
-
+                            <div class="tc-score-head">
+                                <span>Rating Score</span>
+                                <span>${Math.round(ratingScore)}%</span>
                             </div>
 
-                        </section>
+                            <div class="tc-score-track">
+                                <div
+                                    class="tc-score-fill"
+                                    style="width:${ratingScore}%"
+                                ></div>
+                            </div>
 
-                        <section class="section">
+                        </div>
 
-                            <h2 class="section-title">
-                                Price & Marketplace
-                            </h2>
+                        <div class="tc-score-row">
 
-                            <div class="price-box">
+                            <div class="tc-score-head">
+                                <span>Review Score</span>
+                                <span>${Math.round(reviewScore)}%</span>
+                            </div>
 
-                                <div>
-                                    <div
-                                        style="
-                                            color:var(--muted);
-                                            font-size:13px;
-                                            font-weight:800;
-                                        "
-                                    >
-                                        Listed price
-                                    </div>
+                            <div class="tc-score-track">
+                                <div
+                                    class="tc-score-fill"
+                                    style="width:${reviewScore}%"
+                                ></div>
+                            </div>
 
-                                    <div class="price">
-                                        \${escapeHtml(
-                                            formatPrice(price)
-                                        )}
-                                    </div>
-                                </div>
+                        </div>
 
+                        <div class="tc-score-row">
+
+                            <div class="tc-score-head">
+                                <span>Price Score</span>
+                                <span>${Math.round(priceScore)}%</span>
+                            </div>
+
+                            <div class="tc-score-track">
+                                <div
+                                    class="tc-score-fill"
+                                    style="width:${priceScore}%"
+                                ></div>
+                            </div>
+
+                        </div>
+
+                        <div class="tc-score-row">
+
+                            <div class="tc-score-head">
+                                <span>Seller Score</span>
+                                <span>${Math.round(sellerScore)}%</span>
+                            </div>
+
+                            <div class="tc-score-track">
+                                <div
+                                    class="tc-score-fill"
+                                    style="width:${sellerScore}%"
+                                ></div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    Review & Rating Insights
+                </h2>
+
+                <div class="tc-review-grid">
+
+                    <div class="tc-review-card">
+
+                        <h3>
+                            Rating Strength
+                        </h3>
+
+                        <div class="tc-review-value">
+                            ${
+                                rating !== null
+                                    ? rating.toFixed(1) + " ★"
+                                    : "—"
+                            }
+                        </div>
+
+                        <p>
+                            ${
+                                rating !== null
+                                    ? "Based on the rating returned for this product."
+                                    : "A rating was not available from the analyzed product data."
+                            }
+                        </p>
+
+                    </div>
+
+                    <div class="tc-review-card">
+
+                        <h3>
+                            Review Volume
+                        </h3>
+
+                        <div class="tc-review-value">
+                            ${escapeHtml(reviewText)}
+                        </div>
+
+                        <p>
+                            ${
+                                Number.isFinite(reviewCount)
+                                    ? "Number of reviews currently available to TrustCart."
+                                    : "Review count was not available from the analyzed data."
+                            }
+                        </p>
+
+                    </div>
+
+                    <div class="tc-review-card">
+
+                        <h3>
+                            Review Signal
+                        </h3>
+
+                        <div class="tc-review-value">
+                            ${
+                                rating !== null &&
+                                Number.isFinite(reviewCount)
+                                    ? "Available"
+                                    : "Limited"
+                            }
+                        </div>
+
+                        <p>
+                            ${escapeHtml(reviewInsight)}
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    Review Data Strength
+                </h2>
+
+                <div class="tc-breakdown-card">
+
+                    <div class="tc-score-row">
+
+                        <div class="tc-score-head">
+                            <span>Rating signal</span>
+                            <span>${Math.round(ratingStrength)}%</span>
+                        </div>
+
+                        <div class="tc-score-track">
+                            <div
+                                class="tc-score-fill"
+                                style="width:${ratingStrength}%"
+                            ></div>
+                        </div>
+
+                    </div>
+
+                    <div class="tc-score-row">
+
+                        <div class="tc-score-head">
+                            <span>Review volume signal</span>
+                            <span>${Math.round(reviewVolumeStrength)}%</span>
+                        </div>
+
+                        <div class="tc-score-track">
+                            <div
+                                class="tc-score-fill"
+                                style="width:${reviewVolumeStrength}%"
+                            ></div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    TrustCart Verdict
+                </h2>
+
+                <div class="tc-verdict-card">
+
+                    <div class="tc-verdict-top">
+
+                        <div class="tc-verdict-title">
+                            <span id="tcVerdictIcon">🧠</span>
+                            <span id="tcVerdictTitle">
+                                Analyzing...
+                            </span>
+                        </div>
+
+                        <div
+                            class="tc-verdict-badge"
+                            id="tcVerdictBadge"
+                        >
+                            —
+                        </div>
+
+                    </div>
+
+                    <p
+                        class="tc-verdict-text"
+                        id="tcVerdictText"
+                    >
+                        TrustCart is evaluating the available
+                        product signals.
+                    </p>
+
+                    <div
+                        class="tc-verdict-confidence"
+                        id="tcVerdictConfidence"
+                    >
+                        Confidence: —
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    Smart Product Intelligence
+                </h2>
+
+                <div class="tc-intelligence-grid">
+
+                    <div class="tc-intelligence-card">
+
+                        <div class="tc-intelligence-icon">
+                            💰
+                        </div>
+
+                        <h3>
+                            Price Intelligence
+                        </h3>
+
+                        <p id="tcPriceInsight">
+                            Evaluating price information...
+                        </p>
+
+                    </div>
+
+                    <div class="tc-intelligence-card">
+
+                        <div class="tc-intelligence-icon">
+                            🏪
+                        </div>
+
+                        <h3>
+                            Seller Confidence
+                        </h3>
+
+                        <p id="tcSellerInsight">
+                            Evaluating seller information...
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    Things to Check
+                </h2>
+
+                <div class="tc-check-card"
+                     style="
+                        padding:21px;
+                        border-radius:18px;
+                        background:var(--tc-card);
+                        border:1px solid var(--tc-border);
+                     ">
+
+                    <div
+                        class="tc-check-list"
+                        id="tcCheckList"
+                    ></div>
+
+                </div>
+
+            </section>
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    How TrustCart Decides
+                </h2>
+
+                <div class="tc-method-card">
+
+                    <p style="
+                        margin:0;
+                        color:var(--tc-muted);
+                        line-height:1.6;
+                        font-size:13px;
+                    ">
+                        TrustCart combines the available product
+                        signals into a single trust assessment.
+                        It does not invent review or sentiment data.
+                    </p>
+
+                    <div class="tc-method-flow">
+
+                        <div class="tc-method-step">
+                            ⭐<br>
+                            Rating
+                        </div>
+
+                        <div class="tc-method-step">
+                            💬<br>
+                            Reviews
+                        </div>
+
+                        <div class="tc-method-step">
+                            💰<br>
+                            Price
+                        </div>
+
+                        <div class="tc-method-step">
+                            🏪<br>
+                            Seller
+                        </div>
+
+                    </div>
+
+                    <div style="
+                        text-align:center;
+                        margin-top:15px;
+                        color:var(--tc-green-light);
+                        font-weight:900;
+                    ">
+                        ↓
+                        TrustCart Trust Score
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <section class="tc-section">
+
+                <h2 class="tc-section-title">
+                    Buy From Marketplace
+                </h2>
+
+                <div class="tc-price-card">
+
+                    <div class="tc-price-info">
+
+                        <div class="tc-price-main">
+                            ${formatPrice(price)}
+                        </div>
+
+                        <div class="tc-price-sub">
+                            ${escapeHtml(marketplace)}
+                        </div>
+
+                    </div>
+
+                    <div class="tc-tools">
+
+                        <button
+                            type="button"
+                            class="tc-analysis-action"
+                            id="tcCopyAnalysis"
+                        >
+                            📋 Copy Analysis
+                        </button>
+
+                        <span
+                            class="tc-copy-status"
+                            id="tcCopyStatus"
+                        ></span>
+
+                    </div>
+
+
+                    ${
+                        safeProductUrl
+                            ? `
                                 <a
-                                    class="buy-button"
-                                    href="\${escapeHtml(safeUrl)}"
+                                    class="tc-analysis-action tc-analysis-primary"
+                                    href="${escapeHtml(safeProductUrl)}"
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    style="
+                                        text-decoration:none;
+                                        display:inline-flex;
+                                        align-items:center;
+                                        justify-content:center;
+                                    "
                                 >
-                                    View on \${escapeHtml(
-                                        marketplace
-                                    )}
+                                    View Product →
                                 </a>
+                            `
+                            : `
+                                <button
+                                    class="tc-analysis-action"
+                                    type="button"
+                                    disabled
+                                >
+                                    Product Link Unavailable
+                                </button>
+                            `
+                    }
 
-                            </div>
+                </div>
 
-                            <div class="note">
-                                Trust Score is calculated by
-                                TrustCart using rating, review
-                                count, price and marketplace
-                                trust signals.
-                            </div>
+            </section>
 
-                        </section>
-                    \`;
+        `;
+
+        /*
+         * ---------------------------------------------
+         * TRUSTCART VERDICT
+         * ---------------------------------------------
+         */
+
+        const verdictTitle =
+            document.getElementById(
+                "tcVerdictTitle"
+            );
+
+        const verdictBadge =
+            document.getElementById(
+                "tcVerdictBadge"
+            );
+
+        const verdictText =
+            document.getElementById(
+                "tcVerdictText"
+            );
+
+        const verdictConfidence =
+            document.getElementById(
+                "tcVerdictConfidence"
+            );
+
+        let verdict =
+            "Low Confidence";
+
+        let verdictMessage =
+            "There is not enough strong product data to make a confident recommendation.";
+
+        if (trustScore >= 90) {
+
+            verdict =
+                "Excellent Choice";
+
+            verdictMessage =
+                "The available TrustCart signals are consistently strong for this product.";
+
+        } else if (trustScore >= 75) {
+
+            verdict =
+                "Good Choice";
+
+            verdictMessage =
+                "The product shows a generally strong combination of trust, pricing and review signals.";
+
+        } else if (trustScore >= 60) {
+
+            verdict =
+                "Consider Carefully";
+
+            verdictMessage =
+                "Some signals are positive, but it is worth checking the product details before purchasing.";
+
+        }
+
+        if (verdictTitle) {
+            verdictTitle.textContent = verdict;
+        }
+
+        if (verdictBadge) {
+            verdictBadge.textContent =
+                Math.round(trustScore) +
+                "/100";
+        }
+
+        if (verdictText) {
+            verdictText.textContent =
+                verdictMessage;
+        }
+
+        if (verdictConfidence) {
+            verdictConfidence.textContent =
+                "Confidence: " +
+                Math.round(trustScore) +
+                "/100";
+        }
+
+        /*
+         * ---------------------------------------------
+         * PRICE INTELLIGENCE
+         * ---------------------------------------------
+         */
+
+        const priceInsight =
+            document.getElementById(
+                "tcPriceInsight"
+            );
+
+        if (priceInsight) {
+
+            if (
+                Number.isFinite(Number(price)) &&
+                Number.isFinite(priceScore)
+            ) {
+
+                if (priceScore >= 80) {
+
+                    priceInsight.textContent =
+                        "TrustCart's available price signal is strong, indicating that this offer is competitively positioned.";
+
+                } else if (priceScore >= 60) {
+
+                    priceInsight.textContent =
+                        "The available price signal is moderate. Compare the final checkout price, delivery charges and offers before buying.";
+
+                } else {
+
+                    priceInsight.textContent =
+                        "The available price signal is weaker. Check other available sellers before making the final decision.";
+
                 }
 
-                async function loadAnalysis() {
+            } else {
 
-                    if (
-                        !productUrl ||
-                        productUrl === "#"
-                    ) {
-                        document.getElementById(
-                            "analysisRoot"
-                        ).innerHTML = \`
-                            <div class="error">
-                                Product URL is unavailable.
+                priceInsight.textContent =
+                    "Price intelligence is limited because complete price data was not available.";
+            }
+        }
+
+        /*
+         * ---------------------------------------------
+         * SELLER INTELLIGENCE
+         * ---------------------------------------------
+         */
+
+        const sellerInsight =
+            document.getElementById(
+                "tcSellerInsight"
+            );
+
+        if (sellerInsight) {
+
+            if (
+                sellerScore >= 80
+            ) {
+
+                sellerInsight.textContent =
+                    "The available seller signal is strong.";
+
+            } else if (
+                sellerScore >= 60
+            ) {
+
+                sellerInsight.textContent =
+                    "The seller signal is moderate. Review seller details and return policies before checkout.";
+
+            } else {
+
+                sellerInsight.textContent =
+                    "Seller confidence is limited. Check seller information carefully before purchasing.";
+            }
+        }
+
+        /*
+         * ---------------------------------------------
+         * THINGS TO CHECK
+         * ---------------------------------------------
+         */
+
+        const checkList =
+            document.getElementById(
+                "tcCheckList"
+            );
+
+        if (checkList) {
+
+            const checks = [];
+
+            if (
+                rating !== null &&
+                rating >= 4
+            ) {
+
+                checks.push(
+                    "✓ Strong product rating"
+                );
+
+            } else {
+
+                checks.push(
+                    "⚠ Check the product rating carefully"
+                );
+            }
+
+            if (
+                Number.isFinite(reviewCount) &&
+                reviewCount >= 100
+            ) {
+
+                checks.push(
+                    "✓ Useful review volume is available"
+                );
+
+            } else {
+
+                checks.push(
+                    "⚠ Review volume is limited"
+                );
+            }
+
+            if (
+                sellerScore >= 70
+            ) {
+
+                checks.push(
+                    "✓ Seller signal is reasonably strong"
+                );
+
+            } else {
+
+                checks.push(
+                    "⚠ Seller information deserves extra attention"
+                );
+            }
+
+            if (
+                trustScore >= 75
+            ) {
+
+                checks.push(
+                    "✓ Overall TrustCart signal is positive"
+                );
+
+            } else {
+
+                checks.push(
+                    "⚠ Overall trust confidence is not high"
+                );
+            }
+
+            checkList.innerHTML =
+                checks
+                    .map(
+                        check => `
+                            <div class="tc-check-item">
+                                <span class="tc-check-icon">
+                                    ${check.startsWith("✓") ? "✓" : "⚠"}
+                                </span>
+                                <span>
+                                    ${escapeHtml(
+                                        check.replace(
+                                            /^[✓⚠]\s*/,
+                                            ""
+                                        )
+                                    )}
+                                </span>
                             </div>
-                        \`;
+                        `
+                    )
+                    .join("");
+        }
 
-                        return;
-                    }
+        /*
+         * ---------------------------------------------
+         * COPY ANALYSIS
+         * ---------------------------------------------
+         */
+
+        const copyButton =
+            document.getElementById(
+                "tcCopyAnalysis"
+            );
+
+        const copyStatus =
+            document.getElementById(
+                "tcCopyStatus"
+            );
+
+        if (copyButton) {
+
+            copyButton.onclick =
+                async () => {
+
+                    const summary = [
+                        "TrustCart Product Analysis",
+                        "",
+                        "Product: " + name,
+                        "Marketplace: " + marketplace,
+                        "Price: " + formatPrice(price),
+                        "Rating: " + ratingText,
+                        "Reviews: " + reviewText,
+                        "Trust Score: " +
+                            Math.round(trustScore) +
+                            "/100",
+                        "Verdict: " + verdict
+                    ].join("\n");
 
                     try {
 
-                        const response =
-                            await fetch(
-                                "/api/products/analyze",
-                                {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type":
-                                            "application/json",
-                                        "Accept":
-                                            "application/json"
-                                    },
-                                    credentials: "include",
-                                    body: JSON.stringify({
-                                        url: productUrl
-                                    })
-                                }
-                            );
-
-                        const data =
-                            await response.json();
-
-                        if (!response.ok ||
-                            !data.success) {
-
-                            throw new Error(
-                                data.message ||
-                                "Unable to analyze this product."
-                            );
-                        }
-
-                        renderAnalysis(data);
-
-                    } catch (error) {
-
-                        console.error(
-                            "TrustCart product analysis error:",
-                            error
+                        await navigator.clipboard.writeText(
+                            summary
                         );
 
-                        document.getElementById(
-                            "analysisRoot"
-                        ).innerHTML = \`
-                            <div class="error">
-                                <h2>
-                                    Product analysis unavailable
-                                </h2>
+                        if (copyStatus) {
+                            copyStatus.textContent =
+                                "Copied!";
+                        }
 
-                                <p>
-                                    \${escapeHtml(
-                                        error?.message ||
-                                        "Unable to load product analysis."
-                                    )}
-                                </p>
-                            </div>
-                        \`;
+                    } catch {
+
+                        if (copyStatus) {
+                            copyStatus.textContent =
+                                "Copy unavailable";
+                        }
                     }
-                }
 
-                initReviewTheme();
-                loadAnalysis();
-            <\/script>
-        </body>
-        </html>
-    `);
+                    setTimeout(
+                        () => {
+
+                            if (copyStatus) {
+                                copyStatus.textContent =
+                                    "";
+                            }
+
+                        },
+                        2200
+                    );
+                };
+        }
+
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * LOAD REAL API DATA
+     * ---------------------------------------------------------
+     */
+
+    async function loadAnalysis() {
+
+        if (!productUrl) {
+
+            document.getElementById(
+                "tcAnalysisRoot"
+            ).innerHTML = `
+
+                <div class="tc-error">
+
+                    <h2>
+                        Product analysis unavailable
+                    </h2>
+
+                    <p>
+                        A valid product URL was not available
+                        for this seller.
+                    </p>
+
+                </div>
+            `;
+
+            return;
+        }
+
+        try {
+
+            const response =
+                await fetch(
+                    "/api/products/analyze",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+
+                            "Accept":
+                                "application/json"
+                        },
+
+                        credentials: "include",
+
+                        body: JSON.stringify({
+                            url: productUrl
+                        })
+                    }
+                );
+
+            let data = null;
+
+            try {
+                data =
+                    await response.json();
+            } catch {
+                data = null;
+            }
+
+            if (
+                !response.ok ||
+                !data ||
+                data.success === false
+            ) {
+
+                throw new Error(
+                    data?.message ||
+                    "Unable to analyze this product."
+                );
+            }
+
+            renderAnalysis(data);
+
+        } catch (error) {
+
+            console.error(
+                "TrustCart product analysis error:",
+                error
+            );
+
+            const root =
+                document.getElementById(
+                    "tcAnalysisRoot"
+                );
+
+            if (!root) {
+                return;
+            }
+
+            root.innerHTML = `
+
+                <div class="tc-error">
+
+                    <h2>
+                        Product analysis unavailable
+                    </h2>
+
+                    <p>
+                        ${escapeHtml(
+                            error?.message ||
+                            "Unable to load product analysis."
+                        )}
+                    </p>
+
+                    <button
+                        type="button"
+                        class="tc-analysis-action"
+                        id="tcAnalysisRetry"
+                        style="margin-top:15px;"
+                    >
+                        Try Again
+                    </button>
+
+                </div>
+            `;
+
+            document.getElementById(
+                "tcAnalysisRetry"
+            )?.addEventListener(
+                "click",
+                loadAnalysis
+            );
+        }
+    }
+
+    loadAnalysis();
 }
 
 function displayComparisonData(product, prices) {
