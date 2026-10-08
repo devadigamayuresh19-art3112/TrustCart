@@ -675,7 +675,7 @@ class ProductDiscovery:
             # discovery behavior. Snapdeal is a secondary fallback
             # marketplace, so use only the strongest query there.
             if marketplace == "Snapdeal":
-                variants_to_use = variants[:1]
+                variants_to_use = variants[:2]
 
             elif marketplace == "Amazon":
                 # Amazon search is much more reliable when the strongest
@@ -820,7 +820,8 @@ class ProductDiscovery:
                 results.extend(page_results)
 
                 prepared = self._prepare_search_candidates(
-                    results
+                    results,
+                    canonical_product
                 )
 
                 prioritized = (
@@ -880,7 +881,10 @@ class ProductDiscovery:
             # FAST SEARCHES COMPLETE
             # ------------------------------------------------
 
-            prepared = self._prepare_search_candidates(results)
+            prepared = self._prepare_search_candidates(
+                results,
+                canonical_product
+            )
 
             # ------------------------------------------------
             # REMOVE EXPLICITLY WRONG VARIANTS BEFORE THE
@@ -1132,7 +1136,8 @@ class ProductDiscovery:
 
                         page_results = (
                             self._prepare_search_candidates(
-                                page_results
+                                page_results,
+                                canonical_product
                             )
                         )
 
@@ -1266,7 +1271,10 @@ class ProductDiscovery:
             # the final strict equivalence check, so unrelated
             # products are never presented as matches.
             # ------------------------------------------------
-            results = self._prepare_search_candidates(results)
+            results = self._prepare_search_candidates(
+                results,
+                canonical_product
+            )
 
             if marketplace == "Snapdeal":
                 results = results[:2]
@@ -1390,9 +1398,71 @@ class ProductDiscovery:
     # PREPARE SEARCH CANDIDATES
     # ========================================================
 
+    def _normalize_strobe_cream_model(
+        self,
+        name,
+        existing_model=None
+    ):
+        """
+        Narrow discovery-only normalization for the FACES CANADA
+        Strobe Cream Mini product family.
+
+        Only titles explicitly containing:
+            Strobe Cream Mini
+
+        are normalized.
+
+        Shade/color is not treated as the product model.
+        Multi-packs are intentionally excluded.
+        Unrelated products such as Strobe CC Tint are untouched.
+        """
+
+        text = str(name or "").strip()
+
+        if not text:
+            return existing_model
+
+        # Only the actual Strobe Cream Mini family.
+        if not re.search(
+            r"\bstrobe\s+cream\s+mini\b",
+            text,
+            re.IGNORECASE
+        ):
+            return existing_model
+
+        # Do not normalize explicit multi-packs.
+        if re.search(
+            r"\bpack\s+of\s+\d+\b",
+            text,
+            re.IGNORECASE
+        ):
+            return existing_model
+
+        if re.search(
+            r"\b\d+\s*[x×]\s*\d+(?:\.\d+)?\s*(?:ml|g|kg)\b",
+            text,
+            re.IGNORECASE
+        ):
+            return existing_model
+
+        size_match = re.search(
+            r"\b(\d+(?:\.\d+)?)\s*(ml|g|kg)\b",
+            text,
+            re.IGNORECASE
+        )
+
+        if not size_match:
+            return existing_model
+
+        size = size_match.group(1)
+        unit = size_match.group(2).lower()
+
+        return f"Strobe Cream Mini {size}{unit}"
+
     def _prepare_search_candidates(
         self,
-        candidates
+        candidates,
+        canonical_product=None
     ):
 
         for candidate in candidates:
@@ -1416,6 +1486,19 @@ class ProductDiscovery:
                 if model:
 
                     candidate["model"] = model
+
+            # Narrow cosmetic normalization.
+            # This does not alter the global model extractor.
+            strobe_model = (
+                self._normalize_strobe_cream_model(
+                    name,
+                    candidate.get("model")
+                )
+            )
+
+            if strobe_model:
+
+                candidate["model"] = strobe_model
 
             # ------------------------------------------------
             # CATEGORY
@@ -1445,7 +1528,38 @@ class ProductDiscovery:
 
                     candidate["brand"] = brand
 
+                else:
+                    # Generic source-brand fallback.
+                    # Use the authoritative source brand when
+                    # it appears in the candidate title.
+
+                    source_brand = str(
+                        (canonical_product or {}).get("brand")
+                        or ""
+                    ).strip()
+
+                    if (
+                        source_brand
+                        and re.search(
+                            r"\b" + re.escape(source_brand) + r"\b",
+                            str(name or ""),
+                            re.IGNORECASE
+                        )
+                    ):
+                        candidate["brand"] = source_brand
+
+        # ------------------------------------------------
+        # CLEAN BRAND AFTER ALL BRAND EXTRACTION/FALLBACK
+        # ------------------------------------------------
+
+        if candidate.get("brand"):
+
+            candidate["brand"] = self._clean_brand(
+                candidate.get("brand")
+            )
+
         return candidates
+
 
     def _candidate_model_key(self, candidate):
         model = candidate.get("model")
@@ -1583,7 +1697,6 @@ class ProductDiscovery:
             "protective",
             "storage",
             "protector",
-            "skin",
             "sleeve",
             "screen",
             "tempered",
@@ -2849,6 +2962,19 @@ class ProductDiscovery:
                     if model:
 
                         candidate["model"] = model
+
+                # Re-apply the narrow Strobe Cream normalization
+                # after detail data has been merged.
+                strobe_model = (
+                    self._normalize_strobe_cream_model(
+                        candidate.get("name"),
+                        candidate.get("model")
+                    )
+                )
+
+                if strobe_model:
+
+                    candidate["model"] = strobe_model
 
                 # =================================================
                 # CATEGORY
@@ -4243,7 +4369,18 @@ class ProductDiscovery:
             flags=re.IGNORECASE
         )
 
-        return text.strip() or None
+        text = text.strip()
+
+        # Marketplace spelling normalization.
+        # Intentionally limited to FACES CANADA.
+        if re.fullmatch(
+            r"faces\s*canada",
+            text,
+            re.IGNORECASE
+        ):
+            return "FACES CANADA"
+
+        return text or None
 
     # ========================================================
     # AMAZON URL CLEANING

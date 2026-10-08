@@ -2979,3 +2979,115 @@ input:focus-visible {
         transition-duration: 0.01ms !important;
     }
 }
+/* =========================================================
+   SMART BOARD / LARGE DISPLAY SCALING
+   Only affects displays >= 2500px wide.
+   Existing 1920px and mobile layouts remain unchanged.
+   ========================================================= */
+
+@media (min-width: 2500px) {
+
+    :root {
+        --container: 1600px;
+    }
+
+    .topbar {
+        min-height: 92px;
+    }
+
+    .topbar-inner {
+        min-height: 92px;
+    }
+
+    .content {
+        width: min(1600px, calc(100vw - 120px));
+        max-width: 1600px;
+    }
+
+    .theme-toggle,
+    .top-avatar {
+        width: 48px;
+        height: 48px;
+    }
+
+    .primary-btn {
+        min-height: 50px;
+        padding: 0 24px;
+        font-size: 14px;
+    }
+
+    .secondary-action {
+        min-height: 46px;
+        padding: 0 18px;
+        font-size: 13px;
+    }
+
+    .trust-card {
+        padding: 20px;
+    }
+
+    .trust-card strong {
+        font-size: 16px;
+    }
+
+    .trust-card span {
+        font-size: 13px;
+    }
+
+    .best-seller h2 {
+        font-size: 22px;
+    }
+
+    .best-seller p {
+        font-size: 13px;
+    }
+
+    .seller-platform strong {
+        font-size: 14px;
+    }
+
+    .seller-platform span {
+        font-size: 12px;
+    }
+
+    .seller-price {
+        font-size: 16px;
+    }
+}
+
+@media (min-width: 3300px) {
+
+    :root {
+        --container: 1800px;
+    }
+
+    .content {
+        width: min(1800px, calc(100vw - 160px));
+        max-width: 1800px;
+    }
+
+    .topbar,
+    .topbar-inner {
+        min-height: 100px;
+    }
+
+    .trust-card strong {
+        font-size: 17px;
+    }
+
+    .trust-card span {
+        font-size: 14px;
+    }
+
+    .best-seller h2 {
+        font-size: 24px;
+    }
+
+    .seller-platform strong {
+        font-size: 15px;
+    }
+
+    .seller-price {
+        font-size: 18px;
+    }
+}
