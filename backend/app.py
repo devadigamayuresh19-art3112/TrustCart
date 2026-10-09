@@ -17,6 +17,8 @@ import psycopg2
 from psycopg2 import errors
 import os
 import requests
+from reviews.review_fetcher import ReviewFetcher
+from reviews.review_analyzer import ReviewAnalyzer
 import secrets
 
 from urllib.parse import urlparse, urlencode
@@ -2507,6 +2509,115 @@ def analyze_product():
 # ============================================================
 # FULL PRODUCT COMPARISON
 # ============================================================
+
+
+# ============================================================
+# REVIEW NLP ANALYSIS
+# ============================================================
+
+@app.route(
+    "/api/reviews/analyze",
+    methods=["POST"]
+)
+def analyze_reviews():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        product_url = (
+            data.get("url")
+            or data.get("product_url")
+            or ""
+        ).strip()
+
+        if not product_url:
+            return jsonify({
+                "success": False,
+                "message": "Product URL is required."
+            }), 400
+
+        if not is_valid_url(product_url):
+            return jsonify({
+                "success": False,
+                "message": "Invalid product URL."
+            }), 400
+
+        if not is_supported_marketplace_url(product_url):
+            return jsonify({
+                "success": False,
+                "message":
+                    "Review analysis currently supports "
+                    "Amazon and Flipkart URLs only."
+            }), 400
+
+        print(
+            f"[Review Analysis] Fetching reviews: {product_url}"
+        )
+
+        fetcher = ReviewFetcher()
+
+        reviews = fetcher.fetch_reviews(
+            product_url,
+            max_reviews=50
+        )
+
+        if not reviews:
+
+            return jsonify({
+                "success": True,
+                "review_count": 0,
+                "positive": 0,
+                "negative": 0,
+                "neutral": 0,
+                "suspicious": 0,
+                "likely_genuine": 0,
+                "sentiment_score": 0,
+                "authenticity_score": 0,
+                "reviews": [],
+                "message":
+                    "No review text could be retrieved "
+                    "from this product page."
+            })
+
+        print(
+            f"[Review Analysis] Reviews fetched: {len(reviews)}"
+        )
+
+        analyzer = ReviewAnalyzer()
+
+        result = analyzer.analyze_reviews(
+            reviews
+        )
+
+        result["success"] = True
+
+        print(
+            "[Review Analysis] "
+            f"Positive={result['positive']} "
+            f"Negative={result['negative']} "
+            f"Neutral={result['neutral']} "
+            f"Suspicious={result['suspicious']}"
+        )
+
+        return jsonify(result)
+
+    except Exception as exc:
+
+        print(
+            "[Review Analysis] ERROR:",
+            repr(exc)
+        )
+
+        return jsonify({
+            "success": False,
+            "message":
+                "Review analysis failed.",
+            "error": str(exc)
+        }), 500
+
 
 @app.route(
     "/api/products/compare",

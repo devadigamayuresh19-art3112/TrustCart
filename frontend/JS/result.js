@@ -2525,6 +2525,18 @@ async function openReviewAnalysis(item) {
 
     function renderAnalysis(data) {
 
+        /*
+         * Real NLP review analysis.
+         *
+         * This is optional. If review analysis is unavailable,
+         * the existing TrustCart product analysis continues
+         * working normally.
+         */
+
+        const reviewAnalysis =
+            data?.review_analysis || null;
+
+
         const product =
             data?.product || {};
 
@@ -2921,82 +2933,456 @@ async function openReviewAnalysis(item) {
                     Review & Rating Insights
                 </h2>
 
-                <div class="tc-review-grid">
+                ${
+                    reviewAnalysis
+                        ? `
 
-                    <div class="tc-review-card">
+                            <div class="tc-review-grid">
 
-                        <h3>
-                            Rating Strength
-                        </h3>
+                                <div class="tc-review-card">
 
-                        <div class="tc-review-value">
+                                    <h3>
+                                        Sentiment Score
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${safeScore(
+                                            reviewAnalysis.sentiment_score
+                                        )}%
+                                    </div>
+
+                                    <p>
+                                        Overall sentiment calculated
+                                        from actual review text.
+                                    </p>
+
+                                </div>
+
+
+                                <div class="tc-review-card">
+
+                                    <h3>
+                                        Positive Reviews
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${formatNumber(
+                                            reviewAnalysis.positive || 0
+                                        )}
+                                    </div>
+
+                                    <p>
+                                        ${
+                                            reviewAnalysis.review_count
+                                                ? Math.round(
+                                                    (
+                                                        (reviewAnalysis.positive || 0) /
+                                                        reviewAnalysis.review_count
+                                                    ) * 100
+                                                )
+                                                : 0
+                                        }%
+                                        of analyzed reviews.
+                                    </p>
+
+                                </div>
+
+
+                                <div class="tc-review-card">
+
+                                    <h3>
+                                        Negative Reviews
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${formatNumber(
+                                            reviewAnalysis.negative || 0
+                                        )}
+                                    </div>
+
+                                    <p>
+                                        ${
+                                            reviewAnalysis.review_count
+                                                ? Math.round(
+                                                    (
+                                                        (reviewAnalysis.negative || 0) /
+                                                        reviewAnalysis.review_count
+                                                    ) * 100
+                                                )
+                                                : 0
+                                        }%
+                                        of analyzed reviews.
+                                    </p>
+
+                                </div>
+
+
+                                <div class="tc-review-card">
+
+                                    <h3>
+                                        Neutral Reviews
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${formatNumber(
+                                            reviewAnalysis.neutral || 0
+                                        )}
+                                    </div>
+
+                                    <p>
+                                        ${
+                                            reviewAnalysis.review_count
+                                                ? Math.round(
+                                                    (
+                                                        (reviewAnalysis.neutral || 0) /
+                                                        reviewAnalysis.review_count
+                                                    ) * 100
+                                                )
+                                                : 0
+                                        }%
+                                        of analyzed reviews.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="tc-review-grid">
+
+                                <div class="tc-review-card">
+
+                                    <h3>
+                                        Review Authenticity
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${safeScore(
+                                            reviewAnalysis.authenticity_score
+                                        )}%
+                                    </div>
+
+                                    <p>
+                                        Estimated authenticity based
+                                        on multiple review signals.
+                                    </p>
+
+                                </div>
+
+
+                                <div class="tc-review-card">
+
+                                    <h3>
+                                        Likely Genuine
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${formatNumber(
+                                            reviewAnalysis.likely_genuine || 0
+                                        )}
+                                    </div>
+
+                                    <p>
+                                        Reviews showing no major
+                                        suspicious signals.
+                                    </p>
+
+                                </div>
+
+
+                                <div class="tc-review-card">
+
+                                    <h3>
+                                        Potentially Suspicious
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${formatNumber(
+                                            reviewAnalysis.suspicious || 0
+                                        )}
+                                    </div>
+
+                                    <p>
+                                        Reviews flagged by TrustCart's
+                                        heuristic checks.
+                                    </p>
+
+                                </div>
+
+
+                                <div class="tc-review-card">
+
+                                    <h3>
+                                        Reviews Analyzed
+                                    </h3>
+
+                                    <div class="tc-review-value">
+                                        ${formatNumber(
+                                            reviewAnalysis.review_count || 0
+                                        )}
+                                    </div>
+
+                                    <p>
+                                        Actual review texts analyzed
+                                        by TrustCart NLP.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+
                             ${
-                                rating !== null
-                                    ? rating.toFixed(1) + " ★"
-                                    : "—"
+                                Array.isArray(reviewAnalysis.reviews) &&
+                                reviewAnalysis.reviews.length > 0
+                                    ? `
+
+                                        <div
+                                            class="tc-review-card"
+                                            style="margin-top:20px;"
+                                        >
+
+                                            <h3>
+                                                Analyzed Reviews
+                                            </h3>
+
+                                            <p>
+                                                TrustCart analyzed actual
+                                                review text from
+                                                ${escapeHtml(
+                                                    marketplace ||
+                                                    "the marketplace"
+                                                )}.
+                                            </p>
+
+                                            <div
+                                                class="tc-review-grid"
+                                                style="margin-top:16px;"
+                                            >
+
+                                                ${reviewAnalysis.reviews
+                                                    .map(
+                                                        (review, index) => {
+
+                                                            const sentiment =
+                                                                String(
+                                                                    review.sentiment ||
+                                                                    "neutral"
+                                                                ).toLowerCase();
+
+                                                            const status =
+                                                                String(
+                                                                    review.status ||
+                                                                    "likely_genuine"
+                                                                ).toLowerCase();
+
+                                                            const sentimentLabel =
+                                                                sentiment === "positive"
+                                                                    ? "Positive"
+                                                                    : sentiment === "negative"
+                                                                        ? "Negative"
+                                                                        : "Neutral";
+
+                                                            const statusLabel =
+                                                                status === "suspicious"
+                                                                    ? "Potentially Suspicious"
+                                                                    : status === "needs_review"
+                                                                        ? "Needs Review"
+                                                                        : "Likely Genuine";
+
+                                                            const reasons =
+                                                                Array.isArray(
+                                                                    review.reasons
+                                                                )
+                                                                    ? review.reasons
+                                                                    : [];
+
+                                                            return `
+
+                                                                <div
+                                                                    class="tc-review-card"
+                                                                >
+
+                                                                    <h3>
+                                                                        Review ${index + 1}
+                                                                    </h3>
+
+                                                                    <p
+                                                                        style="
+                                                                            line-height:1.65;
+                                                                        "
+                                                                    >
+                                                                        ${escapeHtml(
+                                                                            review.text ||
+                                                                            ""
+                                                                        )}
+                                                                    </p>
+
+                                                                    <p>
+
+                                                                        <strong>
+                                                                            Rating:
+                                                                        </strong>
+
+                                                                        ${
+                                                                            review.rating !== null &&
+                                                                            review.rating !== undefined
+                                                                                ? safeRating(
+                                                                                    review.rating
+                                                                                ) + "/5"
+                                                                                : "—"
+                                                                        }
+
+                                                                    </p>
+
+
+                                                                    <p>
+
+                                                                        <strong>
+                                                                            Sentiment:
+                                                                        </strong>
+
+                                                                        ${sentimentLabel}
+
+                                                                        &nbsp;·&nbsp;
+
+                                                                        <strong>
+                                                                            Score:
+                                                                        </strong>
+
+                                                                        ${safeScore(
+                                                                            review.sentiment_score
+                                                                        )}%
+
+                                                                    </p>
+
+
+                                                                    <p>
+
+                                                                        <strong>
+                                                                            Status:
+                                                                        </strong>
+
+                                                                        ${statusLabel}
+
+                                                                    </p>
+
+
+                                                                    ${
+                                                                        review.suspicion_score !== undefined
+                                                                            ? `
+
+                                                                                <p>
+
+                                                                                    <strong>
+                                                                                        Suspicion Score:
+                                                                                    </strong>
+
+                                                                                    ${safeScore(
+                                                                                        review.suspicion_score
+                                                                                    )}
+
+                                                                                </p>
+
+                                                                            `
+                                                                            : ""
+                                                                    }
+
+
+                                                                    ${
+                                                                        reasons.length > 0
+                                                                            ? `
+
+                                                                                <p>
+
+                                                                                    <strong>
+                                                                                        Signals:
+                                                                                    </strong>
+
+                                                                                    ${reasons
+                                                                                        .map(
+                                                                                            reason =>
+                                                                                                escapeHtml(
+                                                                                                    reason
+                                                                                                )
+                                                                                        )
+                                                                                        .join(
+                                                                                            ", "
+                                                                                        )}
+
+                                                                                </p>
+
+                                                                            `
+                                                                            : ""
+                                                                    }
+
+                                                                </div>
+
+                                                            `;
+                                                        }
+                                                    )
+                                                    .join("")}
+
+                                            </div>
+
+                                        </div>
+
+                                    `
+                                    : `
+
+                                        <div class="tc-review-card">
+
+                                            <h3>
+                                                Review Text
+                                            </h3>
+
+                                            <p>
+                                                No review text was available
+                                                for NLP analysis.
+                                            </p>
+
+                                        </div>
+
+                                    `
                             }
-                        </div>
 
-                        <p>
-                            ${
-                                rating !== null
-                                    ? "Based on the rating returned for this product."
-                                    : "A rating was not available from the analyzed product data."
-                            }
-                        </p>
+                        `
+                        : `
 
-                    </div>
+                            <div class="tc-review-grid">
 
-                    <div class="tc-review-card">
+                                <div class="tc-review-card">
 
-                        <h3>
-                            Review Volume
-                        </h3>
+                                    <h3>
+                                        Review Analysis
+                                    </h3>
 
-                        <div class="tc-review-value">
-                            ${escapeHtml(reviewText)}
-                        </div>
+                                    <div class="tc-review-value">
+                                        —
+                                    </div>
 
-                        <p>
-                            ${
-                                Number.isFinite(reviewCount)
-                                    ? "Number of reviews currently available to TrustCart."
-                                    : "Review count was not available from the analyzed data."
-                            }
-                        </p>
+                                    <p>
+                                        Review text analysis is currently
+                                        unavailable. Existing product
+                                        review information is still shown.
+                                    </p>
 
-                    </div>
+                                </div>
 
-                    <div class="tc-review-card">
+                            </div>
 
-                        <h3>
-                            Review Signal
-                        </h3>
-
-                        <div class="tc-review-value">
-                            ${
-                                rating !== null &&
-                                Number.isFinite(reviewCount)
-                                    ? "Available"
-                                    : "Limited"
-                            }
-                        </div>
-
-                        <p>
-                            ${escapeHtml(reviewInsight)}
-                        </p>
-
-                    </div>
-
-                </div>
+                        `
+                }
 
             </section>
+
 
             <section class="tc-section">
 
                 <h2 class="tc-section-title">
                     Review Data Strength
                 </h2>
+
 
                 <div class="tc-breakdown-card">
 
@@ -3637,6 +4023,10 @@ async function openReviewAnalysis(item) {
 
         try {
 
+            // -------------------------------------------------
+            // 1. EXISTING TRUSTCART PRODUCT ANALYSIS
+            // -------------------------------------------------
+
             const response =
                 await fetch(
                     "/api/products/analyze",
@@ -3662,9 +4052,12 @@ async function openReviewAnalysis(item) {
             let data = null;
 
             try {
+
                 data =
                     await response.json();
+
             } catch {
+
                 data = null;
             }
 
@@ -3679,6 +4072,91 @@ async function openReviewAnalysis(item) {
                     "Unable to analyze this product."
                 );
             }
+
+
+            // -------------------------------------------------
+            // 2. REAL REVIEW + NLP ANALYSIS
+            // -------------------------------------------------
+
+            let reviewAnalysis = null;
+
+            try {
+
+                const reviewResponse =
+                    await fetch(
+                        "/api/reviews/analyze",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+
+                                "Accept":
+                                    "application/json"
+                            },
+
+                            credentials: "include",
+
+                            body: JSON.stringify({
+                                url: productUrl
+                            })
+                        }
+                    );
+
+                try {
+
+                    reviewAnalysis =
+                        await reviewResponse.json();
+
+                } catch {
+
+                    reviewAnalysis = null;
+                }
+
+                /*
+                 * Review analysis is optional.
+                 * If it fails, the existing product
+                 * analysis will still be displayed.
+                 */
+
+                if (
+                    !reviewResponse.ok ||
+                    !reviewAnalysis ||
+                    reviewAnalysis.success === false
+                ) {
+
+                    console.warn(
+                        "TrustCart review analysis unavailable:",
+                        reviewAnalysis?.message ||
+                        "Unknown error"
+                    );
+
+                    reviewAnalysis = null;
+                }
+
+            } catch (reviewError) {
+
+                console.warn(
+                    "TrustCart review analysis error:",
+                    reviewError
+                );
+
+                reviewAnalysis = null;
+            }
+
+
+            // -------------------------------------------------
+            // 3. ATTACH NLP RESULT TO EXISTING DATA
+            // -------------------------------------------------
+
+            data.review_analysis =
+                reviewAnalysis;
+
+
+            // -------------------------------------------------
+            // 4. RENDER EXISTING + NLP DATA
+            // -------------------------------------------------
 
             renderAnalysis(data);
 
