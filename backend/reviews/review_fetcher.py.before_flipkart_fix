@@ -1,0 +1,633 @@
+import re
+import time
+import requests
+
+from bs4 import BeautifulSoup
+
+
+class ReviewFetcher:
+
+    def __init__(self):
+
+        self.headers = {
+            "User-Agent": (
+                "Mozilla/5.0 "
+                "(X11; Linux x86_64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/131.0 Safari/537.36"
+            ),
+            "Accept-Language": "en-IN,en;q=0.9",
+            "Accept": (
+                "text/html,application/xhtml+xml,"
+                "application/xml;q=0.9,image/avif,"
+                "image/webp,*/*;q=0.8"
+            ),
+            "Referer": "https://www.google.com/"
+        }
+
+        self.request_timeout = 8
+        self.browser_timeout = 15000
+
+        # Keep analysis fast.
+        self.max_reviews = 50
+
+    # ========================================================
+    # PUBLIC METHOD
+    # ========================================================
+
+    def fetch_reviews(self, url, max_reviews=None):
+
+        if not url:
+            return []
+
+        limit = max_reviews or self.max_reviews
+        limit = max(1, min(int(limit), 100))
+
+        url = str(url).strip()
+
+        if self._is_amazon(url):
+
+            reviews = self._fetch_amazon(url, limit)
+
+        elif self._is_flipkart(url):
+
+            reviews = self._fetch_flipkart(url, limit)
+
+        else:
+
+            reviews = []
+
+        return self._clean_reviews(reviews, limit)
+
+    # ========================================================
+    # AMAZON
+    # ========================================================
+
+    def _fetch_amazon(self, url, limit):
+
+        reviews = []
+
+        # ----------------------------------------------------
+        # FIRST TRY: original Amazon product page with requests
+        # ----------------------------------------------------
+        # Amazon's current product page contains review blocks
+        # directly. The dedicated /product-reviews/ URL can
+        # redirect to sign-in, so we intentionally use the
+        # original product URL here.
+
+        try:
+
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.request_timeout,
+                allow_redirects=True
+            )
+
+            if response.ok:
+
+                reviews = self._parse_amazon_reviews(
+                    response.text,
+                    limit
+                )
+
+                if reviews:
+
+                    print(
+                        f"Amazon reviews fetched using requests: "
+                        f"{len(reviews)}"
+                    )
+
+                    return reviews
+
+        except Exception as error:
+
+            print(
+                "Amazon review request failed:",
+                error
+            )
+
+        # ----------------------------------------------------
+        # SECOND TRY: Playwright on original product page
+        # ----------------------------------------------------
+
+        try:
+
+            reviews = self._fetch_amazon_browser(
+                url,
+                limit
+            )
+
+            if reviews:
+
+                print(
+                    f"Amazon reviews fetched using Playwright: "
+                    f"{len(reviews)}"
+                )
+
+                return reviews
+
+        except Exception as error:
+
+            print(
+                "Amazon browser review fetch failed:",
+                error
+            )
+
+        return reviews
+
+    def _amazon_review_url(self, url):
+
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+
+        hostname = parsed.netloc.lower()
+
+        # Extract ASIN from common Amazon URL formats:
+        # /dp/ASIN
+        # /gp/product/ASIN
+        # /product/ASIN
+
+        match = re.search(
+            r"/(?:dp|gp/product|product)/([A-Z0-9]{10})",
+            parsed.path,
+            re.IGNORECASE
+        )
+
+        if not match:
+            return url
+
+        asin = match.group(1)
+
+        # Keep the same Amazon domain.
+        domain = hostname or "www.amazon.in"
+
+        return (
+            f"https://{domain}/product-reviews/"
+            f"{asin}/?reviewerType=all_reviews"
+        )
+
+    def _parse_amazon_reviews(self, html, limit):
+
+        if not html:
+            return []
+
+        soup = BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        reviews = []
+
+        # Amazon review blocks.
+        blocks = soup.select(
+            '[data-hook="review"]'
+        )
+
+        for block in blocks:
+
+            # Amazon currently places the actual review text
+            # inside reviewRichContentContainer.
+            text_element = block.select_one(
+                '[data-hook="reviewRichContentContainer"]'
+            )
+
+            # Keep the older selector as a fallback because
+            # Amazon can serve different markup variants.
+            if not text_element:
+                text_element = block.select_one(
+                    '[data-hook="review-body"]'
+                )
+
+            if not text_element:
+                continue
+
+            text = text_element.get_text(
+                " ",
+                strip=True
+            )
+
+            rating = None
+
+            rating_element = block.select_one(
+                '[data-hook="review-star-rating"], '
+                '[data-hook="cmps-review-star-rating"]'
+            )
+
+            if rating_element:
+
+                rating_text = rating_element.get_text(
+                    " ",
+                    strip=True
+                )
+
+                match = re.search(
+                    r'([0-5](?:\.[0-9])?)',
+                    rating_text
+                )
+
+                if match:
+
+                    rating = float(
+                        match.group(1)
+                    )
+
+            if text:
+
+                reviews.append({
+                    "text": text,
+                    "rating": rating,
+                    "marketplace": "Amazon"
+                })
+
+            if len(reviews) >= limit:
+                break
+
+        return reviews
+
+    def _fetch_amazon_browser(self, url, limit):
+
+        from playwright.sync_api import (
+            sync_playwright,
+            TimeoutError as PlaywrightTimeoutError
+        )
+
+        deadline = (
+            time.monotonic()
+            + self.browser_timeout / 1000
+        )
+
+        def remaining():
+
+            value = int(
+                (deadline - time.monotonic()) * 1000
+            )
+
+            if value <= 0:
+
+                raise PlaywrightTimeoutError(
+                    "Review browser timeout."
+                )
+
+            return value
+
+        with sync_playwright() as p:
+
+            browser = p.chromium.launch(
+                headless=True,
+                timeout=min(
+                    5000,
+                    remaining()
+                ),
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox"
+                ]
+            )
+
+            context = browser.new_context(
+                user_agent=self.headers["User-Agent"],
+                locale="en-IN",
+                viewport={
+                    "width": 1366,
+                    "height": 768
+                },
+                extra_http_headers={
+                    "Accept-Language":
+                        "en-IN,en;q=0.9"
+                }
+            )
+
+            page = context.new_page()
+
+            try:
+
+                page.set_default_timeout(
+                    min(4000, remaining())
+                )
+
+                page.set_default_navigation_timeout(
+                    min(7000, remaining())
+                )
+
+                page.goto(
+                    url,
+                    wait_until="commit",
+                    timeout=min(7000, remaining())
+                )
+
+                # Give Amazon a short time to render.
+                try:
+
+                    page.wait_for_selector(
+                        '[data-hook="review"]',
+                        timeout=min(
+                            3000,
+                            remaining()
+                        )
+                    )
+
+                except Exception:
+                    pass
+
+                html = page.content()
+
+                return self._parse_amazon_reviews(
+                    html,
+                    limit
+                )
+
+            finally:
+
+                context.close()
+                browser.close()
+
+    # ========================================================
+    # FLIPKART
+    # ========================================================
+
+    def _fetch_flipkart(self, url, limit):
+
+        reviews = []
+
+        try:
+
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.request_timeout,
+                allow_redirects=True
+            )
+
+            if response.ok:
+
+                reviews = self._parse_flipkart_reviews(
+                    response.text,
+                    limit
+                )
+
+                if reviews:
+
+                    print(
+                        f"Flipkart reviews fetched using requests: "
+                        f"{len(reviews)}"
+                    )
+
+                    return reviews
+
+        except Exception as error:
+
+            print(
+                "Flipkart review request failed:",
+                error
+            )
+
+        # Browser fallback.
+        try:
+
+            reviews = self._fetch_flipkart_browser(
+                url,
+                limit
+            )
+
+            if reviews:
+
+                print(
+                    f"Flipkart reviews fetched using Playwright: "
+                    f"{len(reviews)}"
+                )
+
+        except Exception as error:
+
+            print(
+                "Flipkart browser review fetch failed:",
+                error
+            )
+
+        return reviews
+
+    def _parse_flipkart_reviews(self, html, limit):
+
+        if not html:
+            return []
+
+        soup = BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        reviews = []
+
+        # Flipkart changes class names frequently.
+        # Prefer containers whose text looks like an actual review.
+        candidates = soup.find_all(
+            "div"
+        )
+
+        seen = set()
+
+        for element in candidates:
+
+            text = element.get_text(
+                " ",
+                strip=True
+            )
+
+            if not text:
+                continue
+
+            normalized = re.sub(
+                r'\s+',
+                ' ',
+                text
+            ).strip()
+
+            # Avoid processing huge parent containers.
+            if len(normalized) < 20:
+                continue
+
+            if len(normalized) > 800:
+                continue
+
+            # Common Flipkart review markers.
+            classes = " ".join(
+                element.get("class", [])
+            ).lower()
+
+            looks_like_review = (
+                "review" in classes
+                or "comment" in classes
+                or "userreview" in classes
+            )
+
+            if not looks_like_review:
+                continue
+
+            key = normalized.lower()
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            rating = self._extract_rating(
+                normalized
+            )
+
+            reviews.append({
+                "text": normalized,
+                "rating": rating,
+                "marketplace": "Flipkart"
+            })
+
+            if len(reviews) >= limit:
+                break
+
+        return reviews
+
+    def _fetch_flipkart_browser(self, url, limit):
+
+        from playwright.sync_api import (
+            sync_playwright
+        )
+
+        with sync_playwright() as p:
+
+            browser = p.chromium.launch(
+                headless=True,
+                timeout=5000,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox"
+                ]
+            )
+
+            context = browser.new_context(
+                user_agent=self.headers["User-Agent"],
+                locale="en-IN",
+                viewport={
+                    "width": 1366,
+                    "height": 768
+                }
+            )
+
+            page = context.new_page()
+
+            try:
+
+                page.goto(
+                    url,
+                    wait_until="commit",
+                    timeout=7000
+                )
+
+                page.wait_for_timeout(
+                    1500
+                )
+
+                html = page.content()
+
+                return self._parse_flipkart_reviews(
+                    html,
+                    limit
+                )
+
+            finally:
+
+                context.close()
+                browser.close()
+
+    # ========================================================
+    # HELPERS
+    # ========================================================
+
+    def _extract_rating(self, text):
+
+        if not text:
+            return None
+
+        match = re.search(
+            r'\b([1-5](?:\.[0-9])?)\s*(?:★|/5)\b',
+            text
+        )
+
+        if not match:
+            return None
+
+        try:
+
+            value = float(
+                match.group(1)
+            )
+
+            if 1 <= value <= 5:
+                return value
+
+        except ValueError:
+            pass
+
+        return None
+
+    def _clean_reviews(self, reviews, limit):
+
+        cleaned = []
+        seen = set()
+
+        for review in reviews:
+
+            text = str(
+                review.get("text", "")
+            ).strip()
+
+            text = re.sub(
+                r'\s+',
+                ' ',
+                text
+            )
+
+            if len(text) < 5:
+                continue
+
+            key = text.lower()
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            cleaned.append({
+                "text": text[:2000],
+                "rating": review.get("rating"),
+                "marketplace":
+                    review.get(
+                        "marketplace"
+                    )
+            })
+
+            if len(cleaned) >= limit:
+                break
+
+        return cleaned
+
+    @staticmethod
+    def _is_amazon(url):
+
+        return "amazon." in str(
+            url
+        ).lower()
+
+    @staticmethod
+    def _is_flipkart(url):
+
+        lower = str(
+            url
+        ).lower()
+
+        return (
+            "flipkart.com" in lower
+            or "fkrt.it" in lower
+        )

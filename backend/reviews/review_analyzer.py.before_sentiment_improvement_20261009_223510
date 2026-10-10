@@ -1,0 +1,352 @@
+import re
+from collections import Counter
+
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+
+class ReviewAnalyzer:
+    """
+    Lightweight NLP analyzer for TrustCart reviews.
+
+    Performs:
+    - Positive / negative / neutral sentiment analysis
+    - Duplicate / near-duplicate detection
+    - Suspicious-review scoring
+    - Review authenticity estimation
+    """
+
+    def __init__(self):
+        self.sentiment_analyzer = SentimentIntensityAnalyzer()
+
+    # ---------------------------------------------------------
+    # TEXT CLEANING
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def clean_text(text):
+        if not text:
+            return ""
+
+        text = str(text).strip()
+        text = re.sub(r"\s+", " ", text)
+
+        return text
+
+    # ---------------------------------------------------------
+    # SENTIMENT
+    # ---------------------------------------------------------
+
+    def analyze_sentiment(self, text):
+        text = self.clean_text(text)
+
+        if not text:
+            return {
+                "sentiment": "neutral",
+                "score": 0.0,
+            }
+
+        scores = self.sentiment_analyzer.polarity_scores(text)
+        compound = scores["compound"]
+
+        if compound >= 0.05:
+            sentiment = "positive"
+        elif compound <= -0.05:
+            sentiment = "negative"
+        else:
+            sentiment = "neutral"
+
+        return {
+            "sentiment": sentiment,
+            "score": round(compound, 3),
+        }
+
+    # ---------------------------------------------------------
+    # BASIC SUSPICION SIGNALS
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def _promotional_language(text):
+        keywords = [
+            "buy now",
+            "must buy",
+            "best product",
+            "best ever",
+            "100% genuine",
+            "highly recommended",
+            "everyone should buy",
+            "worth every penny",
+            "five star",
+            "5 star",
+        ]
+
+        lowered = text.lower()
+
+        return sum(1 for keyword in keywords if keyword in lowered)
+
+    @staticmethod
+    def _excessive_punctuation(text):
+        if not text:
+            return False
+
+        punctuation = len(re.findall(r"[!?]{2,}", text))
+        return punctuation >= 1
+
+    @staticmethod
+    def _excessive_caps(text):
+        letters = re.findall(r"[A-Za-z]", text)
+
+        if len(letters) < 10:
+            return False
+
+        uppercase = sum(1 for char in letters if char.isupper())
+
+        return uppercase / len(letters) >= 0.65
+
+    @staticmethod
+    def _generic_review(text):
+        lowered = text.lower().strip()
+
+        generic_phrases = [
+            "good product",
+            "nice product",
+            "very good",
+            "excellent product",
+            "awesome product",
+            "good quality",
+            "nice quality",
+            "best product",
+            "value for money",
+            "worth buying",
+            "very nice",
+        ]
+
+        words = lowered.split()
+
+        if len(words) <= 5:
+            return True
+
+        return any(
+            phrase == lowered
+            for phrase in generic_phrases
+        )
+
+    @staticmethod
+    def _rating_text_mismatch(text, rating):
+        if rating is None:
+            return False
+
+        sentiment = ReviewAnalyzer().analyze_sentiment(text)["sentiment"]
+
+        if rating >= 4 and sentiment == "negative":
+            return True
+
+        if rating <= 2 and sentiment == "positive":
+            return True
+
+        return False
+
+    # ---------------------------------------------------------
+    # DUPLICATE / SIMILAR REVIEW DETECTION
+    # ---------------------------------------------------------
+
+    def _similarity_scores(self, texts):
+        if len(texts) < 2:
+            return [0.0] * len(texts)
+
+        try:
+            vectorizer = TfidfVectorizer(
+                lowercase=True,
+                stop_words="english",
+                min_df=1,
+            )
+
+            matrix = vectorizer.fit_transform(texts)
+
+            similarity = cosine_similarity(matrix)
+
+            scores = []
+
+            for i in range(len(texts)):
+                others = [
+                    similarity[i][j]
+                    for j in range(len(texts))
+                    if i != j
+                ]
+
+                scores.append(
+                    max(others) if others else 0.0
+                )
+
+            return scores
+
+        except Exception:
+            return [0.0] * len(texts)
+
+    # ---------------------------------------------------------
+    # REVIEW ANALYSIS
+    # ---------------------------------------------------------
+
+    def analyze_reviews(self, reviews):
+        if not reviews:
+            return {
+                "review_count": 0,
+                "positive": 0,
+                "negative": 0,
+                "neutral": 0,
+                "suspicious": 0,
+                "likely_genuine": 0,
+                "sentiment_score": 0,
+                "authenticity_score": 0,
+                "reviews": [],
+            }
+
+        processed = []
+
+        texts = [
+            self.clean_text(review.get("text", ""))
+            for review in reviews
+        ]
+
+        similarity_scores = self._similarity_scores(texts)
+
+        positive = 0
+        negative = 0
+        neutral = 0
+        suspicious_count = 0
+
+        for index, review in enumerate(reviews):
+            text = texts[index]
+
+            if not text:
+                continue
+
+            sentiment_data = self.analyze_sentiment(text)
+
+            sentiment = sentiment_data["sentiment"]
+            sentiment_score = sentiment_data["score"]
+
+            if sentiment == "positive":
+                positive += 1
+            elif sentiment == "negative":
+                negative += 1
+            else:
+                neutral += 1
+
+            rating = review.get("rating")
+
+            suspicion_score = 0
+            reasons = []
+
+            # Very short/generic review
+            if self._generic_review(text):
+                suspicion_score += 20
+                reasons.append("Very short or generic review")
+
+            # Promotional language
+            promotional_hits = self._promotional_language(text)
+
+            if promotional_hits:
+                suspicion_score += min(
+                    20,
+                    promotional_hits * 10
+                )
+                reasons.append("Promotional language")
+
+            # Excessive punctuation
+            if self._excessive_punctuation(text):
+                suspicion_score += 10
+                reasons.append("Excessive punctuation")
+
+            # Excessive capital letters
+            if self._excessive_caps(text):
+                suspicion_score += 10
+                reasons.append("Unusual capitalization")
+
+            # Rating vs sentiment mismatch
+            if self._rating_text_mismatch(text, rating):
+                suspicion_score += 15
+                reasons.append("Rating and text sentiment mismatch")
+
+            # Similar/duplicate reviews
+            similarity = similarity_scores[index]
+
+            if similarity >= 0.90:
+                suspicion_score += 35
+                reasons.append("Very similar to another review")
+            elif similarity >= 0.80:
+                suspicion_score += 20
+                reasons.append("Similar to another review")
+
+            suspicion_score = min(100, suspicion_score)
+
+            if suspicion_score >= 50:
+                status = "suspicious"
+                suspicious_count += 1
+            elif suspicion_score >= 25:
+                status = "needs_review"
+            else:
+                status = "likely_genuine"
+
+            processed.append({
+                "text": text,
+                "rating": rating,
+                "marketplace": review.get("marketplace"),
+                "sentiment": sentiment,
+                "sentiment_score": round(
+                    abs(sentiment_score) * 100,
+                    1,
+                ),
+                "suspicion_score": suspicion_score,
+                "status": status,
+                "reasons": reasons,
+            })
+
+        total = len(processed)
+
+        if total == 0:
+            return {
+                "review_count": 0,
+                "positive": 0,
+                "negative": 0,
+                "neutral": 0,
+                "suspicious": 0,
+                "likely_genuine": 0,
+                "sentiment_score": 0,
+                "authenticity_score": 0,
+                "reviews": [],
+            }
+
+        likely_genuine = sum(
+            1
+            for review in processed
+            if review["status"] == "likely_genuine"
+        )
+
+        # Overall sentiment score
+        sentiment_score = round(
+            (
+                (positive * 100)
+                + (neutral * 50)
+                + (negative * 0)
+            )
+            / total
+        )
+
+        # Authenticity score
+        authenticity_score = round(
+            (likely_genuine / total) * 100
+        )
+
+        return {
+            "review_count": total,
+            "positive": positive,
+            "negative": negative,
+            "neutral": neutral,
+            "suspicious": suspicious_count,
+            "likely_genuine": likely_genuine,
+            "sentiment_score": sentiment_score,
+            "authenticity_score": authenticity_score,
+            "reviews": processed,
+        }

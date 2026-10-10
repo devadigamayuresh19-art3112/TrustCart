@@ -17,8 +17,8 @@ import psycopg2
 from psycopg2 import errors
 import os
 import requests
-from reviews.review_fetcher import ReviewFetcher
-from reviews.review_analyzer import ReviewAnalyzer
+from backend.reviews.review_fetcher import ReviewFetcher
+from backend.reviews.review_analyzer import ReviewAnalyzer
 import secrets
 
 from urllib.parse import urlparse, urlencode

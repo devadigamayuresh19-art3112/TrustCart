@@ -1,0 +1,999 @@
+import re
+import time
+import requests
+
+from bs4 import BeautifulSoup
+
+
+class ReviewFetcher:
+
+    def __init__(self):
+
+        self.headers = {
+            "User-Agent": (
+                "Mozilla/5.0 "
+                "(X11; Linux x86_64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/131.0 Safari/537.36"
+            ),
+            "Accept-Language": "en-IN,en;q=0.9",
+            "Accept": (
+                "text/html,application/xhtml+xml,"
+                "application/xml;q=0.9,image/avif,"
+                "image/webp,*/*;q=0.8"
+            ),
+            "Referer": "https://www.google.com/"
+        }
+
+        self.request_timeout = 8
+        self.browser_timeout = 15000
+
+        # Keep analysis fast.
+        self.max_reviews = 50
+
+    # ========================================================
+    # PUBLIC METHOD
+    # ========================================================
+
+    def fetch_reviews(self, url, max_reviews=None):
+
+        if not url:
+            return []
+
+        limit = max_reviews or self.max_reviews
+        limit = max(1, min(int(limit), 100))
+
+        url = str(url).strip()
+
+        if self._is_amazon(url):
+
+            reviews = self._fetch_amazon(url, limit)
+
+        elif self._is_flipkart(url):
+
+            reviews = self._fetch_flipkart(url, limit)
+
+        else:
+
+            reviews = []
+
+        return self._clean_reviews(reviews, limit)
+
+    # ========================================================
+    # AMAZON
+    # ========================================================
+
+    def _fetch_amazon(self, url, limit):
+
+        reviews = []
+
+        # ----------------------------------------------------
+        # FIRST TRY: original Amazon product page with requests
+        # ----------------------------------------------------
+        # Amazon's current product page contains review blocks
+        # directly. The dedicated /product-reviews/ URL can
+        # redirect to sign-in, so we intentionally use the
+        # original product URL here.
+
+        try:
+
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.request_timeout,
+                allow_redirects=True
+            )
+
+            if response.ok:
+
+                reviews = self._parse_amazon_reviews(
+                    response.text,
+                    limit
+                )
+
+                if reviews:
+
+                    print(
+                        f"Amazon reviews fetched using requests: "
+                        f"{len(reviews)}"
+                    )
+
+                    return reviews
+
+        except Exception as error:
+
+            print(
+                "Amazon review request failed:",
+                error
+            )
+
+        # ----------------------------------------------------
+        # SECOND TRY: Playwright on original product page
+        # ----------------------------------------------------
+
+        try:
+
+            reviews = self._fetch_amazon_browser(
+                url,
+                limit
+            )
+
+            if reviews:
+
+                print(
+                    f"Amazon reviews fetched using Playwright: "
+                    f"{len(reviews)}"
+                )
+
+                return reviews
+
+        except Exception as error:
+
+            print(
+                "Amazon browser review fetch failed:",
+                error
+            )
+
+        return reviews
+
+    def _amazon_review_url(self, url):
+
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+
+        hostname = parsed.netloc.lower()
+
+        # Extract ASIN from common Amazon URL formats:
+        # /dp/ASIN
+        # /gp/product/ASIN
+        # /product/ASIN
+
+        match = re.search(
+            r"/(?:dp|gp/product|product)/([A-Z0-9]{10})",
+            parsed.path,
+            re.IGNORECASE
+        )
+
+        if not match:
+            return url
+
+        asin = match.group(1)
+
+        # Keep the same Amazon domain.
+        domain = hostname or "www.amazon.in"
+
+        return (
+            f"https://{domain}/product-reviews/"
+            f"{asin}/?reviewerType=all_reviews"
+        )
+
+    def _parse_amazon_reviews(self, html, limit):
+
+        if not html:
+            return []
+
+        soup = BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        reviews = []
+
+        # Amazon review blocks.
+        blocks = soup.select(
+            '[data-hook="review"]'
+        )
+
+        for block in blocks:
+
+            # Amazon currently places the actual review text
+            # inside reviewRichContentContainer.
+            text_element = block.select_one(
+                '[data-hook="reviewRichContentContainer"]'
+            )
+
+            # Keep the older selector as a fallback because
+            # Amazon can serve different markup variants.
+            if not text_element:
+                text_element = block.select_one(
+                    '[data-hook="review-body"]'
+                )
+
+            if not text_element:
+                continue
+
+            text = text_element.get_text(
+                " ",
+                strip=True
+            )
+
+            rating = None
+
+            rating_element = block.select_one(
+                '[data-hook="review-star-rating"], '
+                '[data-hook="cmps-review-star-rating"]'
+            )
+
+            if rating_element:
+
+                rating_text = rating_element.get_text(
+                    " ",
+                    strip=True
+                )
+
+                match = re.search(
+                    r'([0-5](?:\.[0-9])?)',
+                    rating_text
+                )
+
+                if match:
+
+                    rating = float(
+                        match.group(1)
+                    )
+
+            if text:
+
+                reviews.append({
+                    "text": text,
+                    "rating": rating,
+                    "marketplace": "Amazon"
+                })
+
+            if len(reviews) >= limit:
+                break
+
+        return reviews
+
+    def _fetch_amazon_browser(self, url, limit):
+
+        from playwright.sync_api import (
+            sync_playwright,
+            TimeoutError as PlaywrightTimeoutError
+        )
+
+        deadline = (
+            time.monotonic()
+            + self.browser_timeout / 1000
+        )
+
+        def remaining():
+
+            value = int(
+                (deadline - time.monotonic()) * 1000
+            )
+
+            if value <= 0:
+
+                raise PlaywrightTimeoutError(
+                    "Review browser timeout."
+                )
+
+            return value
+
+        with sync_playwright() as p:
+
+            browser = p.chromium.launch(
+                headless=True,
+                timeout=min(
+                    5000,
+                    remaining()
+                ),
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox"
+                ]
+            )
+
+            context = browser.new_context(
+                user_agent=self.headers["User-Agent"],
+                locale="en-IN",
+                viewport={
+                    "width": 1366,
+                    "height": 768
+                },
+                extra_http_headers={
+                    "Accept-Language":
+                        "en-IN,en;q=0.9"
+                }
+            )
+
+            page = context.new_page()
+
+            try:
+
+                page.set_default_timeout(
+                    min(4000, remaining())
+                )
+
+                page.set_default_navigation_timeout(
+                    min(7000, remaining())
+                )
+
+                page.goto(
+                    url,
+                    wait_until="commit",
+                    timeout=min(7000, remaining())
+                )
+
+                # Give Amazon a short time to render.
+                try:
+
+                    page.wait_for_selector(
+                        '[data-hook="review"]',
+                        timeout=min(
+                            3000,
+                            remaining()
+                        )
+                    )
+
+                except Exception:
+                    pass
+
+                html = page.content()
+
+                return self._parse_amazon_reviews(
+                    html,
+                    limit
+                )
+
+            finally:
+
+                context.close()
+                browser.close()
+
+    # ========================================================
+    # FLIPKART
+    # ========================================================
+
+    def _fetch_flipkart(self, url, limit):
+
+        reviews = []
+
+        try:
+
+            response = requests.get(
+                url,
+                headers=self.headers,
+                timeout=self.request_timeout,
+                allow_redirects=True
+            )
+
+            if response.ok:
+
+                reviews = self._parse_flipkart_reviews(
+                    response.text,
+                    limit
+                )
+
+                if reviews:
+
+                    print(
+                        f"Flipkart reviews fetched using requests: "
+                        f"{len(reviews)}"
+                    )
+
+                    return reviews
+
+        except Exception as error:
+
+            print(
+                "Flipkart review request failed:",
+                error
+            )
+
+        # Browser fallback.
+        try:
+
+            reviews = self._fetch_flipkart_browser(
+                url,
+                limit
+            )
+
+            if reviews:
+
+                print(
+                    f"Flipkart reviews fetched using Playwright: "
+                    f"{len(reviews)}"
+                )
+
+        except Exception as error:
+
+            print(
+                "Flipkart browser review fetch failed:",
+                error
+            )
+
+        return reviews
+
+    def _parse_flipkart_reviews(self, html, limit):
+
+        if not html:
+            return []
+
+        soup = BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        reviews = []
+        seen = set()
+
+        # ----------------------------------------------------
+        # Flipkart review markup changes frequently.
+        # Current pages may expose review data through:
+        #   1. visible review containers
+        #   2. JSON-LD / embedded application JSON
+        #   3. rendered review blocks
+        #
+        # We intentionally keep the extraction lightweight.
+        # ----------------------------------------------------
+
+        def add_review(text, rating=None, author=None, verified=None):
+
+            if not text:
+                return
+
+            text = re.sub(
+                r'\\s+',
+                ' ',
+                text
+            ).strip()
+
+            if len(text) < 20 or len(text) > 800:
+                return
+
+            # Remove common UI-only text.
+            if text.lower() in {
+                "read more",
+                "read less",
+                "report abuse"
+            }:
+                return
+
+            key = text.lower()
+
+            if key in seen:
+                return
+
+            seen.add(key)
+
+            reviews.append({
+                "text": text,
+                "rating": rating,
+                "author": author,
+                "verified": verified,
+                "marketplace": "Flipkart"
+            })
+
+        # ----------------------------------------------------
+        # METHOD 1: Look for elements with review-related
+        # attributes/classes.
+        # ----------------------------------------------------
+
+        selectors = [
+            '[class*="review"]',
+            '[class*="Review"]',
+            '[class*="comment"]',
+            '[class*="Comment"]',
+            '[data-testid*="review"]',
+            '[data-testid*="Review"]',
+            '[data-id*="review"]'
+        ]
+
+        for selector in selectors:
+
+            try:
+                elements = soup.select(selector)
+            except Exception:
+                elements = []
+
+            for element in elements:
+
+                text = element.get_text(
+                    " ",
+                    strip=True
+                )
+
+                if not text:
+                    continue
+
+                # Avoid grabbing a huge parent section.
+                if len(text) > 800:
+                    continue
+
+                rating = self._extract_rating(text)
+
+                add_review(
+                    text,
+                    rating
+                )
+
+                if len(reviews) >= limit:
+                    return reviews[:limit]
+
+        # ----------------------------------------------------
+        # METHOD 2: Search for Flipkart's common review
+        # structure based on rating text.
+        #
+        # A review normally contains a rating such as:
+        # "5", "4", "3" together with meaningful text.
+        # ----------------------------------------------------
+
+        for element in soup.find_all(["div", "p"]):
+
+            text = element.get_text(
+                " ",
+                strip=True
+            )
+
+            if not text:
+                continue
+
+            if len(text) < 30 or len(text) > 500:
+                continue
+
+            rating = self._extract_rating(text)
+
+            if rating is None:
+                continue
+
+            # Avoid navigation/product metadata.
+            lower = text.lower()
+
+            if any(marker in lower for marker in [
+                "add to cart",
+                "buy now",
+                "delivery",
+                "available offers",
+                "seller",
+                "emi options"
+            ]):
+                continue
+
+            add_review(
+                text,
+                rating
+            )
+
+            if len(reviews) >= limit:
+                break
+
+        return reviews[:limit]
+
+    def _fetch_flipkart_browser(self, url, limit):
+
+        from playwright.sync_api import sync_playwright
+
+        print("[Flipkart Browser] Opening product page...")
+
+        captured_reviews = []
+
+        def handle_response(response):
+
+            try:
+                if "rome.api.flipkart.com/api/4/page/fetch" not in response.url.lower():
+                    return
+
+                if response.status != 200:
+                    return
+
+                payload = response.json()
+
+                slots = (
+                    payload
+                    .get("RESPONSE", {})
+                    .get("slots", [])
+                )
+
+                for slot in slots:
+
+                    widget = slot.get("widget", {})
+                    data = widget.get("data", {})
+
+                    # Current Flipkart Rome response stores
+                    # ratings/reviews inside dlsData.
+                    dls_data = data.get(
+                        "dlsData",
+                        {}
+                    )
+
+                    layout = dls_data.get(
+                        "default_fk_pp_rnr_layout_body_0",
+                        {}
+                    )
+
+                    if not layout:
+                        continue
+
+                    value = layout.get(
+                        "value",
+                        {}
+                    )
+
+                    review_list = value.get(
+                        "horizontalListData_2",
+                        {}
+                    ).get("value", [])
+
+                    if not isinstance(review_list, list):
+                        continue
+
+                    for item in review_list:
+
+                        item_value = item.get("value", {})
+
+                        # -----------------------------
+                        # REVIEW TEXT
+                        # -----------------------------
+
+                        text_data = item_value.get(
+                            "customEllipsisData_0",
+                            {}
+                        ).get("value", {})
+
+                        review_text = (
+                            text_data.get("prependingText")
+                            or text_data.get("text")
+                            or ""
+                        )
+
+                        review_text = str(
+                            review_text
+                        ).strip()
+
+                        if not review_text:
+                            continue
+
+                        # -----------------------------
+                        # RATING
+                        # -----------------------------
+
+                        rating = (
+                            item_value
+                            .get("ratingData_0", {})
+                            .get("value", {})
+                            .get("rating")
+                        )
+
+                        # -----------------------------
+                        # AUTHOR
+                        # -----------------------------
+
+                        author = (
+                            item_value
+                            .get("label_3", {})
+                            .get("value", {})
+                            .get("text")
+                            or ""
+                        )
+
+                        # -----------------------------
+                        # VERIFIED BUYER
+                        # -----------------------------
+
+                        verified_text = (
+                            item_value
+                            .get("label_4", {})
+                            .get("value", {})
+                            .get("text")
+                            or ""
+                        )
+
+                        # -----------------------------
+                        # REVIEW ID
+                        # -----------------------------
+
+                        review_id = (
+                            item_value
+                            .get("box_5", {})
+                            .get("action", {})
+                            .get("tracking", {})
+                            .get("reviewId")
+                            or ""
+                        )
+
+                        captured_reviews.append({
+                            "text": review_text,
+                            "rating": rating,
+                            "author": author,
+                            "verified": (
+                                "verified" in
+                                verified_text.lower()
+                            ),
+                            "review_id": review_id,
+                            "marketplace": "Flipkart"
+                        })
+
+            except Exception as error:
+
+                print(
+                    "[Flipkart Browser] "
+                    "Rome response warning:",
+                    error
+                )
+
+        with sync_playwright() as p:
+
+            browser = p.chromium.launch(
+                headless=True,
+                timeout=5000
+            )
+
+            context = browser.new_context(
+                user_agent=self.headers["User-Agent"],
+                locale="en-IN"
+            )
+
+            page = context.new_page()
+
+            page.on(
+                "response",
+                handle_response
+            )
+
+            try:
+
+                # Continue even when Flipkart delays DOMContentLoaded.
+                # The response listener is already attached, so review API
+                # responses can still be captured while the page loads.
+                try:
+                    page.goto(
+                        url,
+                        wait_until="commit",
+                        timeout=10000
+                    )
+                except Exception as navigation_error:
+                    print(
+                        "[Flipkart Browser] Navigation warning; "
+                        "continuing with the loaded page:",
+                        navigation_error
+                    )
+
+                # Give the page a short opportunity to trigger review data.
+                page.wait_for_timeout(2000)
+
+                clicked = False
+
+                # Flipkart's product page currently displays
+                # the rating summary similar to:
+                #
+                #     4 | 6,856
+                #
+                # The review count is clickable and opens the
+                # ratings/reviews page, which triggers the Rome API.
+
+                candidates = page.locator(
+                    "div.css-146c3p1"
+                )
+
+                for i in range(
+                    min(candidates.count(), 20)
+                ):
+
+                    try:
+
+                        candidate = candidates.nth(i)
+
+                        if not candidate.is_visible(
+                            timeout=500
+                        ):
+                            continue
+
+                        text_value = (
+                            candidate.inner_text(
+                                timeout=500
+                            ).strip()
+                        )
+
+                        if re.search(
+                            r"^\|\s*[\d,]+$",
+                            text_value
+                        ):
+
+                            candidate.click(
+                                timeout=2000
+                            )
+
+                            clicked = True
+
+                            print(
+                                "[Flipkart Browser] "
+                                "Rating/review section triggered."
+                            )
+
+                            break
+
+                    except Exception:
+                        continue
+
+                # Fallback: locate any element containing
+                # the rating count pattern.
+
+                if not clicked:
+
+                    try:
+
+                        all_divs = page.locator("div")
+
+                        total = min(
+                            all_divs.count(),
+                            1500
+                        )
+
+                        for i in range(total):
+
+                            try:
+
+                                element = all_divs.nth(i)
+
+                                if not element.is_visible(
+                                    timeout=100
+                                ):
+                                    continue
+
+                                txt = element.inner_text(
+                                    timeout=100
+                                ).strip()
+
+                                if re.search(
+                                    r"\|\s*[\d,]+$",
+                                    txt
+                                ):
+
+                                    element.click(
+                                        timeout=1000
+                                    )
+
+                                    clicked = True
+
+                                    print(
+                                        "[Flipkart Browser] "
+                                        "Fallback rating count clicked."
+                                    )
+
+                                    break
+
+                            except Exception:
+                                continue
+
+                    except Exception:
+                        pass
+
+                page.wait_for_timeout(5000)
+
+            except Exception as error:
+
+                print(
+                    "[Flipkart Browser] "
+                    "Interaction warning:",
+                    error
+                )
+
+            finally:
+
+                browser.close()
+
+        # ---------------------------------------------
+        # Deduplicate reviews
+        # ---------------------------------------------
+
+        unique_reviews = []
+        seen = set()
+
+        for review in captured_reviews:
+
+            key = (
+                review.get("review_id")
+                or review.get("text", "").strip().lower()
+            )
+
+            if not key or key in seen:
+                continue
+
+            seen.add(key)
+            unique_reviews.append(review)
+
+            if len(unique_reviews) >= limit:
+                break
+
+        print(
+            "[Flipkart Browser] "
+            f"Reviews captured: {len(unique_reviews)}"
+        )
+
+        return unique_reviews
+
+
+    def _extract_rating(self, text):
+
+        if not text:
+            return None
+
+        match = re.search(
+            r'\b([1-5](?:\.[0-9])?)\s*(?:★|/5)\b',
+            text
+        )
+
+        if not match:
+            return None
+
+        try:
+
+            value = float(
+                match.group(1)
+            )
+
+            if 1 <= value <= 5:
+                return value
+
+        except ValueError:
+            pass
+
+        return None
+
+    def _clean_reviews(self, reviews, limit):
+
+        cleaned = []
+        seen = set()
+
+        for review in reviews:
+
+            text = str(
+                review.get("text", "")
+            ).strip()
+
+            text = re.sub(
+                r'\s+',
+                ' ',
+                text
+            )
+
+            if len(text) < 5:
+                continue
+
+            key = text.lower()
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            cleaned.append({
+                "text": text[:2000],
+                "rating": review.get("rating"),
+                "author": review.get("author"),
+                "verified": review.get("verified"),
+                "review_id": review.get("review_id"),
+                "marketplace":
+                    review.get(
+                        "marketplace"
+                    )
+            })
+
+            if len(cleaned) >= limit:
+                break
+
+        return cleaned
+
+    @staticmethod
+    def _is_amazon(url):
+
+        return "amazon." in str(
+            url
+        ).lower()
+
+    @staticmethod
+    def _is_flipkart(url):
+
+        lower = str(
+            url
+        ).lower()
+
+        return (
+            "flipkart.com" in lower
+            or "fkrt.it" in lower
+        )
