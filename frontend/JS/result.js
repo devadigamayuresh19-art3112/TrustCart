@@ -251,20 +251,34 @@ function getRating(item) {
     const possibleValues = [
         item?.rating,
         item?.product_rating,
+        item?.productRating,
+        item?.average_rating,
+        item?.averageRating,
         item?.seller_rating
     ];
 
     for (const value of possibleValues) {
+        if (
+            value === null ||
+            value === undefined ||
+            String(value).trim() === ""
+        ) {
+            continue;
+        }
+
         const number = Number(value);
 
-        if (Number.isFinite(number)) {
+        if (
+            Number.isFinite(number) &&
+            number > 0 &&
+            number <= 5
+        ) {
             return number;
         }
     }
 
     return 0;
 }
-
 
 function getReviews(item) {
     const possibleValues = [
@@ -2234,6 +2248,502 @@ async function openReviewAnalysis(item) {
 
                 .tc-price-card .tc-analysis-action {
                     width: 100%;
+                }
+            }
+
+
+            /* TRUSTCART_REVIEW_UI_REDESIGN_V1 */
+
+            #trustcartAnalyzeView {
+                scroll-behavior: smooth;
+                scrollbar-width: thin;
+                scrollbar-color: var(--tc-green-light) transparent;
+                -webkit-font-smoothing: antialiased;
+                text-rendering: optimizeLegibility;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-shell {
+                max-width: 1180px;
+                padding: 18px 0 64px;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-header {
+                position: relative;
+                padding: 12px 0 26px;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-brand {
+                letter-spacing: -0.45px;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-logo {
+                box-shadow: 0 5px 14px rgba(24, 88, 61, 0.18);
+            }
+
+            #trustcartAnalyzeView .tc-analysis-action {
+                min-height: 42px;
+                font-size: 13px;
+                transition:
+                    transform .18s ease,
+                    box-shadow .18s ease,
+                    background .18s ease,
+                    border-color .18s ease;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-action:focus-visible {
+                outline: 3px solid var(--tc-green-light);
+                outline-offset: 3px;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-primary {
+                box-shadow: 0 5px 14px rgba(24, 88, 61, 0.15);
+            }
+
+            #trustcartAnalyzeView .tc-hero {
+                position: relative;
+                grid-template-columns: minmax(190px, 260px) minmax(0, 1fr);
+                align-items: center;
+                gap: clamp(20px, 3vw, 36px);
+                padding: clamp(20px, 3.5vw, 36px);
+                border-radius: 24px;
+                border-color: var(--tc-border);
+                box-shadow: 0 12px 36px rgba(20, 70, 45, 0.065);
+                overflow: hidden;
+            }
+
+            #trustcartAnalyzeView .tc-hero > div:last-child {
+                min-width: 0;
+            }
+
+            #trustcartAnalyzeView .tc-product-image-wrap {
+                min-width: 0;
+                min-height: 220px;
+                border: 1px solid rgba(97, 180, 135, 0.15);
+            }
+
+            #trustcartAnalyzeView .tc-product-image {
+                max-width: 100%;
+                max-height: 220px;
+            }
+
+            #trustcartAnalyzeView .tc-eyebrow {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 12px;
+                color: var(--tc-green-light);
+                font-size: 11px;
+                letter-spacing: .12em;
+            }
+
+            #trustcartAnalyzeView .tc-eyebrow::before {
+                content: "";
+                width: 20px;
+                height: 2px;
+                border-radius: 2px;
+                background: var(--tc-green-light);
+            }
+
+            #trustcartAnalyzeView .tc-hero h1 {
+                max-width: 760px;
+                margin-bottom: 16px;
+                font-size: clamp(25px, 3.1vw, 37px);
+                line-height: 1.2;
+                letter-spacing: -1px;
+                overflow-wrap: anywhere;
+            }
+
+            #trustcartAnalyzeView .tc-marketplace {
+                padding: 8px 13px;
+                border: 1px solid rgba(97, 180, 135, 0.24);
+                letter-spacing: .01em;
+            }
+
+            #trustcartAnalyzeView .tc-hero-price {
+                margin-top: 20px;
+                font-size: clamp(27px, 3vw, 35px);
+                letter-spacing: -0.8px;
+                overflow-wrap: anywhere;
+            }
+
+            #trustcartAnalyzeView .tc-section {
+                margin-top: 30px;
+                min-width: 0;
+            }
+
+            #trustcartAnalyzeView .tc-section-title {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                margin-bottom: 17px;
+                font-size: clamp(18px, 2vw, 21px);
+                line-height: 1.35;
+                letter-spacing: -0.35px;
+            }
+
+            #trustcartAnalyzeView .tc-section-title::before {
+                content: "";
+                flex: 0 0 4px;
+                height: 23px;
+                border-radius: 5px;
+                background: linear-gradient(
+                    180deg,
+                    var(--tc-green),
+                    var(--tc-green-light)
+                );
+            }
+
+            #trustcartAnalyzeView .tc-metrics {
+                gap: 15px;
+            }
+
+            #trustcartAnalyzeView .tc-metric {
+                min-width: 0;
+                padding: 20px;
+                border-radius: 17px;
+                box-shadow: 0 5px 18px rgba(20, 70, 45, 0.025);
+                transition:
+                    transform .2s ease,
+                    border-color .2s ease,
+                    box-shadow .2s ease;
+            }
+
+            #trustcartAnalyzeView .tc-metric:hover {
+                transform: translateY(-3px);
+                border-color: var(--tc-green-light);
+                box-shadow: 0 10px 24px rgba(20, 70, 45, 0.07);
+            }
+
+            #trustcartAnalyzeView .tc-metric-label {
+                line-height: 1.45;
+                letter-spacing: .015em;
+            }
+
+            #trustcartAnalyzeView .tc-metric-value {
+                line-height: 1.35;
+                letter-spacing: -0.45px;
+                overflow-wrap: anywhere;
+            }
+
+            #trustcartAnalyzeView .tc-trust-grid {
+                grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+                gap: 18px;
+            }
+
+            #trustcartAnalyzeView .tc-trust-score-card,
+            #trustcartAnalyzeView .tc-breakdown-card,
+            #trustcartAnalyzeView .tc-review-card,
+            #trustcartAnalyzeView .tc-price-card {
+                min-width: 0;
+                border-color: var(--tc-border);
+                box-shadow: 0 6px 22px rgba(20, 70, 45, 0.035);
+            }
+
+            #trustcartAnalyzeView .tc-trust-score-card {
+                gap: 2px;
+                padding: 28px 20px;
+            }
+
+            #trustcartAnalyzeView .tc-score-circle {
+                width: 164px;
+                height: 164px;
+                filter: drop-shadow(0 5px 12px rgba(24, 88, 61, 0.09));
+            }
+
+            #trustcartAnalyzeView .tc-score-circle::after {
+                inset: 10px;
+            }
+
+            #trustcartAnalyzeView .tc-score-number {
+                letter-spacing: -1px;
+            }
+
+            #trustcartAnalyzeView .tc-trust-level {
+                margin-top: 17px;
+                padding: 7px 12px;
+                border: 1px solid rgba(97, 180, 135, 0.25);
+                border-radius: 999px;
+                background: rgba(97, 180, 135, 0.09);
+            }
+
+            #trustcartAnalyzeView .tc-breakdown-card {
+                padding: clamp(20px, 3vw, 28px);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            #trustcartAnalyzeView .tc-score-row {
+                margin-bottom: 22px;
+            }
+
+            #trustcartAnalyzeView .tc-score-head {
+                gap: 14px;
+                line-height: 1.4;
+            }
+
+            #trustcartAnalyzeView .tc-score-head span:last-child {
+                flex-shrink: 0;
+                font-variant-numeric: tabular-nums;
+            }
+
+            #trustcartAnalyzeView .tc-score-track {
+                height: 10px;
+            }
+
+            #trustcartAnalyzeView .tc-review-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            #trustcartAnalyzeView .tc-review-card {
+                padding: 21px;
+                border-radius: 17px;
+                overflow-wrap: anywhere;
+                transition:
+                    transform .18s ease,
+                    border-color .18s ease,
+                    box-shadow .18s ease;
+            }
+
+            #trustcartAnalyzeView .tc-review-card:hover {
+                border-color: rgba(97, 180, 135, 0.65);
+                box-shadow: 0 10px 25px rgba(20, 70, 45, 0.06);
+            }
+
+            #trustcartAnalyzeView .tc-review-card h3 {
+                margin-bottom: 12px;
+                line-height: 1.45;
+                letter-spacing: -0.15px;
+                overflow-wrap: anywhere;
+            }
+
+            #trustcartAnalyzeView .tc-review-card p {
+                line-height: 1.7;
+                overflow-wrap: anywhere;
+                white-space: normal;
+            }
+
+            #trustcartAnalyzeView .tc-review-card > p + p {
+                margin-top: 10px;
+            }
+
+            #trustcartAnalyzeView .tc-review-value {
+                margin-bottom: 10px;
+                font-size: clamp(24px, 2.5vw, 29px);
+                line-height: 1.25;
+                letter-spacing: -0.6px;
+                font-variant-numeric: tabular-nums;
+            }
+
+            #trustcartAnalyzeView .tc-price-card {
+                flex-wrap: wrap;
+                border-radius: 18px;
+            }
+
+            #trustcartAnalyzeView .tc-price-info {
+                overflow-wrap: anywhere;
+            }
+
+            #trustcartAnalyzeView .tc-error {
+                max-width: 760px;
+                margin: 32px auto;
+                padding: clamp(24px, 4vw, 40px);
+            }
+
+            #trustcartAnalyzeView .tc-floating-orb {
+                z-index: 0;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-shell {
+                position: relative;
+                z-index: 1;
+            }
+
+            #trustcartAnalyzeView .tc-analysis-header,
+            #trustcartAnalyzeView .tc-hero,
+            #trustcartAnalyzeView .tc-section {
+                isolation: isolate;
+            }
+
+            #trustcartAnalyzeView.tc-dark .tc-metric,
+            #trustcartAnalyzeView.tc-dark .tc-review-card,
+            #trustcartAnalyzeView.tc-dark .tc-trust-score-card,
+            #trustcartAnalyzeView.tc-dark .tc-breakdown-card,
+            #trustcartAnalyzeView.tc-dark .tc-price-card {
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            }
+
+            #trustcartAnalyzeView.tc-dark .tc-metric:hover,
+            #trustcartAnalyzeView.tc-dark .tc-review-card:hover {
+                border-color: var(--tc-green-light);
+            }
+
+            #trustcartAnalyzeView.tc-dark .tc-trust-level {
+                color: #a9e8c2;
+                background: rgba(97, 180, 135, 0.1);
+            }
+
+            #trustcartAnalyzeView .tc-analysis-loading {
+                padding: 24px;
+            }
+
+            @media (max-width: 900px) {
+                #trustcartAnalyzeView .tc-analysis-shell {
+                    width: min(100% - 32px, 760px);
+                }
+
+                #trustcartAnalyzeView .tc-hero {
+                    grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+                    gap: 22px;
+                    padding: 22px;
+                }
+
+                #trustcartAnalyzeView .tc-product-image-wrap {
+                    min-height: 190px;
+                }
+
+                #trustcartAnalyzeView .tc-product-image {
+                    height: 175px;
+                }
+
+                #trustcartAnalyzeView .tc-metrics {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                #trustcartAnalyzeView .tc-review-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                #trustcartAnalyzeView .tc-trust-grid {
+                    grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+                }
+            }
+
+            @media (max-width: 600px) {
+                #trustcartAnalyzeView .tc-analysis-shell {
+                    width: calc(100% - 24px);
+                    padding-top: 8px;
+                    padding-bottom: 36px;
+                }
+
+                #trustcartAnalyzeView .tc-analysis-header {
+                    align-items: flex-start;
+                    flex-wrap: wrap;
+                    padding: 12px 0 20px;
+                }
+
+                #trustcartAnalyzeView .tc-analysis-brand {
+                    font-size: 18px;
+                }
+
+                #trustcartAnalyzeView .tc-analysis-actions {
+                    width: 100%;
+                    display: grid;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+
+                #trustcartAnalyzeView .tc-analysis-action {
+                    min-width: 0;
+                    padding: 10px 8px;
+                    white-space: normal;
+                }
+
+                #trustcartAnalyzeView .tc-hero {
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 18px;
+                    padding: 17px;
+                    border-radius: 19px;
+                }
+
+                #trustcartAnalyzeView .tc-product-image-wrap {
+                    min-height: 175px;
+                    max-height: 210px;
+                    padding: 12px;
+                }
+
+                #trustcartAnalyzeView .tc-product-image {
+                    height: 165px;
+                }
+
+                #trustcartAnalyzeView .tc-hero h1 {
+                    font-size: clamp(23px, 7vw, 30px);
+                    letter-spacing: -0.65px;
+                }
+
+                #trustcartAnalyzeView .tc-hero-price {
+                    margin-top: 15px;
+                }
+
+                #trustcartAnalyzeView .tc-section {
+                    margin-top: 25px;
+                }
+
+                #trustcartAnalyzeView .tc-section-title {
+                    margin-bottom: 13px;
+                }
+
+                #trustcartAnalyzeView .tc-metrics {
+                    gap: 10px;
+                }
+
+                #trustcartAnalyzeView .tc-metric {
+                    padding: 15px;
+                    border-radius: 14px;
+                }
+
+                #trustcartAnalyzeView .tc-metric-value {
+                    font-size: 20px;
+                }
+
+                #trustcartAnalyzeView .tc-trust-grid {
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 12px;
+                }
+
+                #trustcartAnalyzeView .tc-trust-score-card {
+                    padding: 24px 18px;
+                }
+
+                #trustcartAnalyzeView .tc-breakdown-card {
+                    padding: 20px 17px;
+                }
+
+                #trustcartAnalyzeView .tc-review-grid {
+                    grid-template-columns: minmax(0, 1fr);
+                    gap: 11px;
+                }
+
+                #trustcartAnalyzeView .tc-review-card {
+                    padding: 18px;
+                    border-radius: 15px;
+                }
+
+                #trustcartAnalyzeView .tc-review-value {
+                    font-size: 25px;
+                }
+
+                #trustcartAnalyzeView .tc-price-card {
+                    align-items: flex-start;
+                    flex-direction: column;
+                    padding: 18px;
+                    gap: 14px;
+                }
+
+                #trustcartAnalyzeView .tc-price-main {
+                    font-size: 28px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                #trustcartAnalyzeView *,
+                #trustcartAnalyzeView *::before,
+                #trustcartAnalyzeView *::after {
+                    animation-duration: 0.01ms !important;
+                    animation-iteration-count: 1 !important;
+                    scroll-behavior: auto !important;
+                    transition-duration: 0.01ms !important;
                 }
             }
 
@@ -4363,9 +4873,75 @@ async function loadComparison() {
                 const rawPrices =
                     extractPriceItems(data);
 
+                // Restore saved ratings only for the exact matching product URL.
+                const savedSourceProduct =
+                    storedResult.product ||
+                    storedResult.source_product ||
+                    {};
+
+                const normalizeProductUrl = (value) => {
+                    if (!value) return "";
+
+                    try {
+                        const parsed = new URL(value);
+                        const hostname = parsed.hostname
+                            .toLowerCase()
+                            .replace(/^www\./, "");
+                        const pathname = parsed.pathname
+                            .replace(/\/+$/, "")
+                            .toLowerCase();
+
+                        return hostname + pathname;
+                    } catch (error) {
+                        return String(value)
+                            .split("?")[0]
+                            .replace(/\/+$/, "")
+                            .toLowerCase();
+                    }
+                };
+
+                const savedSourceUrl =
+                    savedSourceProduct.product_url ||
+                    savedSourceProduct.source_url ||
+                    savedSourceProduct.url ||
+                    "";
+
+                const savedNormalizedUrl =
+                    normalizeProductUrl(savedSourceUrl);
+
+                const enrichedPrices = rawPrices.map((item) => {
+                    const itemUrl =
+                        item.product_url ||
+                        item.productUrl ||
+                        item.url ||
+                        item.link ||
+                        "";
+
+                    const isSameProduct =
+                        savedNormalizedUrl &&
+                        normalizeProductUrl(itemUrl) === savedNormalizedUrl;
+
+                    if (!isSameProduct) return item;
+
+                    const existingRating = getRating(item);
+                    const savedRating = getRating(savedSourceProduct);
+                    const existingReviews = getReviews(item);
+                    const savedReviews = getReviews(savedSourceProduct);
+
+                    return {
+                        ...item,
+                        rating: existingRating > 0
+                            ? existingRating
+                            : savedRating,
+                        review_count: existingReviews > 0
+                            ? existingReviews
+                            : savedReviews
+                    };
+                });
+
                 const prices =
                     deduplicatePrices(
-                        rawPrices
+                        enrichedPrices
                     );
 
                 displayComparisonData(
