@@ -60,7 +60,6 @@ class ReviewFetcher:
 
         return self._clean_reviews(reviews, limit)
 
-    # ========================================================
     # AMAZON
     # ========================================================
 
@@ -395,12 +394,52 @@ class ReviewFetcher:
                 html = page.content()
 
 
+                try:
+                    page_title = page.title()
+                except Exception:
+                    page_title = "Unavailable"
+
+                try:
+                    final_url = page.url
+                except Exception:
+                    final_url = "Unavailable"
+
+                try:
+                    review_blocks = len(
+                        page.locator('[data-hook="review"]').all()
+                    )
+                except Exception:
+                    review_blocks = 0
+
+                try:
+                    body_preview = page.locator("body").inner_text(
+                        timeout=2000
+                    )[:600]
+                except Exception:
+                    body_preview = "Could not read page text"
+
+                lower_page = (page_title + " " + body_preview).lower()
+                challenge_markers = [
+                    marker for marker in (
+                        "captcha",
+                        "robot check",
+                        "automated access",
+                        "sorry",
+                        "enter the characters",
+                        "validatecaptcha",
+                        "unusual traffic",
+                    )
+                    if marker in lower_page
+                ]
+
                 print(
                     "[Review Debug] Amazon browser title:",
-                    page.title(),
+                    page_title,
+                    "| Final URL:", final_url,
                     "| HTML length:", len(html),
-                    "| Review blocks:",
-                    len(page.locator('[data-hook="review"]').all()),
+                    "| Review blocks:", review_blocks,
+                    "| Challenge markers:", challenge_markers,
+                    "| Body preview:", repr(body_preview),
                     flush=True
                 )
                 return self._parse_amazon_reviews(
