@@ -85,11 +85,23 @@ class ReviewFetcher:
                 allow_redirects=True
             )
 
+            print(
+                "[Review Debug] Amazon HTTP status:",
+                response.status_code,
+                "| Final URL:", response.url,
+                "| HTML length:", len(response.text),
+                flush=True
+            )
             if response.ok:
 
                 reviews = self._parse_amazon_reviews(
                     response.text,
                     limit
+                )
+                print(
+                    "[Review Debug] Amazon reviews parsed from HTML:",
+                    len(reviews),
+                    flush=True
                 )
 
                 if reviews:
@@ -335,6 +347,15 @@ class ReviewFetcher:
 
                 html = page.content()
 
+
+                print(
+                    "[Review Debug] Amazon browser title:",
+                    page.title(),
+                    "| HTML length:", len(html),
+                    "| Review blocks:",
+                    len(page.locator('[data-hook="review"]').all()),
+                    flush=True
+                )
                 return self._parse_amazon_reviews(
                     html,
                     limit
