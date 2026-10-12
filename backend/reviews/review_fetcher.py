@@ -121,6 +121,53 @@ class ReviewFetcher:
             )
 
         # ----------------------------------------------------
+        # DEPLOYMENT_REVIEW_URL_FALLBACK
+        # SECOND TRY: request Amazon's dedicated review page.
+        # Some product pages contain no review markup.
+
+        try:
+            review_url = self._amazon_review_url(url)
+
+            if review_url != url:
+                response = requests.get(
+                    review_url,
+                    headers=self.headers,
+                    timeout=self.request_timeout,
+                    allow_redirects=True
+                )
+
+                print(
+                    "[Review Debug] Amazon review-page HTTP status:",
+                    response.status_code,
+                    "| Final URL:",
+                    response.url,
+                    "| HTML length:",
+                    len(response.text),
+                    flush=True
+                )
+
+                if response.ok:
+                    reviews = self._parse_amazon_reviews(
+                        response.text,
+                        limit
+                    )
+
+                    print(
+                        "[Review Debug] Reviews parsed from dedicated page:",
+                        len(reviews),
+                        flush=True
+                    )
+
+                    if reviews:
+                        return reviews
+
+        except Exception as error:
+            print(
+                "[Review Debug] Dedicated Amazon review-page request failed:",
+                repr(error),
+                flush=True
+            )
+
         # SECOND TRY: Playwright on original product page
         # ----------------------------------------------------
 
