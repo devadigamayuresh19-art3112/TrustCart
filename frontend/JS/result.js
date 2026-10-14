@@ -6,6 +6,28 @@
 
 let currentPrices = [];
 let currentProduct = null;
+
+// Shared context getter used by the floating TrustCart AI widget.
+window.getTrustCartChatContext = function () {
+    const analysis = document.getElementById("trustcartAnalyzeView");
+    if (analysis && window.trustCartAnalysisContext) {
+        return window.trustCartAnalysisContext;
+    }
+
+    const product = currentProduct || {};
+    return {
+        application: "TrustCart",
+        view: "Product Results",
+        product_name: product.name || product.title || product.product_name || "",
+        url: product.product_url || product.productUrl || product.url || "",
+        marketplace: product.marketplace || product.platform || product.source || "",
+        price: product.price ?? product.current_price ?? product.final_price ?? "",
+        rating: product.rating ?? product.average_rating ?? "",
+        review_count: product.review_count ?? product.reviews_count ?? "",
+        trust_score: product.trust_score ?? product.trustScore ?? "",
+        trust_level: product.trust_level || product.trustLevel || ""
+    };
+};
 let currentComparison = null;
 let currentProductId = null;
 let currentBestDeal = null;
@@ -1328,6 +1350,24 @@ async function openReviewAnalysis(item) {
         isSafeUrl(item?.product_url)
             ? item.product_url
             : "";
+
+    // Supply the selected product to the shared chatbot while analysis is open.
+    window.trustCartAnalysisContext = {
+        application: "TrustCart",
+        view: "Product Analysis",
+        product_name: productTitle,
+        url: productUrl,
+        marketplace: item?.marketplace || item?.platform || item?.source || "",
+        price: item?.price ?? item?.current_price ?? item?.final_price ?? "",
+        rating: item?.rating ?? item?.average_rating ?? "",
+        review_count: item?.review_count ?? item?.reviews_count ?? "",
+        trust_score: item?.trust_score ?? item?.trustScore ?? "",
+        trust_level: item?.trust_level || item?.trustLevel || "",
+        rating_score: item?.rating_score ?? "",
+        review_score: item?.review_score ?? "",
+        price_score: item?.price_score ?? "",
+        seller_score: item?.seller_score ?? ""
+    };
 
     /*
      * Remove an already-open analysis view.
@@ -4662,6 +4702,169 @@ async function openReviewAnalysis(item) {
 
             data.review_analysis =
                 reviewAnalysis;
+
+
+            // Refresh TrustCart AI context with the completed analysis.
+            // Only pass values that the actual APIs supplied.
+            {
+                const existingContext =
+                    window.trustCartAnalysisContext || {};
+
+                const product =
+                    data.product || {};
+
+                const canonical =
+                    data.canonical || {};
+
+                // Prefer whichever response object actually contains
+                // a calculated trust score.
+                const analysisCandidates = [
+                    data.analysis,
+                    data.trust_analysis?.products?.[0],
+                    data.trust_analysis,
+                    data.price_comparison?.products?.[0]
+                ];
+
+                const analysis =
+                    analysisCandidates.find(candidate =>
+                        candidate &&
+                        typeof candidate === "object" &&
+                        candidate.trust_score !== undefined &&
+                        candidate.trust_score !== null &&
+                        candidate.trust_score !== ""
+                    ) ||
+                    analysisCandidates.find(candidate =>
+                        candidate &&
+                        typeof candidate === "object" &&
+                        Object.keys(candidate).length > 0
+                    ) ||
+                    {};
+
+                const reviews =
+                    reviewAnalysis || {};
+
+                const reviewSummary =
+                    reviews.summary ||
+                    reviews.analysis ||
+                    reviews;
+
+                const firstAvailable = (...values) =>
+                    values.find(value =>
+                        value !== undefined &&
+                        value !== null &&
+                        value !== ""
+                    );
+
+                const context = {
+                    ...existingContext,
+                    application: "TrustCart",
+                    view: "Product Analysis"
+                };
+
+                const fields = {
+                    product_name: firstAvailable(
+                        product.name,
+                        product.title,
+                        canonical.product_name,
+                        existingContext.product_name
+                    ),
+                    url: firstAvailable(
+                        product.product_url,
+                        product.url,
+                        product.productUrl,
+                        existingContext.url
+                    ),
+                    marketplace: firstAvailable(
+                        product.marketplace,
+                        product.platform,
+                        product.source,
+                        existingContext.marketplace
+                    ),
+                    price: firstAvailable(
+                        analysis.price,
+                        product.price,
+                        existingContext.price
+                    ),
+                    rating: firstAvailable(
+                        analysis.rating,
+                        product.rating,
+                        existingContext.rating
+                    ),
+                    review_count: firstAvailable(
+                        analysis.review_count,
+                        product.review_count,
+                        product.reviews,
+                        existingContext.review_count
+                    ),
+                    trust_score: firstAvailable(
+                        analysis.trust_score,
+                        existingContext.trust_score
+                    ),
+                    trust_level: firstAvailable(
+                        analysis.trust_level,
+                        existingContext.trust_level
+                    ),
+                    rating_score: firstAvailable(
+                        analysis.rating_score,
+                        existingContext.rating_score
+                    ),
+                    review_score: firstAvailable(
+                        analysis.review_score,
+                        existingContext.review_score
+                    ),
+                    price_score: firstAvailable(
+                        analysis.price_score,
+                        existingContext.price_score
+                    ),
+                    seller_score: firstAvailable(
+                        analysis.seller_score,
+                        existingContext.seller_score
+                    ),
+                    positive_reviews: firstAvailable(
+                        reviewSummary.positive,
+                        reviewSummary.positive_reviews,
+                        reviewSummary.positive_count,
+                        existingContext.positive_reviews
+                    ),
+                    negative_reviews: firstAvailable(
+                        reviewSummary.negative,
+                        reviewSummary.negative_reviews,
+                        reviewSummary.negative_count,
+                        existingContext.negative_reviews
+                    ),
+                    suspicious_reviews: firstAvailable(
+                        reviewSummary.suspicious,
+                        reviewSummary.suspicious_reviews,
+                        reviewSummary.suspicious_count,
+                        existingContext.suspicious_reviews
+                    ),
+                    neutral_reviews: firstAvailable(
+                        reviewSummary.neutral,
+                        reviewSummary.neutral_reviews,
+                        existingContext.neutral_reviews
+                    ),
+                    sentiment_score: firstAvailable(
+                        reviewSummary.sentiment_score,
+                        existingContext.sentiment_score
+                    ),
+                    authenticity_score: firstAvailable(
+                        reviewSummary.authenticity_score,
+                        existingContext.authenticity_score
+                    )
+                };
+
+                for (const [key, value] of Object.entries(fields)) {
+                    if (
+                        value !== undefined &&
+                        value !== null &&
+                        value !== ""
+                    ) {
+                        context[key] = value;
+                    }
+                }
+
+                window.trustCartAnalysisContext = context;
+            }
 
 
             // -------------------------------------------------
